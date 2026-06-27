@@ -267,8 +267,9 @@
 #endif
 #endif
 
-/* NVIDIA CUDA. */
-#if (__has_include(<cuda.h>) || __has_include(<ffnvcodec/dynlink_cuda.h>)) && __has_include(<libavutil/hwcontext_cuda.h>)
+/* NVIDIA CUDA. `hwcontext_cuda.h` pulls in the real <cuda.h> from the CUDA toolkit, so
+ * guard strictly on that — the ffnvcodec/nv-codec-headers shim does NOT satisfy it. */
+#if __has_include(<cuda.h>) && __has_include(<libavutil/hwcontext_cuda.h>)
 #include <libavutil/hwcontext_cuda.h>
 #endif
 

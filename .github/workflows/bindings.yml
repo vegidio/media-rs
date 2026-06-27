@@ -5,8 +5,8 @@ name: Generate bindings
 # platform-specific FFmpeg headers), then `xtask merge`s the three outputs into one
 # comprehensive file and commits it directly to `main`.
 #
-# Run it manually from the Actions tab ("Run workflow"), via
-# `gh workflow run bindings.yml`, or automatically when the header set changes.
+# Triggered ONLY manually — from the Actions tab ("Run workflow") or
+# `gh workflow run bindings.yml`. It never runs automatically on push.
 
 on:
   workflow_dispatch:
@@ -15,12 +15,6 @@ on:
         description: "binaries-ffmpeg release to generate against"
         required: false
         default: "26.6.0"
-  push:
-    branches: [main]
-    paths:
-      - "wrapper.h"
-      - "build.rs"
-      - "xtask/**"
 
 permissions:
   contents: write
@@ -29,7 +23,8 @@ jobs:
   generate:
     name: generate (${{ matrix.os_label }})
     strategy:
-      fail-fast: true
+      # Don't cancel the other OS legs when one fails — we want every leg's log in one run.
+      fail-fast: false
       matrix:
         include:
           - runner: macos-latest
@@ -51,9 +46,10 @@ jobs:
           sudo apt-get update
           # Headers that the libavcodec/libavutil hardware wrappers #include. Anything not
           # installed here is simply skipped by wrapper.h's __has_include guards.
+          # (CUDA/QSV/AMF are intentionally not installed: they'd need the full CUDA
+          # toolkit / libmfx / AMF SDK. Those backends are skipped until added here.)
           sudo apt-get install -y \
-            libva-dev libvdpau-dev ocl-icd-opencl-dev opencl-headers \
-            libvpl-dev nv-codec-headers || true
+            libva-dev libvdpau-dev ocl-icd-opencl-dev opencl-headers || true
           sudo apt-get install -y clang libclang-dev
 
       - name: Install LLVM/Clang (macOS)
