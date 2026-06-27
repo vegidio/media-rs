@@ -241,6 +241,17 @@ fn emit_system_libs(target_os: &str) {
                 "Foundation",
                 "Metal",
                 "Security",
+                // libavfilter's text/drawing filters reference CoreText (and its
+                // CoreGraphics dependency); the coreimage/opengl filters and avdevice pull
+                // in CoreImage, OpenGL and AppKit.
+                "CoreText",
+                "CoreGraphics",
+                "CoreImage",
+                "OpenGL",
+                "AppKit",
+                "OpenCL",
+                "QuartzCore",
+                "IOSurface",
             ] {
                 println!("cargo:rustc-link-lib=framework={framework}");
             }

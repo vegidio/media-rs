@@ -6,10 +6,34 @@
 //!
 //! The static binaries are downloaded at build time from
 //! [`vegidio/binaries-ffmpeg`](https://github.com/vegidio/binaries-ffmpeg) and the raw
-//! FFI bindings are generated with `bindgen`. The safe, idiomatic Rust API is still to
-//! come; for now only the raw [`sys`] bindings are exposed.
+//! FFI bindings are generated with `bindgen`. On top of those raw [`sys`] bindings this
+//! crate provides a safe, idiomatic API; the entry points most users want are re-exported
+//! from the [`prelude`].
 
 pub mod sys;
+
+pub mod error;
+pub mod types;
+
+mod raw;
+
+pub mod codec;
+pub mod filter;
+pub mod format;
+pub mod frame;
+pub mod packet;
+pub mod prelude;
+pub mod probe;
+pub mod transcode;
+
+pub use codec::{Decoder, VideoEncoder};
+pub use format::{MediaReader, MediaWriter};
+pub use frame::Frame;
+pub use packet::Packet;
+pub use probe::{probe, MediaInfo, StreamInfo};
+pub use transcode::{transcode, Transcoder, VideoConfig};
+
+pub use error::{Error, Result};
 
 use std::ffi::CStr;
 
