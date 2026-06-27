@@ -36,6 +36,16 @@ pub fn run(inputs: &[(String, PathBuf)], out: &PathBuf) {
     let mut order: Vec<String> = Vec::new();
     let mut map: HashMap<String, Entry> = HashMap::new();
 
+    // The complete set of input OSes (de-duplicated, input order preserved). A conflicting
+    // item whose variants don't cover every one of these needs a fallback arm so the symbol
+    // is still defined on the uncovered OSes.
+    let mut all_oses: Vec<String> = Vec::new();
+    for (os, _) in inputs {
+        if !all_oses.iter().any(|o| o == os) {
+            all_oses.push(os.clone());
+        }
+    }
+
     for (os, path) in inputs {
         let src = std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("xtask merge: cannot read {}: {e}", path.display()));
@@ -88,6 +98,31 @@ pub fn run(inputs: &[(String, PathBuf)], out: &PathBuf) {
                     normal.push('\n');
                 }
                 normal.push_str(&v.tokens);
+                normal.push('\n');
+            }
+        }
+
+        // A conflicting *normal* item is gated per-OS; if its variants don't cover every input
+        // OS, the symbol would be undefined on the uncovered ones (e.g. `AMF_RESULT` exists on
+        // Linux/Windows but not macOS), breaking the unconditional items that reference it.
+        // Emit a fallback arm — one variant's tokens under `#[cfg(not(any(<covered oses>)))]` —
+        // so the type is *named* on every host. Foreign `fn`/`static` declarations are left
+        // alone: a wrong-OS symbol only matters at link time, and the future API guards calls.
+        if conflicting && !entry.is_foreign {
+            let covered: Vec<String> = entry
+                .variants
+                .iter()
+                .flat_map(|v| v.oses.iter().cloned())
+                .fold(Vec::new(), |mut acc, o| {
+                    if !acc.contains(&o) {
+                        acc.push(o);
+                    }
+                    acc
+                });
+            if all_oses.iter().any(|o| !covered.contains(o)) {
+                normal.push_str(&cfg_not_any(&covered));
+                normal.push('\n');
+                normal.push_str(&entry.variants[0].tokens);
                 normal.push('\n');
             }
         }
@@ -156,6 +191,17 @@ fn cfg_attr(oses: &[String]) -> String {
     } else {
         format!("#[cfg(any({}))]", preds.join(", "))
     }
+}
+
+/// The complement of [`cfg_attr`]: matches every OS *except* those in `oses`. Used for the
+/// fallback arm of a conflicting item so the symbol is also defined on hosts none of the
+/// real variants covered.
+fn cfg_not_any(oses: &[String]) -> String {
+    let preds: Vec<String> = oses
+        .iter()
+        .map(|o| format!("target_os = \"{o}\""))
+        .collect();
+    format!("#[cfg(not(any({})))]", preds.join(", "))
 }
 
 fn item_key_tokens(item: &Item) -> (String, String) {
