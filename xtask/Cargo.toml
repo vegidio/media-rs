@@ -15,5 +15,4 @@ ureq = "3"
 zip = { version = "8", default-features = false, features = ["deflate"] }
 syn = { version = "2", features = ["full", "extra-traits", "parsing", "printing"] }
 quote = "1"
-proc-macro2 = "1"
 prettyplease = "0.2"
