@@ -47,6 +47,19 @@ Run the **"Generate bindings"** workflow from the repo's **Actions** tab ("Run w
 
 > **libpostproc:** the current `binaries-ffmpeg` `26.6.0` static archives do **not** ship `libpostproc` (no `libpostproc.a`/headers), despite the upstream README listing it; the build skips it automatically and will pick it up if a later release includes it.
 
+## Testing & coverage
+
+Run the test suite with `cargo test`. It includes unit tests plus integration tests under [`tests/`](tests/) that exercise `assets/video*.mp4`; the integration tests skip cleanly when those assets are absent.
+
+Code coverage is measured with [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov). Generate a report locally with the helper script (it installs the tooling on first run):
+
+```sh
+scripts/coverage.sh          # build and open an HTML report
+scripts/coverage.sh --lcov   # emit target/coverage/lcov.info instead
+```
+
+Equivalent cargo aliases are configured in [`.cargo/config.toml`](.cargo/config.toml): `cargo cov` and `cargo cov-lcov`. In CI, [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml) runs coverage on every push to `main` and on pull requests and attaches the HTML report as a build artifact.
+
 ## License
 
 GPL-3.0 — the linked FFmpeg binaries are built with `--enable-gpl`.

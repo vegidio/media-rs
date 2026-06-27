@@ -1,0 +1,6 @@
+# Convenience aliases for code coverage (see scripts/coverage.sh and
+# .github/workflows/coverage.yml). Both require `cargo-llvm-cov`:
+#   rustup component add llvm-tools-preview && cargo install cargo-llvm-cov
+[alias]
+cov = "llvm-cov --all-features --html --open"
+cov-lcov = "llvm-cov --all-features --lcov --output-path target/coverage/lcov.info"
