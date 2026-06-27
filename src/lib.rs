@@ -4,11 +4,12 @@
 //! libavfilter, libavdevice, libswscale, libswresample, libpostproc) via statically
 //! linked libraries.
 //!
-//! The static binaries are downloaded at build time from
-//! [`vegidio/binaries-ffmpeg`](https://github.com/vegidio/binaries-ffmpeg) and the raw
-//! FFI bindings are generated with `bindgen`. On top of those raw [`sys`] bindings this
-//! crate provides a safe, idiomatic API; the entry points most users want are re-exported
-//! from the [`prelude`].
+//! The static binaries are downloaded and linked at build time from
+//! [`vegidio/binaries-ffmpeg`](https://github.com/vegidio/binaries-ffmpeg). The raw FFI
+//! bindings are pre-generated and committed (`src/sys/bindings.rs`), included
+//! unconditionally — so no build-time `bindgen`/`libclang` is needed. On top of those raw
+//! [`sys`] bindings this crate provides a safe, idiomatic API; the entry points most users
+//! want are re-exported from the [`prelude`].
 
 pub mod sys;
 

@@ -35,7 +35,7 @@ fn main() {
 
 fn cmd_generate(args: &[String]) {
     let mut out: Option<PathBuf> = None;
-    let mut version = binaries::VERSION.to_string();
+    let mut version = binaries::version().to_string();
 
     let mut i = 0;
     while i < args.len() {

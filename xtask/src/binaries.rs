@@ -1,17 +1,19 @@
 //! Locating / downloading the prebuilt FFmpeg static archives.
 //!
-//! This duplicates the small download+extract logic from the crate's `build.rs` because a
-//! build script cannot be imported as a library. Unlike `build.rs`, the target is the
-//! *host* (we generate bindings for the machine we run on), so the OS/arch come from
-//! `std::env::consts` rather than the `CARGO_CFG_TARGET_*` variables.
+//! This duplicates the small download+extract logic from the crate's `build.rs` because a build script cannot be
+//! imported as a library. Unlike `build.rs`, the target is the *host* (we generate bindings for the machine we run on),
+//! so the OS/arch come from `std::env::consts` rather than the `CARGO_CFG_TARGET_*` variables.
 
 use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Default `binaries-ffmpeg` release to download (kept in sync with `build.rs`).
-pub const VERSION: &str = "26.6.0";
+/// Default `binaries-ffmpeg` release to download. Reads the repo-root `ffmpeg-version.txt`, the single source of truth
+/// shared with `build.rs`, via `include_str!` (path relative to this file). `.trim()` tolerates a trailing newline.
+pub fn version() -> &'static str {
+    include_str!("../../ffmpeg-version.txt").trim()
+}
 
 /// The Rust `target_os` value for the current host (used to label merged bindings).
 pub fn host_os_label() -> &'static str {

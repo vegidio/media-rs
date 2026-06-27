@@ -7,6 +7,7 @@
 
 use crate::sys;
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 /// The crate-wide result type.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -87,8 +88,10 @@ impl Error {
 
 /// Decode an FFmpeg error code into a human-readable string via `av_strerror`.
 pub(crate) fn strerror(code: i32) -> String {
-    // AV_ERROR_MAX_STRING_SIZE is 64; 256 leaves generous headroom.
-    let mut buf = [0_i8; 256];
+    // AV_ERROR_MAX_STRING_SIZE is 64; 256 leaves generous headroom. Use `c_char` (not a
+    // fixed `i8`) because C `char` is unsigned on some targets (e.g. aarch64 Linux) and
+    // signed on others (x86_64, Apple arm64), which changes `av_strerror`'s pointer type.
+    let mut buf = [0 as c_char; 256];
     // SAFETY: `buf` is a valid, writable buffer of `buf.len()` bytes; av_strerror NUL-
     // terminates within it.
     unsafe {
@@ -130,13 +133,14 @@ const fn fferrtag(a: u8, b: u8, c: u8, d: u8) -> i32 {
 pub(crate) const AVERROR_EOF: i32 = fferrtag(b'E', b'O', b'F', b' ');
 
 /// `EAGAIN` (resource temporarily unavailable). FFmpeg returns `AVERROR(EAGAIN)` to mean
-/// "needs more input"; the numeric value of `EAGAIN` differs by platform.
+/// "needs more input"; the numeric value of `EAGAIN` differs by platform. macOS/BSD use the
+/// outlier `35`; Linux and the MSVC/UCRT C runtime both use `11`.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(crate) const EAGAIN: i32 = 35;
 #[cfg(target_os = "linux")]
 pub(crate) const EAGAIN: i32 = 11;
 #[cfg(windows)]
-pub(crate) const EAGAIN: i32 = 22;
+pub(crate) const EAGAIN: i32 = 11;
 // Fallback for any other target so the crate still compiles.
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux", windows)))]
 pub(crate) const EAGAIN: i32 = 11;

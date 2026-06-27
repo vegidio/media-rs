@@ -1,0 +1,82 @@
+name: Test
+
+# Builds and tests the crate across every OS/architecture the `binaries-ffmpeg` release
+# ships: macOS (x64 + arm64), Linux (x64 + arm64), Windows (x64 + arm64). Each leg downloads
+# the matching static archive in `build.rs`, links it, and runs the integration tests
+# against `assets/video*`. `fail-fast: false` so one platform's failure doesn't hide the
+# others; every leg is required (no `continue-on-error`), so a green run is honest.
+#
+# The Windows archives are now **MSVC** `.lib` files (vcpkg `*-static-md`: static libraries,
+# dynamic UCRT), so the Windows legs use the stock `*-pc-windows-msvc` targets — no extra
+# toolchain install. `build.rs` discovers the `*.lib` set and links it; FFmpeg + every codec
+# is statically linked, with only the OS-provided UCRT as a runtime dependency.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Be resilient to flaky crates.io downloads on the runners.
+env:
+  CARGO_NET_RETRY: "10"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ---- macOS (Apple-Silicon runner; x64 leg cross-compiles + runs via Rosetta) -
+          - name: macOS arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS x64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            rosetta: true
+          # ---- Linux (native runners; libva/libva-drm/libdrm are bundled in the archive) -
+          - name: Linux x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: Linux arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          # ---- Windows (stock MSVC targets; the archives are vcpkg `*-static-md` .lib) ---
+          # The bundled codec set differs by arch (x64 adds nvcodec/qsv/opengl/ssh; arm64
+          # does not) — build.rs's auto-discovery linker handles whatever `.lib` set ships.
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Windows arm64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+
+      # The macOS x64 leg cross-compiles on Apple Silicon; Rosetta 2 lets the resulting
+      # x86_64 test binaries actually run.
+      - name: Install Rosetta 2
+        if: matrix.rosetta
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # Scope to the `media-rs` package: the `xtask` workspace member only exists to
+      # regenerate bindings and drags in bindgen/clang-sys, which the tests don't need.
+      - name: Build
+        run: cargo build -p media-rs --target ${{ matrix.target }} --all-features
+
+      - name: Test
+        run: cargo test -p media-rs --target ${{ matrix.target }} --all-features
