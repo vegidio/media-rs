@@ -15,12 +15,12 @@ fn drain_encoder(
     flush: bool,
     frame: Option<&Frame>,
 ) -> media::Result<()> {
-    let mut iter = if flush {
+    let iter = if flush {
         encoder.flush()?
     } else {
         encoder.encode(frame.unwrap())?
     };
-    while let Some(pkt) = iter.next() {
+    for pkt in iter {
         let mut pkt = pkt?;
         pkt.set_stream_index(out_idx);
         writer.write_packet(&mut pkt)?;
@@ -36,9 +36,8 @@ fn transcode_video_roundtrip() {
     };
     let input = input.to_str().unwrap().to_owned();
 
-    let out_path = std::env::temp_dir().join("media_rs_transcode_test.mp4");
-    let output = out_path.to_str().unwrap().to_owned();
-    let _ = std::fs::remove_file(&out_path);
+    let output = common::temp("media_rs_transcode_test.mp4");
+    let _ = std::fs::remove_file(&output);
 
     let in_video = probe(&input).unwrap().video().cloned().unwrap();
     let (in_width, in_height) = (in_video.width, in_video.height);
@@ -115,5 +114,5 @@ fn transcode_video_roundtrip() {
     }
     assert!(frames > 0, "could not decode any frames from the output");
 
-    let _ = std::fs::remove_file(&out_path);
+    let _ = std::fs::remove_file(&output);
 }

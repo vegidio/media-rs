@@ -2,7 +2,7 @@
 
 use super::config::VideoConfig;
 use super::progress::{Progress, TranscodeSummary};
-use super::{Transcoder, TranscoderBuilder};
+use super::TranscoderBuilder;
 use crate::error::Result;
 use crate::filter::FilterChain;
 use std::ops::RangeInclusive;
@@ -17,86 +17,57 @@ use std::ops::RangeInclusive;
 /// ```
 pub fn transcode(input: impl Into<String>) -> TranscodeJob {
     TranscodeJob {
-        input: input.into(),
-        output: None,
-        video: None,
-        drop_video: false,
-        drop_audio: false,
-        trim: None,
-        filter: FilterChain::new(),
+        builder: TranscoderBuilder::default().input(input),
     }
 }
 
 /// A fluent one-liner transcode. Inherits codecs/geometry from the input and the output
-/// container by default; the methods here cover the common quick edits.
+/// container by default; the methods here cover the common quick edits. It is a thin facade
+/// over [`TranscoderBuilder`].
 pub struct TranscodeJob {
-    input: String,
-    output: Option<String>,
-    video: Option<VideoConfig>,
-    drop_video: bool,
-    drop_audio: bool,
-    trim: Option<(f64, f64)>,
-    filter: FilterChain,
+    builder: TranscoderBuilder,
 }
 
 impl TranscodeJob {
     /// Set the output file (required). Container/codecs are inferred from its extension.
     pub fn to(mut self, output: impl Into<String>) -> Self {
-        self.output = Some(output.into());
+        self.builder = self.builder.output(output);
         self
     }
 
     /// Drop the video stream (e.g. extracting audio).
     pub fn drop_video(mut self) -> Self {
-        self.drop_video = true;
+        self.builder = self.builder.drop_video();
         self
     }
 
     /// Drop the audio stream.
     pub fn drop_audio(mut self) -> Self {
-        self.drop_audio = true;
+        self.builder = self.builder.drop_audio();
         self
     }
 
     /// Keep only the given time range (seconds).
     pub fn trim(mut self, range: RangeInclusive<f64>) -> Self {
-        self.trim = Some((*range.start(), *range.end()));
+        self.builder = self.builder.trim(range);
         self
     }
 
     /// Override video encoding settings.
     pub fn video(mut self, config: VideoConfig) -> Self {
-        self.video = Some(config);
+        self.builder = self.builder.video(config);
         self
     }
 
     /// Apply a video filter chain.
     pub fn video_filter(mut self, filter: FilterChain) -> Self {
-        self.filter = filter;
+        self.builder = self.builder.video_filter(filter);
         self
-    }
-
-    fn into_transcoder(self) -> Result<Transcoder> {
-        let mut b = TranscoderBuilder::default()
-            .input(self.input)
-            .drop_video_if(self.drop_video)
-            .drop_audio_if(self.drop_audio)
-            .video_filter(self.filter);
-        if let Some(o) = self.output {
-            b = b.output(o);
-        }
-        if let Some(v) = self.video {
-            b = b.video(v);
-        }
-        if let Some((s, e)) = self.trim {
-            b = b.trim(s..=e);
-        }
-        b.build()
     }
 
     /// Run the transcode to completion.
     pub fn run(self) -> Result<TranscodeSummary> {
-        self.into_transcoder()?.run()
+        self.builder.build()?.run()
     }
 
     /// Run the transcode, reporting progress.
@@ -104,6 +75,6 @@ impl TranscodeJob {
         self,
         on_progress: impl FnMut(Progress),
     ) -> Result<TranscodeSummary> {
-        self.into_transcoder()?.run_with_progress(on_progress)
+        self.builder.build()?.run_with_progress(on_progress)
     }
 }

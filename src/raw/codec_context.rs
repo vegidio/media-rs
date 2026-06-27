@@ -11,7 +11,7 @@ use crate::types::rational::Rational;
 use std::ffi::CString;
 use std::ptr::{self, NonNull};
 
-/// The outcome of a `receive_frame`/`receive_packet` call.
+/// The outcome of a `receive_frame`/`receive_packet`/`buffersink_get_frame` call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Receive {
     /// A frame/packet was produced.
@@ -20,6 +20,35 @@ pub(crate) enum Receive {
     Again,
     /// The codec is fully drained; no more output will come.
     Eof,
+}
+
+impl Receive {
+    /// Classify an FFmpeg `receive`/`get_frame` return code: `0` is output, `EAGAIN`/`EOF`
+    /// are the two non-error stop conditions, anything else negative is a real error.
+    pub(crate) fn from_code(ret: i32) -> Result<Receive> {
+        if ret == 0 {
+            Ok(Receive::Got)
+        } else if ret == AVERROR_EAGAIN {
+            Ok(Receive::Again)
+        } else if ret == AVERROR_EOF {
+            Ok(Receive::Eof)
+        } else {
+            Err(Error::from_code(ret))
+        }
+    }
+}
+
+/// Drive one step of a receive/drain iterator: on `Got`, take the produced item; on
+/// `Again`/`Eof`, stop; on error, surface it. Shared by the decode/encode iterators.
+pub(crate) fn drain_received<T>(
+    received: Result<Receive>,
+    take: impl FnOnce() -> Result<T>,
+) -> Option<Result<T>> {
+    match received {
+        Ok(Receive::Got) => Some(take()),
+        Ok(Receive::Again) | Ok(Receive::Eof) => None,
+        Err(e) => Some(Err(e)),
+    }
 }
 
 /// Look up a decoder by codec id. Returns null if this build has no such decoder.
@@ -213,7 +242,7 @@ impl CodecContext {
     pub(crate) fn receive_frame(&mut self, frame: &mut RawFrame) -> Result<Receive> {
         // SAFETY: ctx is valid+open; frame is a valid owned frame.
         let ret = unsafe { sys::avcodec_receive_frame(self.ctx(), frame.as_mut_ptr()) };
-        Self::classify(ret)
+        Receive::from_code(ret)
     }
 
     // --- encode side ------------------------------------------------------------------
@@ -234,19 +263,7 @@ impl CodecContext {
     pub(crate) fn receive_packet(&mut self, pkt: &mut RawPacket) -> Result<Receive> {
         // SAFETY: ctx is valid+open; pkt is a valid owned packet.
         let ret = unsafe { sys::avcodec_receive_packet(self.ctx(), pkt.as_mut_ptr()) };
-        Self::classify(ret)
-    }
-
-    fn classify(ret: i32) -> Result<Receive> {
-        if ret == 0 {
-            Ok(Receive::Got)
-        } else if ret == AVERROR_EAGAIN {
-            Ok(Receive::Again)
-        } else if ret == AVERROR_EOF {
-            Ok(Receive::Eof)
-        } else {
-            Err(Error::from_code(ret))
-        }
+        Receive::from_code(ret)
     }
 }
 

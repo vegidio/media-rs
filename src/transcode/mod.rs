@@ -96,16 +96,6 @@ impl TranscoderBuilder {
         self
     }
 
-    pub(crate) fn drop_video_if(mut self, drop: bool) -> Self {
-        self.drop_video = drop;
-        self
-    }
-
-    pub(crate) fn drop_audio_if(mut self, drop: bool) -> Self {
-        self.drop_audio = drop;
-        self
-    }
-
     /// Keep only the given time range (seconds), re-based to start at zero.
     pub fn trim(mut self, range: RangeInclusive<f64>) -> Self {
         self.trim = Some((*range.start(), *range.end()));

@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::raw::codec_context::{find_encoder_by_name, CodecContext, Receive};
+use crate::raw::codec_context::{drain_received, find_encoder_by_name, CodecContext};
 use crate::raw::packet::RawPacket;
 use crate::types::codec::VideoCodec;
 use crate::types::pixel_format::PixelFormat;
@@ -69,14 +69,8 @@ impl Iterator for EncodeIter<'_> {
     type Item = Result<Packet>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.enc.ctx.receive_packet(&mut self.enc.recv) {
-            Ok(Receive::Got) => match self.enc.recv.move_out() {
-                Ok(pkt) => Some(Ok(Packet::from_raw(pkt))),
-                Err(e) => Some(Err(e)),
-            },
-            Ok(Receive::Again) | Ok(Receive::Eof) => None,
-            Err(e) => Some(Err(e)),
-        }
+        let received = self.enc.ctx.receive_packet(&mut self.enc.recv);
+        drain_received(received, || Ok(Packet::from_raw(self.enc.recv.move_out()?)))
     }
 }
 

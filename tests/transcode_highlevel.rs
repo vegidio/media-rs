@@ -4,21 +4,13 @@ mod common;
 
 use media::prelude::*;
 
-fn temp(name: &str) -> String {
-    std::env::temp_dir()
-        .join(name)
-        .to_str()
-        .unwrap()
-        .to_owned()
-}
-
 #[test]
 fn one_liner_transcode_to_mp4() {
     let Some(input) = common::sample_videos().into_iter().next() else {
         return;
     };
     let input = input.to_str().unwrap().to_owned();
-    let out = temp("media_rs_oneliner.mp4");
+    let out = common::temp("media_rs_oneliner.mp4");
     let _ = std::fs::remove_file(&out);
 
     transcode(&input).to(&out).run().unwrap();
@@ -35,7 +27,7 @@ fn drop_audio_yields_no_audio_stream() {
         return;
     };
     let input = input.to_str().unwrap().to_owned();
-    let out = temp("media_rs_noaudio.mp4");
+    let out = common::temp("media_rs_noaudio.mp4");
     let _ = std::fs::remove_file(&out);
 
     transcode(&input).to(&out).drop_audio().run().unwrap();
@@ -52,7 +44,7 @@ fn builder_scale_changes_resolution() {
         return;
     };
     let input = input.to_str().unwrap().to_owned();
-    let out = temp("media_rs_scaled.mp4");
+    let out = common::temp("media_rs_scaled.mp4");
     let _ = std::fs::remove_file(&out);
 
     let job = Transcoder::builder()
@@ -90,7 +82,7 @@ fn trim_shortens_duration() {
     if full < 3.0 {
         return; // too short to trim meaningfully
     }
-    let out = temp("media_rs_trim.mp4");
+    let out = common::temp("media_rs_trim.mp4");
     let _ = std::fs::remove_file(&out);
 
     transcode(&input_path)
@@ -114,7 +106,7 @@ fn raw_filter_applies() {
         return;
     };
     let input = input.to_str().unwrap().to_owned();
-    let out = temp("media_rs_filter.mp4");
+    let out = common::temp("media_rs_filter.mp4");
     let _ = std::fs::remove_file(&out);
 
     let job = Transcoder::builder()

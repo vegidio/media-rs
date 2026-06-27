@@ -58,38 +58,35 @@ fn encode_and_mux(
 }
 
 /// Run a frame (from decode or decoder-flush) through the optional filter, then encode it.
-#[allow(clippy::too_many_arguments)]
+/// The filter graph is built eagerly during setup, so `vfilter` is already populated when
+/// filtering is in effect.
 fn process_video_frame(
     frame: Frame,
     vfilter: &mut Option<VideoFilter>,
-    using_filter: bool,
-    chain: &FilterChain,
     encoder: &mut VideoEncoder,
     writer: &mut MediaWriter,
     out_idx: usize,
-    in_tb: Rational,
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
-    if !using_filter {
-        return encode_and_mux(encoder, writer, out_idx, frame, trim_start_ts, frames);
+    match vfilter {
+        None => encode_and_mux(encoder, writer, out_idx, frame, trim_start_ts, frames),
+        Some(vf) => {
+            for out in vf.filter(frame)? {
+                encode_and_mux(encoder, writer, out_idx, out, trim_start_ts, frames)?;
+            }
+            Ok(())
+        }
     }
-    // Lazily build the filter graph from the first frame's concrete shape.
-    if vfilter.is_none() {
-        *vfilter = Some(VideoFilter::new(
-            frame.width() as i32,
-            frame.height() as i32,
-            frame.pixel_format(),
-            in_tb,
-            Rational::new(1, 1),
-            chain,
-        )?);
-    }
-    let produced = vfilter.as_mut().unwrap().filter(&frame)?;
-    for out in produced {
-        encode_and_mux(encoder, writer, out_idx, out, trim_start_ts, frames)?;
-    }
-    Ok(())
+}
+
+/// A decoded frame's presentation time, in seconds, using the source time base.
+fn frame_secs(frame: &Frame, tb_f64: f64) -> f64 {
+    let ts = frame
+        .best_effort_timestamp()
+        .or_else(|| frame.pts())
+        .unwrap_or(0);
+    ts as f64 * tb_f64
 }
 
 pub(crate) fn run(
@@ -121,8 +118,6 @@ pub(crate) fn run(
     let mut decoder: Option<Decoder> = None;
     let mut encoder: Option<VideoEncoder> = None;
     let mut vfilter: Option<VideoFilter> = None;
-    let mut chain = FilterChain::new();
-    let mut using_filter = false;
     let mut out_vidx = 0usize;
     let mut v_tb = Rational::new(1, 1);
 
@@ -144,7 +139,7 @@ pub(crate) fn run(
 
         // Compose the effective filter chain: user filters, plus an auto scale when the
         // requested resolution differs from the input.
-        chain = opts.filter.clone();
+        let mut chain = opts.filter.clone();
         if (tw, th) != (in_w, in_h) {
             let mut stages = vec![format!("scale={tw}:{th}")];
             if !opts.filter.is_empty() {
@@ -152,17 +147,16 @@ pub(crate) fn run(
             }
             chain = FilterChain::raw(stages.join(","));
         }
-        using_filter = !chain.is_empty();
 
         // Build the filter graph eagerly so the encoder is sized to the graph's actual
         // output, which is the only correct dimension/format even for arbitrary user filters.
-        let (enc_w, enc_h, enc_pix) = if using_filter {
+        let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
+            (in_w, in_h, in_pix)
+        } else {
             let f = VideoFilter::new(in_w, in_h, in_pix, in_tb, Rational::new(1, 1), &chain)?;
             let dims = (f.output_width(), f.output_height(), f.output_pixel_format());
             vfilter = Some(f);
             dims
-        } else {
-            (in_w, in_h, in_pix)
         };
 
         let fr = cfg
@@ -209,6 +203,9 @@ pub(crate) fn run(
     let (trim_start, trim_end) = opts.trim.unwrap_or((0.0, f64::INFINITY));
     let v_start_ts = secs_to_ts(trim_start, v_tb);
     let a_start_ts = secs_to_ts(trim_start, a_tb);
+    let v_tb_f64 = v_tb.as_f64();
+    let a_tb_f64 = a_tb.as_f64();
+    let in_trim = |secs: f64| secs >= trim_start && secs <= trim_end;
 
     // --- main loop ---------------------------------------------------------------------
     let started = Instant::now();
@@ -223,26 +220,11 @@ pub(crate) fn run(
             let enc = encoder.as_mut().unwrap();
             for frame in dec.decode(&packet)? {
                 let frame = frame?;
-                let ts = frame
-                    .best_effort_timestamp()
-                    .or_else(|| frame.pts())
-                    .unwrap_or(0);
-                let secs = ts as f64 * v_tb.as_f64();
-                if secs < trim_start || secs > trim_end {
+                let secs = frame_secs(&frame, v_tb_f64);
+                if !in_trim(secs) {
                     continue;
                 }
-                process_video_frame(
-                    frame,
-                    &mut vfilter,
-                    using_filter,
-                    &chain,
-                    enc,
-                    &mut writer,
-                    out_vidx,
-                    v_tb,
-                    v_start_ts,
-                    &mut frames,
-                )?;
+                process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;
                 let elapsed = started.elapsed().as_secs_f64().max(1e-6);
                 on_progress(Progress {
                     processed_secs: (secs - trim_start).max(0.0),
@@ -254,8 +236,8 @@ pub(crate) fn run(
         } else if Some(sidx) == audio_idx {
             // Stream copy: gate on trim, offset timestamps, remap to the output stream.
             let mut packet = packet;
-            let secs = packet.pts() as f64 * a_tb.as_f64();
-            if secs < trim_start || secs > trim_end {
+            let secs = packet.pts() as f64 * a_tb_f64;
+            if !in_trim(secs) {
                 continue;
             }
             packet.offset_timestamps(a_start_ts);
@@ -271,26 +253,10 @@ pub(crate) fn run(
             tail.push(frame?);
         }
         for frame in tail {
-            let ts = frame
-                .best_effort_timestamp()
-                .or_else(|| frame.pts())
-                .unwrap_or(0);
-            let secs = ts as f64 * v_tb.as_f64();
-            if secs < trim_start || secs > trim_end {
+            if !in_trim(frame_secs(&frame, v_tb_f64)) {
                 continue;
             }
-            process_video_frame(
-                frame,
-                &mut vfilter,
-                using_filter,
-                &chain,
-                enc,
-                &mut writer,
-                out_vidx,
-                v_tb,
-                v_start_ts,
-                &mut frames,
-            )?;
+            process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;
         }
         if let Some(vf) = vfilter.as_mut() {
             for frame in vf.flush()? {

@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::raw::codec_context::{find_decoder, CodecContext, Receive};
+use crate::raw::codec_context::{drain_received, find_decoder, CodecContext};
 use crate::raw::frame::RawFrame;
 use crate::sys;
 
@@ -83,13 +83,7 @@ impl Iterator for DecodeIter<'_> {
     type Item = Result<Frame>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.dec.ctx.receive_frame(&mut self.dec.recv) {
-            Ok(Receive::Got) => match self.dec.recv.move_out() {
-                Ok(frame) => Some(Ok(Frame::from_raw(frame))),
-                Err(e) => Some(Err(e)),
-            },
-            Ok(Receive::Again) | Ok(Receive::Eof) => None,
-            Err(e) => Some(Err(e)),
-        }
+        let received = self.dec.ctx.receive_frame(&mut self.dec.recv);
+        drain_received(received, || Ok(Frame::from_raw(self.dec.recv.move_out()?)))
     }
 }

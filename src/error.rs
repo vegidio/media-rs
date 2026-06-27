@@ -159,7 +159,6 @@ mod tests {
 
     #[test]
     fn averror_eagain_is_negative_errno() {
-        assert!(AVERROR_EAGAIN < 0);
         assert_eq!(AVERROR_EAGAIN, -EAGAIN);
     }
 

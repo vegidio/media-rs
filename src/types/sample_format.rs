@@ -24,8 +24,8 @@ pub enum SampleFormat {
     Fltp,
     /// 64-bit float, planar.
     Dblp,
-    /// Any format not enumerated above; carries the raw `AVSampleFormat` value.
-    Other(sys::AVSampleFormat),
+    /// Any format not enumerated above; carries the raw FFmpeg sample-format id.
+    Other(i32),
 }
 
 impl SampleFormat {
@@ -43,7 +43,7 @@ impl SampleFormat {
             SampleFormat::S32p => sys::AVSampleFormat_AV_SAMPLE_FMT_S32P,
             SampleFormat::Fltp => sys::AVSampleFormat_AV_SAMPLE_FMT_FLTP,
             SampleFormat::Dblp => sys::AVSampleFormat_AV_SAMPLE_FMT_DBLP,
-            SampleFormat::Other(v) => v,
+            SampleFormat::Other(v) => v as sys::AVSampleFormat,
         }
     }
 

@@ -61,16 +61,6 @@ impl RawFrame {
         unsafe { (*self.ptr.as_ptr()).pts = pts };
     }
 
-    /// Create a new frame referencing the same data as `self` (a cheap refcount bump). Use
-    /// when handing a frame to a consumer that takes ownership but the original must survive.
-    pub(crate) fn clone_ref(&self) -> Result<RawFrame> {
-        let dst = RawFrame::alloc()?;
-        // SAFETY: both pointers are valid owned frames; av_frame_ref adds a new reference.
-        let ret = unsafe { sys::av_frame_ref(dst.ptr.as_ptr(), self.ptr.as_ptr()) };
-        crate::error::check(ret)?;
-        Ok(dst)
-    }
-
     /// Move the contents (refcounted buffers + metadata) of `self` into a brand-new frame,
     /// leaving `self` unreferenced and ready for the next receive. No pixel/sample copy.
     pub(crate) fn move_out(&mut self) -> Result<RawFrame> {

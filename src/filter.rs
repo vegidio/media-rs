@@ -184,11 +184,10 @@ impl VideoFilter {
         PixelFormat::from_av(self.graph.out_pix_fmt())
     }
 
-    /// Push a frame and collect every frame the graph emits in response.
-    pub(crate) fn filter(&mut self, frame: &Frame) -> Result<Vec<Frame>> {
-        // The graph may consume the input frame's reference, so push a clone of the ref.
-        let mut input = frame.raw.clone_ref()?;
-        self.graph.push(Some(&mut input))?;
+    /// Push a frame and collect every frame the graph emits in response. Consumes the
+    /// frame: `av_buffersrc_add_frame` takes ownership of its reference.
+    pub(crate) fn filter(&mut self, mut frame: Frame) -> Result<Vec<Frame>> {
+        self.graph.push(Some(&mut frame.raw))?;
         self.drain()
     }
 

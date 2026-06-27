@@ -21,8 +21,8 @@ pub enum PixelFormat {
     Rgb24,
     /// Packed RGBA 8:8:8:8.
     Rgba,
-    /// Any format not enumerated above; carries the raw `AVPixelFormat` value.
-    Other(sys::AVPixelFormat),
+    /// Any format not enumerated above; carries the raw FFmpeg pixel-format id.
+    Other(i32),
 }
 
 impl PixelFormat {
@@ -34,7 +34,7 @@ impl PixelFormat {
             PixelFormat::Nv12 => sys::AVPixelFormat_AV_PIX_FMT_NV12,
             PixelFormat::Rgb24 => sys::AVPixelFormat_AV_PIX_FMT_RGB24,
             PixelFormat::Rgba => sys::AVPixelFormat_AV_PIX_FMT_RGBA,
-            PixelFormat::Other(v) => v,
+            PixelFormat::Other(v) => v as sys::AVPixelFormat,
         }
     }
 

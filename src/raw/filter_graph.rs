@@ -5,7 +5,7 @@
 
 use super::frame::RawFrame;
 use super::util::non_null;
-use crate::error::{check, Error, Result, AVERROR_EAGAIN, AVERROR_EOF};
+use crate::error::{check, Error, Result};
 use crate::raw::codec_context::Receive;
 use crate::types::rational::Rational;
 use crate::sys;
@@ -161,15 +161,7 @@ impl VideoFilterGraph {
     pub(crate) fn pull(&mut self, frame: &mut RawFrame) -> Result<Receive> {
         // SAFETY: sink is a valid buffersink; frame is a valid owned frame.
         let ret = unsafe { sys::av_buffersink_get_frame(self.sink, frame.as_mut_ptr()) };
-        if ret == 0 {
-            Ok(Receive::Got)
-        } else if ret == AVERROR_EAGAIN {
-            Ok(Receive::Again)
-        } else if ret == AVERROR_EOF {
-            Ok(Receive::Eof)
-        } else {
-            Err(Error::from_code(ret))
-        }
+        Receive::from_code(ret)
     }
 }
 
