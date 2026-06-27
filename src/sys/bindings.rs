@@ -39,8 +39,7 @@ where
         debug_assert!(index / 8 < core::mem::size_of::<Storage>());
         let byte_index = index / 8;
         let byte = unsafe {
-            *(core::ptr::addr_of!((*this).storage) as *const u8)
-                .offset(byte_index as isize)
+            *(core::ptr::addr_of!((*this).storage) as *const u8).offset(byte_index as isize)
         };
         Self::extract_bit(byte, index)
     }
@@ -66,8 +65,7 @@ where
         debug_assert!(index / 8 < core::mem::size_of::<Storage>());
         let byte_index = index / 8;
         let byte = unsafe {
-            (core::ptr::addr_of_mut!((*this).storage) as *mut u8)
-                .offset(byte_index as isize)
+            (core::ptr::addr_of_mut!((*this).storage) as *mut u8).offset(byte_index as isize)
         };
         unsafe { *byte = Self::change_bit(*byte, index, val) };
     }
@@ -75,9 +73,7 @@ where
     pub fn get(&self, bit_offset: usize, bit_width: u8) -> u64 {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
-        debug_assert!(
-            (bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len(),
-        );
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len(),);
         let mut val = 0;
         for i in 0..(bit_width as usize) {
             if self.get_bit(i + bit_offset) {
@@ -95,9 +91,7 @@ where
     pub unsafe fn raw_get(this: *const Self, bit_offset: usize, bit_width: u8) -> u64 {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < core::mem::size_of::<Storage>());
-        debug_assert!(
-            (bit_offset + (bit_width as usize)) / 8 <= core::mem::size_of::<Storage>(),
-        );
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= core::mem::size_of::<Storage>(),);
         let mut val = 0;
         for i in 0..(bit_width as usize) {
             if unsafe { Self::raw_get_bit(this, i + bit_offset) } {
@@ -115,9 +109,7 @@ where
     pub fn set(&mut self, bit_offset: usize, bit_width: u8, val: u64) {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
-        debug_assert!(
-            (bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len(),
-        );
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len(),);
         for i in 0..(bit_width as usize) {
             let mask = 1 << i;
             let val_bit_is_set = val & mask == mask;
@@ -133,9 +125,7 @@ where
     pub unsafe fn raw_set(this: *mut Self, bit_offset: usize, bit_width: u8, val: u64) {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < core::mem::size_of::<Storage>());
-        debug_assert!(
-            (bit_offset + (bit_width as usize)) / 8 <= core::mem::size_of::<Storage>(),
-        );
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= core::mem::size_of::<Storage>(),);
         for i in 0..(bit_width as usize) {
             let mask = 1 << i;
             let val_bit_is_set = val & mask == mask;
@@ -677,12 +667,20 @@ pub const AVPictureType_AV_PICTURE_TYPE_S: AVPictureType = 4;
 pub const AVPictureType_AV_PICTURE_TYPE_SI: AVPictureType = 5;
 pub const AVPictureType_AV_PICTURE_TYPE_SP: AVPictureType = 6;
 pub const AVPictureType_AV_PICTURE_TYPE_BI: AVPictureType = 7;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVPictureType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVPictureType = ::std::os::raw::c_int;
 pub type __int64_t = ::std::os::raw::c_longlong;
 pub type __darwin_va_list = __builtin_va_list;
 pub type __darwin_time_t = ::std::os::raw::c_long;
 pub type __darwin_off_t = __int64_t;
+#[cfg(target_os = "macos")]
 pub type va_list = __darwin_va_list;
+#[cfg(target_os = "linux")]
+pub type va_list = __gnuc_va_list;
+#[cfg(target_os = "windows")]
+pub type va_list = *mut ::std::os::raw::c_char;
 pub type fpos_t = __darwin_off_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -739,7 +737,12 @@ pub struct __sFILE {
     pub _blksize: ::std::os::raw::c_int,
     pub _offset: fpos_t,
 }
+#[cfg(target_os = "macos")]
 pub type FILE = __sFILE;
+#[cfg(target_os = "linux")]
+pub type FILE = _IO_FILE;
+#[cfg(target_os = "windows")]
+pub type FILE = _iobuf;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVRational {
@@ -764,7 +767,10 @@ pub const AVRounding_AV_ROUND_DOWN: AVRounding = 2;
 pub const AVRounding_AV_ROUND_UP: AVRounding = 3;
 pub const AVRounding_AV_ROUND_NEAR_INF: AVRounding = 5;
 pub const AVRounding_AV_ROUND_PASS_MINMAX: AVRounding = 8192;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVRounding = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVRounding = ::std::os::raw::c_int;
 pub const AVClassCategory_AV_CLASS_CATEGORY_NA: AVClassCategory = 0;
 pub const AVClassCategory_AV_CLASS_CATEGORY_INPUT: AVClassCategory = 1;
 pub const AVClassCategory_AV_CLASS_CATEGORY_OUTPUT: AVClassCategory = 2;
@@ -784,17 +790,21 @@ pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_AUDIO_INPUT: AVClassCategory 
 pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_OUTPUT: AVClassCategory = 44;
 pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_INPUT: AVClassCategory = 45;
 pub const AVClassCategory_AV_CLASS_CATEGORY_NB: AVClassCategory = 46;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVClassCategory = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVClassCategory = ::std::os::raw::c_int;
 pub const AVClassStateFlags_AV_CLASS_STATE_INITIALIZED: AVClassStateFlags = 1;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVClassStateFlags = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVClassStateFlags = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVClass {
     pub class_name: *const ::std::os::raw::c_char,
     pub item_name: ::std::option::Option<
-        unsafe extern "C" fn(
-            ctx: *mut ::std::os::raw::c_void,
-        ) -> *const ::std::os::raw::c_char,
+        unsafe extern "C" fn(ctx: *mut ::std::os::raw::c_void) -> *const ::std::os::raw::c_char,
     >,
     pub option: *const AVOption,
     pub version: ::std::os::raw::c_int,
@@ -1116,7 +1126,10 @@ pub const AVColorPrimaries_AVCOL_PRI_NB: AVColorPrimaries = 23;
 pub const AVColorPrimaries_AVCOL_PRI_EXT_BASE: AVColorPrimaries = 256;
 pub const AVColorPrimaries_AVCOL_PRI_V_GAMUT: AVColorPrimaries = 256;
 pub const AVColorPrimaries_AVCOL_PRI_EXT_NB: AVColorPrimaries = 257;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVColorPrimaries = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVColorPrimaries = ::std::os::raw::c_int;
 pub const AVColorTransferCharacteristic_AVCOL_TRC_RESERVED0: AVColorTransferCharacteristic = 0;
 pub const AVColorTransferCharacteristic_AVCOL_TRC_BT709: AVColorTransferCharacteristic = 1;
 pub const AVColorTransferCharacteristic_AVCOL_TRC_UNSPECIFIED: AVColorTransferCharacteristic = 2;
@@ -1142,7 +1155,10 @@ pub const AVColorTransferCharacteristic_AVCOL_TRC_NB: AVColorTransferCharacteris
 pub const AVColorTransferCharacteristic_AVCOL_TRC_EXT_BASE: AVColorTransferCharacteristic = 256;
 pub const AVColorTransferCharacteristic_AVCOL_TRC_V_LOG: AVColorTransferCharacteristic = 256;
 pub const AVColorTransferCharacteristic_AVCOL_TRC_EXT_NB: AVColorTransferCharacteristic = 257;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVColorTransferCharacteristic = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVColorTransferCharacteristic = ::std::os::raw::c_int;
 pub const AVColorSpace_AVCOL_SPC_RGB: AVColorSpace = 0;
 pub const AVColorSpace_AVCOL_SPC_BT709: AVColorSpace = 1;
 pub const AVColorSpace_AVCOL_SPC_UNSPECIFIED: AVColorSpace = 2;
@@ -1163,12 +1179,18 @@ pub const AVColorSpace_AVCOL_SPC_IPT_C2: AVColorSpace = 15;
 pub const AVColorSpace_AVCOL_SPC_YCGCO_RE: AVColorSpace = 16;
 pub const AVColorSpace_AVCOL_SPC_YCGCO_RO: AVColorSpace = 17;
 pub const AVColorSpace_AVCOL_SPC_NB: AVColorSpace = 18;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVColorSpace = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVColorSpace = ::std::os::raw::c_int;
 pub const AVColorRange_AVCOL_RANGE_UNSPECIFIED: AVColorRange = 0;
 pub const AVColorRange_AVCOL_RANGE_MPEG: AVColorRange = 1;
 pub const AVColorRange_AVCOL_RANGE_JPEG: AVColorRange = 2;
 pub const AVColorRange_AVCOL_RANGE_NB: AVColorRange = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVColorRange = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVColorRange = ::std::os::raw::c_int;
 pub const AVChromaLocation_AVCHROMA_LOC_UNSPECIFIED: AVChromaLocation = 0;
 pub const AVChromaLocation_AVCHROMA_LOC_LEFT: AVChromaLocation = 1;
 pub const AVChromaLocation_AVCHROMA_LOC_CENTER: AVChromaLocation = 2;
@@ -1177,12 +1199,18 @@ pub const AVChromaLocation_AVCHROMA_LOC_TOP: AVChromaLocation = 4;
 pub const AVChromaLocation_AVCHROMA_LOC_BOTTOMLEFT: AVChromaLocation = 5;
 pub const AVChromaLocation_AVCHROMA_LOC_BOTTOM: AVChromaLocation = 6;
 pub const AVChromaLocation_AVCHROMA_LOC_NB: AVChromaLocation = 7;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVChromaLocation = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVChromaLocation = ::std::os::raw::c_int;
 pub const AVAlphaMode_AVALPHA_MODE_UNSPECIFIED: AVAlphaMode = 0;
 pub const AVAlphaMode_AVALPHA_MODE_PREMULTIPLIED: AVAlphaMode = 1;
 pub const AVAlphaMode_AVALPHA_MODE_STRAIGHT: AVAlphaMode = 2;
 pub const AVAlphaMode_AVALPHA_MODE_NB: AVAlphaMode = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVAlphaMode = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVAlphaMode = ::std::os::raw::c_int;
 pub const AVChannel_AV_CHAN_NONE: AVChannel = -1;
 pub const AVChannel_AV_CHAN_FRONT_LEFT: AVChannel = 0;
 pub const AVChannel_AV_CHAN_FRONT_RIGHT: AVChannel = 1;
@@ -1230,7 +1258,10 @@ pub const AVChannelOrder_AV_CHANNEL_ORDER_NATIVE: AVChannelOrder = 1;
 pub const AVChannelOrder_AV_CHANNEL_ORDER_CUSTOM: AVChannelOrder = 2;
 pub const AVChannelOrder_AV_CHANNEL_ORDER_AMBISONIC: AVChannelOrder = 3;
 pub const AVChannelOrder_FF_CHANNEL_ORDER_NB: AVChannelOrder = 4;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVChannelOrder = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVChannelOrder = ::std::os::raw::c_int;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_NONE: AVMatrixEncoding = 0;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_DOLBY: AVMatrixEncoding = 1;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_DPLII: AVMatrixEncoding = 2;
@@ -1239,7 +1270,10 @@ pub const AVMatrixEncoding_AV_MATRIX_ENCODING_DPLIIZ: AVMatrixEncoding = 4;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_DOLBYEX: AVMatrixEncoding = 5;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_DOLBYHEADPHONE: AVMatrixEncoding = 6;
 pub const AVMatrixEncoding_AV_MATRIX_ENCODING_NB: AVMatrixEncoding = 7;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVMatrixEncoding = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVMatrixEncoding = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVChannelCustom {
@@ -1313,7 +1347,10 @@ pub const AVOptionType_AV_OPT_TYPE_BOOL: AVOptionType = 18;
 pub const AVOptionType_AV_OPT_TYPE_CHLAYOUT: AVOptionType = 19;
 pub const AVOptionType_AV_OPT_TYPE_UINT: AVOptionType = 20;
 pub const AVOptionType_AV_OPT_TYPE_FLAG_ARRAY: AVOptionType = 65536;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVOptionType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVOptionType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVOptionArrayDef {
@@ -1361,8 +1398,14 @@ pub struct AVOptionRanges {
     pub nb_ranges: ::std::os::raw::c_int,
     pub nb_components: ::std::os::raw::c_int,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_OPT_FLAG_IMPLICIT_KEY: _bindgen_ty_1 = 1;
+#[cfg(target_os = "linux")]
+pub const AV_OPT_FLAG_IMPLICIT_KEY: _bindgen_ty_2 = 1;
+#[cfg(target_os = "macos")]
 pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type _bindgen_ty_1 = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVBuffer {
@@ -1412,7 +1455,10 @@ pub const AVFrameSideDataType_AV_FRAME_DATA_LCEVC: AVFrameSideDataType = 28;
 pub const AVFrameSideDataType_AV_FRAME_DATA_VIEW_ID: AVFrameSideDataType = 29;
 pub const AVFrameSideDataType_AV_FRAME_DATA_3D_REFERENCE_DISPLAYS: AVFrameSideDataType = 30;
 pub const AVFrameSideDataType_AV_FRAME_DATA_EXIF: AVFrameSideDataType = 31;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVFrameSideDataType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVFrameSideDataType = ::std::os::raw::c_int;
 pub const AVActiveFormatDescription_AV_AFD_SAME: AVActiveFormatDescription = 8;
 pub const AVActiveFormatDescription_AV_AFD_4_3: AVActiveFormatDescription = 9;
 pub const AVActiveFormatDescription_AV_AFD_16_9: AVActiveFormatDescription = 10;
@@ -1420,7 +1466,10 @@ pub const AVActiveFormatDescription_AV_AFD_14_9: AVActiveFormatDescription = 11;
 pub const AVActiveFormatDescription_AV_AFD_4_3_SP_14_9: AVActiveFormatDescription = 13;
 pub const AVActiveFormatDescription_AV_AFD_16_9_SP_14_9: AVActiveFormatDescription = 14;
 pub const AVActiveFormatDescription_AV_AFD_SP_4_3: AVActiveFormatDescription = 15;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVActiveFormatDescription = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVActiveFormatDescription = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVFrameSideData {
@@ -1435,7 +1484,10 @@ pub const AVSideDataProps_AV_SIDE_DATA_PROP_MULTI: AVSideDataProps = 2;
 pub const AVSideDataProps_AV_SIDE_DATA_PROP_SIZE_DEPENDENT: AVSideDataProps = 4;
 pub const AVSideDataProps_AV_SIDE_DATA_PROP_COLOR_DEPENDENT: AVSideDataProps = 8;
 pub const AVSideDataProps_AV_SIDE_DATA_PROP_CHANNEL_DEPENDENT: AVSideDataProps = 16;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVSideDataProps = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVSideDataProps = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVSideDataDescriptor {
@@ -1496,8 +1548,14 @@ pub struct AVFrame {
     pub duration: i64,
     pub alpha_mode: AVAlphaMode,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_FRAME_CROP_UNALIGNED: _bindgen_ty_2 = 1;
+#[cfg(target_os = "linux")]
+pub const AV_FRAME_CROP_UNALIGNED: _bindgen_ty_3 = 1;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type _bindgen_ty_2 = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type _bindgen_ty_2 = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVComponentDescriptor {
@@ -1522,8 +1580,17 @@ pub const AVEscapeMode_AV_ESCAPE_MODE_AUTO: AVEscapeMode = 0;
 pub const AVEscapeMode_AV_ESCAPE_MODE_BACKSLASH: AVEscapeMode = 1;
 pub const AVEscapeMode_AV_ESCAPE_MODE_QUOTE: AVEscapeMode = 2;
 pub const AVEscapeMode_AV_ESCAPE_MODE_XML: AVEscapeMode = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVEscapeMode = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVEscapeMode = ::std::os::raw::c_int;
+#[cfg(target_os = "macos")]
 pub type time_t = __darwin_time_t;
+#[cfg(target_os = "linux")]
+pub type time_t = __time_t;
+#[cfg(target_os = "windows")]
+pub type time_t = __time64_t;
+#[cfg(target_os = "macos")]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct tm {
@@ -1538,6 +1605,36 @@ pub struct tm {
     pub tm_isdst: ::std::os::raw::c_int,
     pub tm_gmtoff: ::std::os::raw::c_long,
     pub tm_zone: *mut ::std::os::raw::c_char,
+}
+#[cfg(target_os = "linux")]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tm {
+    pub tm_sec: ::std::os::raw::c_int,
+    pub tm_min: ::std::os::raw::c_int,
+    pub tm_hour: ::std::os::raw::c_int,
+    pub tm_mday: ::std::os::raw::c_int,
+    pub tm_mon: ::std::os::raw::c_int,
+    pub tm_year: ::std::os::raw::c_int,
+    pub tm_wday: ::std::os::raw::c_int,
+    pub tm_yday: ::std::os::raw::c_int,
+    pub tm_isdst: ::std::os::raw::c_int,
+    pub tm_gmtoff: ::std::os::raw::c_long,
+    pub tm_zone: *const ::std::os::raw::c_char,
+}
+#[cfg(target_os = "windows")]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tm {
+    pub tm_sec: ::std::os::raw::c_int,
+    pub tm_min: ::std::os::raw::c_int,
+    pub tm_hour: ::std::os::raw::c_int,
+    pub tm_mday: ::std::os::raw::c_int,
+    pub tm_mon: ::std::os::raw::c_int,
+    pub tm_year: ::std::os::raw::c_int,
+    pub tm_wday: ::std::os::raw::c_int,
+    pub tm_yday: ::std::os::raw::c_int,
+    pub tm_isdst: ::std::os::raw::c_int,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1578,16 +1675,25 @@ pub const AVStereo3DType_AV_STEREO3D_SIDEBYSIDE_QUINCUNX: AVStereo3DType = 5;
 pub const AVStereo3DType_AV_STEREO3D_LINES: AVStereo3DType = 6;
 pub const AVStereo3DType_AV_STEREO3D_COLUMNS: AVStereo3DType = 7;
 pub const AVStereo3DType_AV_STEREO3D_UNSPEC: AVStereo3DType = 8;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVStereo3DType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVStereo3DType = ::std::os::raw::c_int;
 pub const AVStereo3DView_AV_STEREO3D_VIEW_PACKED: AVStereo3DView = 0;
 pub const AVStereo3DView_AV_STEREO3D_VIEW_LEFT: AVStereo3DView = 1;
 pub const AVStereo3DView_AV_STEREO3D_VIEW_RIGHT: AVStereo3DView = 2;
 pub const AVStereo3DView_AV_STEREO3D_VIEW_UNSPEC: AVStereo3DView = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVStereo3DView = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVStereo3DView = ::std::os::raw::c_int;
 pub const AVStereo3DPrimaryEye_AV_PRIMARY_EYE_NONE: AVStereo3DPrimaryEye = 0;
 pub const AVStereo3DPrimaryEye_AV_PRIMARY_EYE_LEFT: AVStereo3DPrimaryEye = 1;
 pub const AVStereo3DPrimaryEye_AV_PRIMARY_EYE_RIGHT: AVStereo3DPrimaryEye = 2;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVStereo3DPrimaryEye = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVStereo3DPrimaryEye = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVStereo3D {
@@ -1606,7 +1712,10 @@ pub const AVSphericalProjection_AV_SPHERICAL_HALF_EQUIRECTANGULAR: AVSphericalPr
 pub const AVSphericalProjection_AV_SPHERICAL_RECTILINEAR: AVSphericalProjection = 4;
 pub const AVSphericalProjection_AV_SPHERICAL_FISHEYE: AVSphericalProjection = 5;
 pub const AVSphericalProjection_AV_SPHERICAL_PARAMETRIC_IMMERSIVE: AVSphericalProjection = 6;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVSphericalProjection = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVSphericalProjection = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVSphericalMapping {
@@ -1639,7 +1748,10 @@ pub struct AVContentLightMetadata {
 pub const AVFilmGrainParamsType_AV_FILM_GRAIN_PARAMS_NONE: AVFilmGrainParamsType = 0;
 pub const AVFilmGrainParamsType_AV_FILM_GRAIN_PARAMS_AV1: AVFilmGrainParamsType = 1;
 pub const AVFilmGrainParamsType_AV_FILM_GRAIN_PARAMS_H274: AVFilmGrainParamsType = 2;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVFilmGrainParamsType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVFilmGrainParamsType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVFilmGrainAOMParams {
@@ -1696,9 +1808,14 @@ pub union AVFilmGrainParams__bindgen_ty_1 {
     pub aom: AVFilmGrainAOMParams,
     pub h274: AVFilmGrainH274Params,
 }
-pub const AVHDRPlusOverlapProcessOption_AV_HDR_PLUS_OVERLAP_PROCESS_WEIGHTED_AVERAGING: AVHDRPlusOverlapProcessOption = 0;
-pub const AVHDRPlusOverlapProcessOption_AV_HDR_PLUS_OVERLAP_PROCESS_LAYERING: AVHDRPlusOverlapProcessOption = 1;
+pub const AVHDRPlusOverlapProcessOption_AV_HDR_PLUS_OVERLAP_PROCESS_WEIGHTED_AVERAGING:
+    AVHDRPlusOverlapProcessOption = 0;
+pub const AVHDRPlusOverlapProcessOption_AV_HDR_PLUS_OVERLAP_PROCESS_LAYERING:
+    AVHDRPlusOverlapProcessOption = 1;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVHDRPlusOverlapProcessOption = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVHDRPlusOverlapProcessOption = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVHDRPlusPercentile {
@@ -1764,7 +1881,10 @@ pub const AVHWDeviceType_AV_HWDEVICE_TYPE_VULKAN: AVHWDeviceType = 11;
 pub const AVHWDeviceType_AV_HWDEVICE_TYPE_D3D12VA: AVHWDeviceType = 12;
 pub const AVHWDeviceType_AV_HWDEVICE_TYPE_AMF: AVHWDeviceType = 13;
 pub const AVHWDeviceType_AV_HWDEVICE_TYPE_OHCODEC: AVHWDeviceType = 14;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVHWDeviceType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVHWDeviceType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVHWDeviceContext {
@@ -1790,9 +1910,14 @@ pub struct AVHWFramesContext {
     pub width: ::std::os::raw::c_int,
     pub height: ::std::os::raw::c_int,
 }
-pub const AVHWFrameTransferDirection_AV_HWFRAME_TRANSFER_DIRECTION_FROM: AVHWFrameTransferDirection = 0;
-pub const AVHWFrameTransferDirection_AV_HWFRAME_TRANSFER_DIRECTION_TO: AVHWFrameTransferDirection = 1;
+pub const AVHWFrameTransferDirection_AV_HWFRAME_TRANSFER_DIRECTION_FROM:
+    AVHWFrameTransferDirection = 0;
+pub const AVHWFrameTransferDirection_AV_HWFRAME_TRANSFER_DIRECTION_TO: AVHWFrameTransferDirection =
+    1;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVHWFrameTransferDirection = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVHWFrameTransferDirection = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVHWFramesConstraints {
@@ -1803,11 +1928,26 @@ pub struct AVHWFramesConstraints {
     pub max_width: ::std::os::raw::c_int,
     pub max_height: ::std::os::raw::c_int,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_HWFRAME_MAP_READ: _bindgen_ty_3 = 1;
+#[cfg(target_os = "linux")]
+pub const AV_HWFRAME_MAP_READ: _bindgen_ty_4 = 1;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_HWFRAME_MAP_WRITE: _bindgen_ty_3 = 2;
+#[cfg(target_os = "linux")]
+pub const AV_HWFRAME_MAP_WRITE: _bindgen_ty_4 = 2;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_HWFRAME_MAP_OVERWRITE: _bindgen_ty_3 = 4;
+#[cfg(target_os = "linux")]
+pub const AV_HWFRAME_MAP_OVERWRITE: _bindgen_ty_4 = 4;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_HWFRAME_MAP_DIRECT: _bindgen_ty_3 = 8;
+#[cfg(target_os = "linux")]
+pub const AV_HWFRAME_MAP_DIRECT: _bindgen_ty_4 = 8;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type _bindgen_ty_3 = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type _bindgen_ty_3 = ::std::os::raw::c_int;
 pub const AVCodecID_AV_CODEC_ID_NONE: AVCodecID = 0;
 pub const AVCodecID_AV_CODEC_ID_MPEG1VIDEO: AVCodecID = 1;
 pub const AVCodecID_AV_CODEC_ID_MPEG2VIDEO: AVCodecID = 2;
@@ -2356,7 +2496,10 @@ pub const AVCodecID_AV_CODEC_ID_FFMETADATA: AVCodecID = 135168;
 pub const AVCodecID_AV_CODEC_ID_WRAPPED_AVFRAME: AVCodecID = 135169;
 pub const AVCodecID_AV_CODEC_ID_VNULL: AVCodecID = 135170;
 pub const AVCodecID_AV_CODEC_ID_ANULL: AVCodecID = 135171;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVCodecID = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVCodecID = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVProfile {
@@ -2381,11 +2524,26 @@ pub struct AVCodec {
     pub wrapper_name: *const ::std::os::raw::c_char,
     pub ch_layouts: *const AVChannelLayout,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX: _bindgen_ty_4 = 1;
+#[cfg(target_os = "linux")]
+pub const AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX: _bindgen_ty_5 = 1;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_CODEC_HW_CONFIG_METHOD_HW_FRAMES_CTX: _bindgen_ty_4 = 2;
+#[cfg(target_os = "linux")]
+pub const AV_CODEC_HW_CONFIG_METHOD_HW_FRAMES_CTX: _bindgen_ty_5 = 2;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_CODEC_HW_CONFIG_METHOD_INTERNAL: _bindgen_ty_4 = 4;
+#[cfg(target_os = "linux")]
+pub const AV_CODEC_HW_CONFIG_METHOD_INTERNAL: _bindgen_ty_5 = 4;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_CODEC_HW_CONFIG_METHOD_AD_HOC: _bindgen_ty_4 = 8;
+#[cfg(target_os = "linux")]
+pub const AV_CODEC_HW_CONFIG_METHOD_AD_HOC: _bindgen_ty_5 = 8;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type _bindgen_ty_4 = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type _bindgen_ty_4 = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVCodecHWConfig {
@@ -2399,7 +2557,10 @@ pub const AVFieldOrder_AV_FIELD_TT: AVFieldOrder = 2;
 pub const AVFieldOrder_AV_FIELD_BB: AVFieldOrder = 3;
 pub const AVFieldOrder_AV_FIELD_TB: AVFieldOrder = 4;
 pub const AVFieldOrder_AV_FIELD_BT: AVFieldOrder = 5;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVFieldOrder = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVFieldOrder = ::std::os::raw::c_int;
 pub const AVDiscard_AVDISCARD_NONE: AVDiscard = -16;
 pub const AVDiscard_AVDISCARD_DEFAULT: AVDiscard = 0;
 pub const AVDiscard_AVDISCARD_NONREF: AVDiscard = 8;
@@ -2418,7 +2579,10 @@ pub const AVAudioServiceType_AV_AUDIO_SERVICE_TYPE_EMERGENCY: AVAudioServiceType
 pub const AVAudioServiceType_AV_AUDIO_SERVICE_TYPE_VOICE_OVER: AVAudioServiceType = 7;
 pub const AVAudioServiceType_AV_AUDIO_SERVICE_TYPE_KARAOKE: AVAudioServiceType = 8;
 pub const AVAudioServiceType_AV_AUDIO_SERVICE_TYPE_NB: AVAudioServiceType = 9;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVAudioServiceType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVAudioServiceType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVPanScan {
@@ -2493,7 +2657,10 @@ pub const AVPacketSideDataType_AV_PKT_DATA_3D_REFERENCE_DISPLAYS: AVPacketSideDa
 pub const AVPacketSideDataType_AV_PKT_DATA_RTCP_SR: AVPacketSideDataType = 39;
 pub const AVPacketSideDataType_AV_PKT_DATA_EXIF: AVPacketSideDataType = 40;
 pub const AVPacketSideDataType_AV_PKT_DATA_NB: AVPacketSideDataType = 41;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVPacketSideDataType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVPacketSideDataType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVPacketSideData {
@@ -2525,9 +2692,14 @@ pub struct AVPacketList {
     pub pkt: AVPacket,
     pub next: *mut AVPacketList,
 }
-pub const AVSideDataParamChangeFlags_AV_SIDE_DATA_PARAM_CHANGE_SAMPLE_RATE: AVSideDataParamChangeFlags = 4;
-pub const AVSideDataParamChangeFlags_AV_SIDE_DATA_PARAM_CHANGE_DIMENSIONS: AVSideDataParamChangeFlags = 8;
+pub const AVSideDataParamChangeFlags_AV_SIDE_DATA_PARAM_CHANGE_SAMPLE_RATE:
+    AVSideDataParamChangeFlags = 4;
+pub const AVSideDataParamChangeFlags_AV_SIDE_DATA_PARAM_CHANGE_DIMENSIONS:
+    AVSideDataParamChangeFlags = 8;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVSideDataParamChangeFlags = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVSideDataParamChangeFlags = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVContainerFifo {
@@ -2636,10 +2808,7 @@ pub struct AVCodecContext {
         ),
     >,
     pub get_format: ::std::option::Option<
-        unsafe extern "C" fn(
-            s: *mut AVCodecContext,
-            fmt: *const AVPixelFormat,
-        ) -> AVPixelFormat,
+        unsafe extern "C" fn(s: *mut AVCodecContext, fmt: *const AVPixelFormat) -> AVPixelFormat,
     >,
     pub max_b_frames: ::std::os::raw::c_int,
     pub b_quant_factor: f32,
@@ -2812,7 +2981,10 @@ pub const AVSubtitleType_SUBTITLE_NONE: AVSubtitleType = 0;
 pub const AVSubtitleType_SUBTITLE_BITMAP: AVSubtitleType = 1;
 pub const AVSubtitleType_SUBTITLE_TEXT: AVSubtitleType = 2;
 pub const AVSubtitleType_SUBTITLE_ASS: AVSubtitleType = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVSubtitleType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVSubtitleType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVSubtitleRect {
@@ -2846,12 +3018,18 @@ pub const AVCodecConfig_AV_CODEC_CONFIG_CHANNEL_LAYOUT: AVCodecConfig = 4;
 pub const AVCodecConfig_AV_CODEC_CONFIG_COLOR_RANGE: AVCodecConfig = 5;
 pub const AVCodecConfig_AV_CODEC_CONFIG_COLOR_SPACE: AVCodecConfig = 6;
 pub const AVCodecConfig_AV_CODEC_CONFIG_ALPHA_MODE: AVCodecConfig = 7;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVCodecConfig = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVCodecConfig = ::std::os::raw::c_int;
 pub const AVPictureStructure_AV_PICTURE_STRUCTURE_UNKNOWN: AVPictureStructure = 0;
 pub const AVPictureStructure_AV_PICTURE_STRUCTURE_TOP_FIELD: AVPictureStructure = 1;
 pub const AVPictureStructure_AV_PICTURE_STRUCTURE_BOTTOM_FIELD: AVPictureStructure = 2;
 pub const AVPictureStructure_AV_PICTURE_STRUCTURE_FRAME: AVPictureStructure = 3;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVPictureStructure = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVPictureStructure = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVCodecParserContext {
@@ -2909,9 +3087,7 @@ pub struct AVCodecParser {
             buf_size: ::std::os::raw::c_int,
         ) -> ::std::os::raw::c_int,
     >,
-    pub parser_close: ::std::option::Option<
-        unsafe extern "C" fn(s: *mut AVCodecParserContext),
-    >,
+    pub parser_close: ::std::option::Option<unsafe extern "C" fn(s: *mut AVCodecParserContext)>,
     pub split: ::std::option::Option<
         unsafe extern "C" fn(
             avctx: *mut AVCodecContext,
@@ -3039,7 +3215,10 @@ pub const AVIODirEntryType_AVIO_ENTRY_FILE: AVIODirEntryType = 7;
 pub const AVIODirEntryType_AVIO_ENTRY_SERVER: AVIODirEntryType = 8;
 pub const AVIODirEntryType_AVIO_ENTRY_SHARE: AVIODirEntryType = 9;
 pub const AVIODirEntryType_AVIO_ENTRY_WORKGROUP: AVIODirEntryType = 10;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVIODirEntryType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVIODirEntryType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVIODirEntry {
@@ -3065,7 +3244,10 @@ pub const AVIODataMarkerType_AVIO_DATA_MARKER_BOUNDARY_POINT: AVIODataMarkerType
 pub const AVIODataMarkerType_AVIO_DATA_MARKER_UNKNOWN: AVIODataMarkerType = 3;
 pub const AVIODataMarkerType_AVIO_DATA_MARKER_TRAILER: AVIODataMarkerType = 4;
 pub const AVIODataMarkerType_AVIO_DATA_MARKER_FLUSH_POINT: AVIODataMarkerType = 5;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVIODataMarkerType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVIODataMarkerType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVIOContext {
@@ -3187,7 +3369,10 @@ pub const AVStreamParseType_AVSTREAM_PARSE_HEADERS: AVStreamParseType = 2;
 pub const AVStreamParseType_AVSTREAM_PARSE_TIMESTAMPS: AVStreamParseType = 3;
 pub const AVStreamParseType_AVSTREAM_PARSE_FULL_ONCE: AVStreamParseType = 4;
 pub const AVStreamParseType_AVSTREAM_PARSE_FULL_RAW: AVStreamParseType = 5;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVStreamParseType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVStreamParseType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVIndexEntry {
@@ -3212,21 +3397,18 @@ impl AVIndexEntry {
     #[inline]
     pub unsafe fn flags_raw(this: *const Self) -> ::std::os::raw::c_int {
         unsafe {
-            ::std::mem::transmute(
-                <__BindgenBitfieldUnit<
-                    [u8; 4usize],
-                >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 0usize, 2u8)
-                    as u32,
-            )
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                0usize,
+                2u8,
+            ) as u32)
         }
     }
     #[inline]
     pub unsafe fn set_flags_raw(this: *mut Self, val: ::std::os::raw::c_int) {
         unsafe {
             let val: u32 = ::std::mem::transmute(val);
-            <__BindgenBitfieldUnit<
-                [u8; 4usize],
-            >>::raw_set(
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
                 0usize,
                 2u8,
@@ -3248,21 +3430,18 @@ impl AVIndexEntry {
     #[inline]
     pub unsafe fn size_raw(this: *const Self) -> ::std::os::raw::c_int {
         unsafe {
-            ::std::mem::transmute(
-                <__BindgenBitfieldUnit<
-                    [u8; 4usize],
-                >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 2usize, 30u8)
-                    as u32,
-            )
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                2usize,
+                30u8,
+            ) as u32)
         }
     }
     #[inline]
     pub unsafe fn set_size_raw(this: *mut Self, val: ::std::os::raw::c_int) {
         unsafe {
             let val: u32 = ::std::mem::transmute(val);
-            <__BindgenBitfieldUnit<
-                [u8; 4usize],
-            >>::raw_set(
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
                 2usize,
                 30u8,
@@ -3276,24 +3455,14 @@ impl AVIndexEntry {
         size: ::std::os::raw::c_int,
     ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
         let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
-        __bindgen_bitfield_unit
-            .set(
-                0usize,
-                2u8,
-                {
-                    let flags: u32 = unsafe { ::std::mem::transmute(flags) };
-                    flags as u64
-                },
-            );
-        __bindgen_bitfield_unit
-            .set(
-                2usize,
-                30u8,
-                {
-                    let size: u32 = unsafe { ::std::mem::transmute(size) };
-                    size as u64
-                },
-            );
+        __bindgen_bitfield_unit.set(0usize, 2u8, {
+            let flags: u32 = unsafe { ::std::mem::transmute(flags) };
+            flags as u64
+        });
+        __bindgen_bitfield_unit.set(2usize, 30u8, {
+            let size: u32 = unsafe { ::std::mem::transmute(size) };
+            size as u64
+        });
         __bindgen_bitfield_unit
     }
 }
@@ -3351,11 +3520,16 @@ pub struct AVStreamGroupLCEVC {
     pub height: ::std::os::raw::c_int,
 }
 pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_NONE: AVStreamGroupParamsType = 0;
-pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_IAMF_AUDIO_ELEMENT: AVStreamGroupParamsType = 1;
-pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_IAMF_MIX_PRESENTATION: AVStreamGroupParamsType = 2;
+pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_IAMF_AUDIO_ELEMENT:
+    AVStreamGroupParamsType = 1;
+pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_IAMF_MIX_PRESENTATION:
+    AVStreamGroupParamsType = 2;
 pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_TILE_GRID: AVStreamGroupParamsType = 3;
 pub const AVStreamGroupParamsType_AV_STREAM_GROUP_PARAMS_LCEVC: AVStreamGroupParamsType = 4;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVStreamGroupParamsType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVStreamGroupParamsType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVIAMFAudioElement {
@@ -3436,7 +3610,10 @@ pub type AVOpenCallback = ::std::option::Option<
 pub const AVDurationEstimationMethod_AVFMT_DURATION_FROM_PTS: AVDurationEstimationMethod = 0;
 pub const AVDurationEstimationMethod_AVFMT_DURATION_FROM_STREAM: AVDurationEstimationMethod = 1;
 pub const AVDurationEstimationMethod_AVFMT_DURATION_FROM_BITRATE: AVDurationEstimationMethod = 2;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVDurationEstimationMethod = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVDurationEstimationMethod = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVFormatContext {
@@ -3530,7 +3707,10 @@ pub struct AVFormatContext {
     pub name: *mut ::std::os::raw::c_char,
 }
 pub const AVFormatCommandID_AVFORMAT_COMMAND_RTSP_SET_PARAMETER: AVFormatCommandID = 0;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVFormatCommandID = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVFormatCommandID = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVRTSPCommandRequest {
@@ -3665,9 +3845,18 @@ pub struct AVFilterGraph {
     pub aresample_swr_opts: *mut ::std::os::raw::c_char,
     pub max_buffered_frames: ::std::os::raw::c_uint,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AVFILTER_AUTO_CONVERT_ALL: _bindgen_ty_5 = 0;
+#[cfg(target_os = "linux")]
+pub const AVFILTER_AUTO_CONVERT_ALL: _bindgen_ty_6 = 0;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AVFILTER_AUTO_CONVERT_NONE: _bindgen_ty_5 = -1;
+#[cfg(target_os = "linux")]
+pub const AVFILTER_AUTO_CONVERT_NONE: _bindgen_ty_6 = -1;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub type _bindgen_ty_5 = ::std::os::raw::c_int;
+#[cfg(target_os = "linux")]
+pub type _bindgen_ty_5 = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVFilterInOut {
@@ -3707,10 +3896,22 @@ pub struct AVFilterGraphSegment {
     pub nb_chains: usize,
     pub scale_sws_opts: *mut ::std::os::raw::c_char,
 }
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_BUFFERSRC_FLAG_NO_CHECK_FORMAT: _bindgen_ty_6 = 1;
+#[cfg(target_os = "linux")]
+pub const AV_BUFFERSRC_FLAG_NO_CHECK_FORMAT: _bindgen_ty_7 = 1;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_BUFFERSRC_FLAG_PUSH: _bindgen_ty_6 = 4;
+#[cfg(target_os = "linux")]
+pub const AV_BUFFERSRC_FLAG_PUSH: _bindgen_ty_7 = 4;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_BUFFERSRC_FLAG_KEEP_REF: _bindgen_ty_6 = 8;
+#[cfg(target_os = "linux")]
+pub const AV_BUFFERSRC_FLAG_KEEP_REF: _bindgen_ty_7 = 8;
+#[cfg(target_os = "macos")]
 pub type _bindgen_ty_6 = ::std::os::raw::c_uint;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+pub type _bindgen_ty_6 = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct AVBufferSrcParameters {
@@ -3749,19 +3950,31 @@ pub const AVAppToDevMessageType_AV_APP_TO_DEV_UNMUTE: AVAppToDevMessageType = 14
 pub const AVAppToDevMessageType_AV_APP_TO_DEV_TOGGLE_MUTE: AVAppToDevMessageType = 1414354260;
 pub const AVAppToDevMessageType_AV_APP_TO_DEV_GET_VOLUME: AVAppToDevMessageType = 1196838732;
 pub const AVAppToDevMessageType_AV_APP_TO_DEV_GET_MUTE: AVAppToDevMessageType = 1196250452;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVAppToDevMessageType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVAppToDevMessageType = ::std::os::raw::c_int;
 pub const AVDevToAppMessageType_AV_DEV_TO_APP_NONE: AVDevToAppMessageType = 1313820229;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_CREATE_WINDOW_BUFFER: AVDevToAppMessageType = 1111708229;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_PREPARE_WINDOW_BUFFER: AVDevToAppMessageType = 1112560197;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_DISPLAY_WINDOW_BUFFER: AVDevToAppMessageType = 1111771475;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_DESTROY_WINDOW_BUFFER: AVDevToAppMessageType = 1111770451;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_CREATE_WINDOW_BUFFER: AVDevToAppMessageType =
+    1111708229;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_PREPARE_WINDOW_BUFFER: AVDevToAppMessageType =
+    1112560197;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_DISPLAY_WINDOW_BUFFER: AVDevToAppMessageType =
+    1111771475;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_DESTROY_WINDOW_BUFFER: AVDevToAppMessageType =
+    1111770451;
 pub const AVDevToAppMessageType_AV_DEV_TO_APP_BUFFER_OVERFLOW: AVDevToAppMessageType = 1112491596;
 pub const AVDevToAppMessageType_AV_DEV_TO_APP_BUFFER_UNDERFLOW: AVDevToAppMessageType = 1112884812;
 pub const AVDevToAppMessageType_AV_DEV_TO_APP_BUFFER_READABLE: AVDevToAppMessageType = 1112687648;
 pub const AVDevToAppMessageType_AV_DEV_TO_APP_BUFFER_WRITABLE: AVDevToAppMessageType = 1113018912;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_MUTE_STATE_CHANGED: AVDevToAppMessageType = 1129141588;
-pub const AVDevToAppMessageType_AV_DEV_TO_APP_VOLUME_LEVEL_CHANGED: AVDevToAppMessageType = 1129729868;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_MUTE_STATE_CHANGED: AVDevToAppMessageType =
+    1129141588;
+pub const AVDevToAppMessageType_AV_DEV_TO_APP_VOLUME_LEVEL_CHANGED: AVDevToAppMessageType =
+    1129729868;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVDevToAppMessageType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVDevToAppMessageType = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVDeviceInfo {
@@ -3785,13 +3998,19 @@ pub const SwsDither_SWS_DITHER_A_DITHER: SwsDither = 4;
 pub const SwsDither_SWS_DITHER_X_DITHER: SwsDither = 5;
 pub const SwsDither_SWS_DITHER_NB: SwsDither = 6;
 pub const SwsDither_SWS_DITHER_MAX_ENUM: SwsDither = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type SwsDither = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type SwsDither = ::std::os::raw::c_int;
 pub const SwsAlphaBlend_SWS_ALPHA_BLEND_NONE: SwsAlphaBlend = 0;
 pub const SwsAlphaBlend_SWS_ALPHA_BLEND_UNIFORM: SwsAlphaBlend = 1;
 pub const SwsAlphaBlend_SWS_ALPHA_BLEND_CHECKERBOARD: SwsAlphaBlend = 2;
 pub const SwsAlphaBlend_SWS_ALPHA_BLEND_NB: SwsAlphaBlend = 3;
 pub const SwsAlphaBlend_SWS_ALPHA_BLEND_MAX_ENUM: SwsAlphaBlend = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type SwsAlphaBlend = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type SwsAlphaBlend = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct SwsContext {
@@ -3847,8 +4066,14 @@ pub struct MediaCodecBuffer {
     _unused: [u8; 0],
 }
 pub type AVMediaCodecBuffer = MediaCodecBuffer;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub const AV_DRM_MAX_PLANES: _bindgen_ty_7 = 4;
+#[cfg(target_os = "linux")]
+pub const AV_DRM_MAX_PLANES: _bindgen_ty_8 = 4;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type _bindgen_ty_7 = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type _bindgen_ty_7 = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVDRMObjectDescriptor {
@@ -3952,15 +4177,24 @@ pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: VkStructureT
 pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO: VkStructureType = 16;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: VkStructureType = 17;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO: VkStructureType = 18;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO: VkStructureType = 19;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO: VkStructureType = 20;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO: VkStructureType = 21;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO: VkStructureType = 22;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO: VkStructureType = 23;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: VkStructureType = 24;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO: VkStructureType = 25;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO: VkStructureType = 26;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: VkStructureType = 27;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO:
+    VkStructureType = 19;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO:
+    VkStructureType = 20;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO:
+    VkStructureType = 21;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO: VkStructureType =
+    22;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO:
+    VkStructureType = 23;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO:
+    VkStructureType = 24;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO:
+    VkStructureType = 25;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO:
+    VkStructureType = 26;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: VkStructureType =
+    27;
 pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: VkStructureType = 28;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: VkStructureType = 29;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO: VkStructureType = 30;
@@ -3984,100 +4218,180 @@ pub const VkStructureType_VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO: VkStruc
 pub const VkStructureType_VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO: VkStructureType = 48;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: VkStructureType = 1000157000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO: VkStructureType = 1000157001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: VkStructureType = 1000127000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: VkStructureType = 1000127001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: VkStructureType = 1000060000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: VkStructureType = 1000060004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: VkStructureType =
+    1000127000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: VkStructureType =
+    1000127001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: VkStructureType =
+    1000060000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO:
+    VkStructureType = 1000060004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: VkStructureType = 1000060005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: VkStructureType = 1000060006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: VkStructureType = 1000060013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: VkStructureType = 1000060014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: VkStructureType = 1000070000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: VkStructureType = 1000070001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2: VkStructureType = 1000146000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: VkStructureType = 1000146001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2: VkStructureType = 1000146002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: VkStructureType =
+    1000060006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: VkStructureType =
+    1000060013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: VkStructureType =
+    1000060014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: VkStructureType =
+    1000070000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: VkStructureType =
+    1000070001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2: VkStructureType =
+    1000146000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: VkStructureType =
+    1000146001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2:
+    VkStructureType = 1000146002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2: VkStructureType = 1000146003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: VkStructureType = 1000146004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: VkStructureType = 1000059000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2: VkStructureType = 1000059001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: VkStructureType =
+    1000146004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: VkStructureType =
+    1000059000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2: VkStructureType =
+    1000059001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2: VkStructureType = 1000059002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2: VkStructureType = 1000059003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2: VkStructureType = 1000059004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2: VkStructureType =
+    1000059004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2: VkStructureType = 1000059005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2: VkStructureType = 1000059006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: VkStructureType = 1000059007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2: VkStructureType = 1000059008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: VkStructureType = 1000117002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2: VkStructureType =
+    1000059006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: VkStructureType =
+    1000059007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2:
+    VkStructureType = 1000059008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: VkStructureType =
+    1000117002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PROTECTED_SUBMIT_INFO: VkStructureType = 1000145000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: VkStructureType = 1000145001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: VkStructureType = 1000145002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES:
+    VkStructureType = 1000145001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES:
+    VkStructureType = 1000145002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2: VkStructureType = 1000145003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: VkStructureType = 1000071000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: VkStructureType = 1000071001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO: VkStructureType = 1000071002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES: VkStructureType = 1000071003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: VkStructureType = 1000071004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: VkStructureType = 1000072000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: VkStructureType = 1000072001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: VkStructureType = 1000072002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO: VkStructureType = 1000112000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
+    VkStructureType = 1000071000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: VkStructureType =
+    1000071001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO: VkStructureType =
+    1000071002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES: VkStructureType =
+    1000071003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: VkStructureType =
+    1000071004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: VkStructureType =
+    1000072000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: VkStructureType =
+    1000072001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: VkStructureType =
+    1000072002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO: VkStructureType =
+    1000112000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: VkStructureType = 1000112001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO: VkStructureType = 1000113000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: VkStructureType = 1000077000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO: VkStructureType = 1000076000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES: VkStructureType = 1000076001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: VkStructureType = 1000094000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: VkStructureType = 1000083000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: VkStructureType = 1000120000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO: VkStructureType = 1000085000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: VkStructureType = 1000168000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT: VkStructureType = 1000168001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO: VkStructureType = 1000156000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: VkStructureType = 1000156001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: VkStructureType = 1000156002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: VkStructureType = 1000156003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: VkStructureType = 1000156004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: VkStructureType = 1000156005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: VkStructureType = 1000060003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: VkStructureType = 1000117000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: VkStructureType = 1000117001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: VkStructureType =
+    1000077000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO:
+    VkStructureType = 1000076000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES: VkStructureType =
+    1000076001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: VkStructureType =
+    1000094000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
+    VkStructureType = 1000083000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES:
+    VkStructureType = 1000120000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO:
+    VkStructureType = 1000085000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES:
+    VkStructureType = 1000168000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT: VkStructureType =
+    1000168001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO: VkStructureType =
+    1000156000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: VkStructureType =
+    1000156001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: VkStructureType =
+    1000156002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: VkStructureType =
+    1000156003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES:
+    VkStructureType = 1000156004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
+    VkStructureType = 1000156005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: VkStructureType =
+    1000060003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES:
+    VkStructureType = 1000117000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO:
+    VkStructureType = 1000117001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO: VkStructureType = 1000117003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO: VkStructureType = 1000053000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: VkStructureType = 1000053001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: VkStructureType = 1000053002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: VkStructureType = 1000063000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: VkStructureType = 1000196000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: VkStructureType = 49;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: VkStructureType = 50;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: VkStructureType = 51;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: VkStructureType = 52;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: VkStructureType = 1000147000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES: VkStructureType = 1000211000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: VkStructureType = 1000261000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: VkStructureType = 1000207000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: VkStructureType = 1000207001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: VkStructureType = 1000207002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: VkStructureType = 1000207003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO: VkStructureType =
+    1000053000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: VkStructureType =
+    1000053001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: VkStructureType =
+    1000053002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES:
+    VkStructureType = 1000063000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: VkStructureType =
+    1000196000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: VkStructureType =
+    49;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: VkStructureType =
+    50;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: VkStructureType =
+    51;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: VkStructureType =
+    52;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: VkStructureType =
+    1000147000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
+    VkStructureType = 1000211000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES:
+    VkStructureType = 1000261000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES:
+    VkStructureType = 1000207000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES:
+    VkStructureType = 1000207001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: VkStructureType =
+    1000207002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: VkStructureType =
+    1000207003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO: VkStructureType = 1000207004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO: VkStructureType = 1000207005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: VkStructureType = 1000257000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: VkStructureType = 1000244001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO: VkStructureType = 1000257002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: VkStructureType = 1000257003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO: VkStructureType = 1000257004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: VkStructureType = 1000177000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: VkStructureType = 1000180000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: VkStructureType = 1000082000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: VkStructureType = 1000197000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: VkStructureType = 1000161000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: VkStructureType = 1000161001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: VkStructureType = 1000161002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
+    VkStructureType = 1000257000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: VkStructureType =
+    1000244001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO:
+    VkStructureType = 1000257002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO:
+    VkStructureType = 1000257003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO:
+    VkStructureType = 1000257004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: VkStructureType =
+    1000177000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES:
+    VkStructureType = 1000180000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES:
+    VkStructureType = 1000082000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES:
+    VkStructureType = 1000197000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO:
+    VkStructureType = 1000161000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES:
+    VkStructureType = 1000161001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES:
+    VkStructureType = 1000161002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO: VkStructureType = 1000161003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: VkStructureType = 1000161004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: VkStructureType = 1000221000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: VkStructureType = 1000130000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: VkStructureType = 1000130001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES:
+    VkStructureType = 1000221000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES:
+    VkStructureType = 1000130000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: VkStructureType =
+    1000130001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: VkStructureType = 1000253000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: VkStructureType = 1000175000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2: VkStructureType = 1000109000;
@@ -4087,562 +4401,988 @@ pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2: VkStructureTyp
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2: VkStructureType = 1000109004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO: VkStructureType = 1000109005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_END_INFO: VkStructureType = 1000109006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: VkStructureType = 1000199000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: VkStructureType = 1000199001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: VkStructureType = 1000246000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: VkStructureType = 1000108000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO: VkStructureType = 1000108001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO: VkStructureType = 1000108002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: VkStructureType = 1000108003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES:
+    VkStructureType = 1000199000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE:
+    VkStructureType = 1000199001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: VkStructureType =
+    1000246000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES:
+    VkStructureType = 1000108000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO: VkStructureType =
+    1000108001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO: VkStructureType =
+    1000108002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: VkStructureType =
+    1000108003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: VkStructureType = 1000241000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: VkStructureType = 1000241001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: VkStructureType = 1000241002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: VkStructureType = 53;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES: VkStructureType = 54;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: VkStructureType = 1000245000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: VkStructureType = 1000295000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: VkStructureType = 1000295001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO: VkStructureType = 1000295002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: VkStructureType =
+    1000241001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: VkStructureType =
+    1000241002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: VkStructureType =
+    53;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES: VkStructureType =
+    54;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: VkStructureType =
+    1000245000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: VkStructureType =
+    1000295000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: VkStructureType =
+    1000295001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO: VkStructureType =
+    1000295002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_BARRIER_2: VkStructureType = 1000314000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2: VkStructureType = 1000314001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2: VkStructureType = 1000314002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEPENDENCY_INFO: VkStructureType = 1000314003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO_2: VkStructureType = 1000314004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO: VkStructureType = 1000314005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: VkStructureType = 1000314006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: VkStructureType = 1000314007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: VkStructureType =
+    1000314006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES:
+    VkStructureType = 1000314007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2: VkStructureType = 1000337000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2: VkStructureType = 1000337001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2: VkStructureType = 1000337002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2: VkStructureType = 1000337003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2: VkStructureType =
+    1000337002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2: VkStructureType =
+    1000337003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COPY_2: VkStructureType = 1000337006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_COPY_2: VkStructureType = 1000337007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2: VkStructureType = 1000337009;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES: VkStructureType = 1000066000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3: VkStructureType = 1000360000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: VkStructureType = 1000413000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: VkStructureType = 1000413001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: VkStructureType = 1000413002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS: VkStructureType = 1000413003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO: VkStructureType = 1000192000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES: VkStructureType = 1000215000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES:
+    VkStructureType = 1000413000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES:
+    VkStructureType = 1000413001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: VkStructureType =
+    1000413002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS: VkStructureType =
+    1000413003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+    VkStructureType = 1000192000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES:
+    VkStructureType = 1000215000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES: VkStructureType = 1000276000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES: VkStructureType = 1000297000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: VkStructureType = 1000325000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: VkStructureType = 1000335000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES: VkStructureType = 1000225000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES:
+    VkStructureType = 1000335000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES:
+    VkStructureType = 1000225000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO: VkStructureType = 1000225001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES: VkStructureType = 1000225002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES: VkStructureType = 1000138000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES: VkStructureType = 1000138001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK: VkStructureType = 1000138002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: VkStructureType = 1000138003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: VkStructureType = 1000280000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES:
+    VkStructureType = 1000225002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
+    VkStructureType = 1000138000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES:
+    VkStructureType = 1000138001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK:
+    VkStructureType = 1000138002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO:
+    VkStructureType = 1000138003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES:
+    VkStructureType = 1000280000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: VkStructureType = 1000280001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: VkStructureType = 1000281001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES:
+    VkStructureType = 1000281001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2: VkStructureType = 1000337004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2: VkStructureType = 1000337005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_BLIT_2: VkStructureType = 1000337008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2: VkStructureType = 1000337010;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INFO: VkStructureType = 1000044000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO: VkStructureType = 1000044001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO: VkStructureType = 1000044002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: VkStructureType = 1000044003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO: VkStructureType = 1000044004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: VkStructureType = 55;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES: VkStructureType = 56;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO: VkStructureType = 1000174000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: VkStructureType = 1000388000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES: VkStructureType = 1000388001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES: VkStructureType = 1000265000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO: VkStructureType =
+    1000044002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES:
+    VkStructureType = 1000044003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+    VkStructureType = 1000044004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: VkStructureType =
+    55;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES: VkStructureType =
+    56;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO:
+    VkStructureType = 1000174000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES:
+    VkStructureType = 1000388000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES:
+    VkStructureType = 1000388001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES:
+    VkStructureType = 1000265000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_MAP_INFO: VkStructureType = 1000271000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO: VkStructureType = 1000271001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES: VkStructureType = 1000470000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES: VkStructureType = 1000470001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO: VkStructureType = 1000470004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES:
+    VkStructureType = 1000470000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES:
+    VkStructureType = 1000470001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO: VkStructureType =
+    1000470004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2: VkStructureType = 1000338002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2: VkStructureType = 1000338003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO: VkStructureType = 1000470006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: VkStructureType = 1000545000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES: VkStructureType = 1000545001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO: VkStructureType =
+    1000470006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES:
+    VkStructureType = 1000545000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES:
+    VkStructureType = 1000545001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS: VkStructureType = 1000545002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES: VkStructureType = 1000270000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: VkStructureType = 1000270001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES:
+    VkStructureType = 1000270000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES:
+    VkStructureType = 1000270001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY: VkStructureType = 1000270002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY: VkStructureType = 1000270003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO: VkStructureType = 1000270004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO: VkStructureType = 1000270005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO: VkStructureType = 1000270006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO: VkStructureType =
+    1000270006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_IMAGE_INFO: VkStructureType = 1000270007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE: VkStructureType = 1000270008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY: VkStructureType = 1000270009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES: VkStructureType = 1000416000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES: VkStructureType = 1000528000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES: VkStructureType = 1000544000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO: VkStructureType = 1000470005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES: VkStructureType = 1000080000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE: VkStructureType =
+    1000270008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY:
+    VkStructureType = 1000270009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES:
+    VkStructureType = 1000416000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES:
+    VkStructureType = 1000528000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES:
+    VkStructureType = 1000544000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO: VkStructureType =
+    1000470005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES:
+    VkStructureType = 1000080000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO: VkStructureType = 1000545003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO: VkStructureType = 1000545004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO: VkStructureType = 1000545005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO: VkStructureType = 1000545006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES: VkStructureType = 1000466000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO: VkStructureType = 1000068000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES: VkStructureType = 1000068001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES: VkStructureType = 1000068002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES: VkStructureType = 1000259000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO: VkStructureType = 1000259001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES: VkStructureType = 1000259002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES: VkStructureType = 1000525000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO: VkStructureType = 1000190001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES: VkStructureType = 1000190002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO:
+    VkStructureType = 1000545006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES:
+    VkStructureType = 1000466000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO: VkStructureType =
+    1000068000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES:
+    VkStructureType = 1000068001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES:
+    VkStructureType = 1000068002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES:
+    VkStructureType = 1000259000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO:
+    VkStructureType = 1000259001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES:
+    VkStructureType = 1000259002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES:
+    VkStructureType = 1000525000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO:
+    VkStructureType = 1000190001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES:
+    VkStructureType = 1000190002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_AREA_INFO: VkStructureType = 1000470003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES: VkStructureType = 1000232000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO: VkStructureType = 1000232001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO: VkStructureType = 1000232002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO: VkStructureType =
+    1000232001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO: VkStructureType =
+    1000232002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR: VkStructureType = 1000001000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_INFO_KHR: VkStructureType = 1000001001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: VkStructureType = 1000060007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR: VkStructureType = 1000060008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: VkStructureType = 1000060009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: VkStructureType = 1000060010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: VkStructureType = 1000060011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR: VkStructureType = 1000060012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR: VkStructureType = 1000002000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000002001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: VkStructureType =
+    1000060007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR: VkStructureType =
+    1000060008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: VkStructureType =
+    1000060009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: VkStructureType =
+    1000060010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: VkStructureType =
+    1000060011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR:
+    VkStructureType = 1000060012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR: VkStructureType =
+    1000002000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000002001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR: VkStructureType = 1000003000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000004000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000005000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000006000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000008000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR: VkStructureType = 1000009000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT: VkStructureType = 1000011000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD: VkStructureType = 1000018000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT: VkStructureType = 1000022000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT: VkStructureType = 1000022001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT: VkStructureType = 1000022002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000004000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000005000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000006000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000008000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR: VkStructureType =
+    1000009000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT: VkStructureType =
+    1000011000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD:
+    VkStructureType = 1000018000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT: VkStructureType =
+    1000022000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT: VkStructureType =
+    1000022001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT: VkStructureType =
+    1000022002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR: VkStructureType = 1000023000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR: VkStructureType = 1000023001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: VkStructureType = 1000023002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_MEMORY_REQUIREMENTS_KHR: VkStructureType = 1000023003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR: VkStructureType = 1000023004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: VkStructureType = 1000023005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000023006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR: VkStructureType = 1000023007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR: VkStructureType = 1000023008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: VkStructureType =
+    1000023002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_MEMORY_REQUIREMENTS_KHR: VkStructureType =
+    1000023003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR: VkStructureType =
+    1000023004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: VkStructureType =
+    1000023005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000023006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR:
+    VkStructureType = 1000023007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR: VkStructureType =
+    1000023008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_END_CODING_INFO_KHR: VkStructureType = 1000023009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_CODING_CONTROL_INFO_KHR: VkStructureType = 1000023010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR: VkStructureType = 1000023011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR: VkStructureType = 1000023012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: VkStructureType = 1000023013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR: VkStructureType = 1000023014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: VkStructureType = 1000023015;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR: VkStructureType = 1000023016;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_CODING_CONTROL_INFO_KHR: VkStructureType =
+    1000023010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR: VkStructureType =
+    1000023011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR: VkStructureType =
+    1000023012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: VkStructureType =
+    1000023013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR: VkStructureType =
+    1000023014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: VkStructureType =
+    1000023015;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR:
+    VkStructureType = 1000023016;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR: VkStructureType = 1000024000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR: VkStructureType = 1000024001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR: VkStructureType = 1000024002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: VkStructureType = 1000026000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: VkStructureType = 1000026001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: VkStructureType = 1000026002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: VkStructureType = 1000028000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: VkStructureType = 1000028001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: VkStructureType = 1000028002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR: VkStructureType =
+    1000024001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_USAGE_INFO_KHR: VkStructureType =
+    1000024002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV:
+    VkStructureType = 1000026000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV:
+    VkStructureType = 1000026001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
+    VkStructureType = 1000026002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
+    VkStructureType = 1000028000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
+    VkStructureType = 1000028001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+    VkStructureType = 1000028002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CU_MODULE_CREATE_INFO_NVX: VkStructureType = 1000029000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: VkStructureType = 1000029001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: VkStructureType =
+    1000029001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CU_LAUNCH_INFO_NVX: VkStructureType = 1000029002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CU_MODULE_TEXTURING_MODE_CREATE_INFO_NVX: VkStructureType = 1000029004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: VkStructureType = 1000030000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: VkStructureType = 1000030001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: VkStructureType = 1000038000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000038001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR: VkStructureType = 1000038002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PICTURE_INFO_KHR: VkStructureType = 1000038003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_DPB_SLOT_INFO_KHR: VkStructureType = 1000038004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR: VkStructureType = 1000038005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_GOP_REMAINING_FRAME_INFO_KHR: VkStructureType = 1000038006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: VkStructureType = 1000038007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR: VkStructureType = 1000038008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR: VkStructureType = 1000038009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_CREATE_INFO_KHR: VkStructureType = 1000038010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUALITY_LEVEL_PROPERTIES_KHR: VkStructureType = 1000038011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR: VkStructureType = 1000038012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CU_MODULE_TEXTURING_MODE_CREATE_INFO_NVX:
+    VkStructureType = 1000029004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: VkStructureType =
+    1000030000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: VkStructureType =
+    1000030001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: VkStructureType =
+    1000038000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000038001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR:
+    VkStructureType = 1000038002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PICTURE_INFO_KHR: VkStructureType =
+    1000038003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000038004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR: VkStructureType =
+    1000038005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_GOP_REMAINING_FRAME_INFO_KHR:
+    VkStructureType = 1000038006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: VkStructureType =
+    1000038007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR:
+    VkStructureType = 1000038008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR:
+    VkStructureType = 1000038009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_CREATE_INFO_KHR:
+    VkStructureType = 1000038010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUALITY_LEVEL_PROPERTIES_KHR:
+    VkStructureType = 1000038011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR:
+    VkStructureType = 1000038012;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_FEEDBACK_INFO_KHR: VkStructureType = 1000038013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR: VkStructureType = 1000039000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000039001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR: VkStructureType = 1000039002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PICTURE_INFO_KHR: VkStructureType = 1000039003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_DPB_SLOT_INFO_KHR: VkStructureType = 1000039004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_NALU_SLICE_SEGMENT_INFO_KHR: VkStructureType = 1000039005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_GOP_REMAINING_FRAME_INFO_KHR: VkStructureType = 1000039006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR: VkStructureType = 1000039007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR: VkStructureType = 1000039009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR: VkStructureType = 1000039010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_CREATE_INFO_KHR: VkStructureType = 1000039011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUALITY_LEVEL_PROPERTIES_KHR: VkStructureType = 1000039012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR: VkStructureType = 1000039013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR: VkStructureType =
+    1000039000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000039001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR:
+    VkStructureType = 1000039002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PICTURE_INFO_KHR: VkStructureType =
+    1000039003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000039004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_NALU_SLICE_SEGMENT_INFO_KHR:
+    VkStructureType = 1000039005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_GOP_REMAINING_FRAME_INFO_KHR:
+    VkStructureType = 1000039006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR: VkStructureType =
+    1000039007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR:
+    VkStructureType = 1000039009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR:
+    VkStructureType = 1000039010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_CREATE_INFO_KHR:
+    VkStructureType = 1000039011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUALITY_LEVEL_PROPERTIES_KHR:
+    VkStructureType = 1000039012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR:
+    VkStructureType = 1000039013;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_FEEDBACK_INFO_KHR: VkStructureType = 1000039014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR: VkStructureType = 1000040000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: VkStructureType = 1000040001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR: VkStructureType = 1000040003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000040004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR: VkStructureType = 1000040005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: VkStructureType = 1000040006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD: VkStructureType = 1000041000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP: VkStructureType = 1000049000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: VkStructureType = 1000050000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV: VkStructureType = 1000056000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: VkStructureType = 1000056001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV: VkStructureType = 1000057000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV: VkStructureType = 1000057001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV: VkStructureType = 1000058000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR: VkStructureType =
+    1000040000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: VkStructureType =
+    1000040001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR: VkStructureType =
+    1000040003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000040004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR:
+    VkStructureType = 1000040005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000040006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD:
+    VkStructureType = 1000041000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP:
+    VkStructureType = 1000049000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV:
+    VkStructureType = 1000050000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV: VkStructureType =
+    1000056000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: VkStructureType =
+    1000056001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV: VkStructureType =
+    1000057000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV: VkStructureType =
+    1000057001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV:
+    VkStructureType = 1000058000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT: VkStructureType = 1000061000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN: VkStructureType = 1000062000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: VkStructureType = 1000067000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT: VkStructureType = 1000067001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000073000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000073001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHR: VkStructureType = 1000073002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000073003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: VkStructureType =
+    1000067000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT:
+    VkStructureType = 1000067001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000073000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000073001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_WIN32_HANDLE_PROPERTIES_KHR: VkStructureType =
+    1000073002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000073003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR: VkStructureType = 1000074000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR: VkStructureType = 1000074001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR: VkStructureType = 1000074002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHR: VkStructureType = 1000075000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000078000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000078001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHR: VkStructureType = 1000078002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000078003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR: VkStructureType = 1000079000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHR:
+    VkStructureType = 1000075000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR:
+    VkStructureType = 1000078000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR:
+    VkStructureType = 1000078001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHR: VkStructureType =
+    1000078002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000078003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR: VkStructureType =
+    1000079000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR: VkStructureType = 1000079001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: VkStructureType = 1000081000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: VkStructureType = 1000081001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: VkStructureType = 1000081002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT:
+    VkStructureType = 1000081001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: VkStructureType =
+    1000081002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR: VkStructureType = 1000084000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV: VkStructureType = 1000087000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT: VkStructureType = 1000090000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV:
+    VkStructureType = 1000087000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT: VkStructureType =
+    1000090000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT: VkStructureType = 1000091000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT: VkStructureType = 1000091001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT: VkStructureType = 1000091002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT: VkStructureType = 1000091003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT: VkStructureType =
+    1000091003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE: VkStructureType = 1000092000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: VkStructureType = 1000097000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_ATTRIBUTES_INFO_NVX: VkStructureType = 1000044009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: VkStructureType = 1000098000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: VkStructureType = 1000099000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: VkStructureType = 1000099001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_ATTRIBUTES_INFO_NVX:
+    VkStructureType = 1000044009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV:
+    VkStructureType = 1000098000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT:
+    VkStructureType = 1000099000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT:
+    VkStructureType = 1000099001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: VkStructureType = 1000101000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT: VkStructureType = 1000101001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: VkStructureType = 1000102000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
+    VkStructureType = 1000102000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: VkStructureType = 1000102001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_HDR_METADATA_EXT: VkStructureType = 1000105000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RELAXED_LINE_RASTERIZATION_FEATURES_IMG: VkStructureType = 1000110000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR: VkStructureType = 1000111000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_FENCE_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000114000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_FENCE_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000114001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FENCE_GET_WIN32_HANDLE_INFO_KHR: VkStructureType = 1000114002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR:
+    VkStructureType = 1000111000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_FENCE_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000114000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_FENCE_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000114001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FENCE_GET_WIN32_HANDLE_INFO_KHR: VkStructureType =
+    1000114002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR: VkStructureType = 1000115000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR: VkStructureType = 1000115001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: VkStructureType = 1000116000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: VkStructureType = 1000116001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR: VkStructureType = 1000116002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR: VkStructureType = 1000116003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR: VkStructureType = 1000116004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR:
+    VkStructureType = 1000116000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR:
+    VkStructureType = 1000116001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR:
+    VkStructureType = 1000116002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR: VkStructureType =
+    1000116003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR: VkStructureType =
+    1000116004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR: VkStructureType = 1000116005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: VkStructureType = 1000116006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR: VkStructureType = 1000119000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR: VkStructureType = 1000119001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: VkStructureType =
+    1000116006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR: VkStructureType =
+    1000119000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR: VkStructureType =
+    1000119001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR: VkStructureType = 1000119002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR: VkStructureType = 1000121000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: VkStructureType = 1000121001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: VkStructureType = 1000121002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: VkStructureType =
+    1000121001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: VkStructureType =
+    1000121002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR: VkStructureType = 1000121003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: VkStructureType = 1000121004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK: VkStructureType = 1000122000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK: VkStructureType = 1000123000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: VkStructureType = 1000128000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: VkStructureType = 1000128001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: VkStructureType =
+    1000121004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK: VkStructureType =
+    1000122000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK: VkStructureType =
+    1000123000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: VkStructureType =
+    1000128000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: VkStructureType =
+    1000128001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT: VkStructureType = 1000128002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT: VkStructureType = 1000128003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: VkStructureType = 1000128004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID: VkStructureType = 1000129000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID: VkStructureType = 1000129001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID: VkStructureType = 1000129002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID: VkStructureType = 1000129003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID: VkStructureType = 1000129004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT:
+    VkStructureType = 1000128003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: VkStructureType =
+    1000128004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID: VkStructureType =
+    1000129000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID:
+    VkStructureType = 1000129001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID:
+    VkStructureType = 1000129002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID:
+    VkStructureType = 1000129003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID:
+    VkStructureType = 1000129004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID: VkStructureType = 1000129005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_2_ANDROID: VkStructureType = 1000129006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TEXEL_BUFFER_DESCRIPTOR_INFO_EXT: VkStructureType = 1000135000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_2_ANDROID:
+    VkStructureType = 1000129006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TEXEL_BUFFER_DESCRIPTOR_INFO_EXT: VkStructureType =
+    1000135000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT: VkStructureType = 1000135001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT: VkStructureType = 1000135002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT: VkStructureType =
+    1000135002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT: VkStructureType = 1000135003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT: VkStructureType = 1000135004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT: VkStructureType = 1000135005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT: VkStructureType = 1000135006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT: VkStructureType = 1000135007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT: VkStructureType = 1000135008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT: VkStructureType = 1000135009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT: VkStructureType = 1000135010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_INDEX_CREATE_INFO_EXT: VkStructureType = 1000135011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_PUSH_DATA_TOKEN_NV: VkStructureType = 1000135012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBSAMPLED_IMAGE_FORMAT_PROPERTIES_EXT: VkStructureType = 1000135013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT:
+    VkStructureType = 1000135005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT:
+    VkStructureType = 1000135006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT: VkStructureType =
+    1000135007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT:
+    VkStructureType = 1000135008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT:
+    VkStructureType = 1000135009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT:
+    VkStructureType = 1000135010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_INDEX_CREATE_INFO_EXT:
+    VkStructureType = 1000135011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_PUSH_DATA_TOKEN_NV:
+    VkStructureType = 1000135012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBSAMPLED_IMAGE_FORMAT_PROPERTIES_EXT:
+    VkStructureType = 1000135013;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_TENSOR_PROPERTIES_ARM: VkStructureType = 1000135014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD: VkStructureType = 1000044008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_BFLOAT16_FEATURES_KHR: VkStructureType = 1000141000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD: VkStructureType =
+    1000044008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_BFLOAT16_FEATURES_KHR:
+    VkStructureType = 1000141000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT: VkStructureType = 1000143000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: VkStructureType = 1000143001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: VkStructureType = 1000143002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: VkStructureType = 1000143003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT: VkStructureType = 1000143004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT:
+    VkStructureType = 1000143001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT:
+    VkStructureType = 1000143002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT:
+    VkStructureType = 1000143003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT: VkStructureType =
+    1000143004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: VkStructureType = 1000148000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: VkStructureType = 1000148001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT: VkStructureType = 1000148002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV: VkStructureType = 1000149000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR: VkStructureType = 1000150007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR: VkStructureType = 1000150000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: VkStructureType = 1000150002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: VkStructureType = 1000150003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: VkStructureType = 1000150004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR: VkStructureType = 1000150005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR: VkStructureType = 1000150006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR: VkStructureType = 1000150009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: VkStructureType = 1000150010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR: VkStructureType = 1000150011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: VkStructureType = 1000150012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: VkStructureType = 1000150013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT:
+    VkStructureType = 1000148002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV:
+    VkStructureType = 1000149000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR:
+    VkStructureType = 1000150007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR:
+    VkStructureType = 1000150000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR:
+    VkStructureType = 1000150002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR:
+    VkStructureType = 1000150003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR:
+    VkStructureType = 1000150004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR:
+    VkStructureType = 1000150005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR: VkStructureType =
+    1000150006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR:
+    VkStructureType = 1000150009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: VkStructureType =
+    1000150010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR:
+    VkStructureType = 1000150011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR:
+    VkStructureType = 1000150012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR:
+    VkStructureType = 1000150013;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: VkStructureType = 1000150014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR: VkStructureType = 1000150017;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR: VkStructureType = 1000150020;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: VkStructureType = 1000347000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR: VkStructureType = 1000347001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR: VkStructureType = 1000150015;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR: VkStructureType = 1000150016;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR: VkStructureType = 1000150018;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: VkStructureType = 1000348013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV: VkStructureType = 1000152000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV: VkStructureType = 1000154000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV: VkStructureType = 1000154001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT: VkStructureType = 1000158000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT: VkStructureType = 1000158002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT: VkStructureType = 1000158003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT: VkStructureType = 1000158004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT: VkStructureType = 1000158005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_2_EXT: VkStructureType = 1000158006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT: VkStructureType = 1000160000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT: VkStructureType = 1000160001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR:
+    VkStructureType = 1000150017;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR:
+    VkStructureType = 1000150020;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR:
+    VkStructureType = 1000347000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR:
+    VkStructureType = 1000347001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR: VkStructureType =
+    1000150015;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR:
+    VkStructureType = 1000150016;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR:
+    VkStructureType = 1000150018;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR:
+    VkStructureType = 1000348013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV:
+    VkStructureType = 1000152000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV:
+    VkStructureType = 1000154000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV:
+    VkStructureType = 1000154001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT:
+    VkStructureType = 1000158000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT:
+    VkStructureType = 1000158002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT:
+    VkStructureType = 1000158003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT:
+    VkStructureType = 1000158004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT:
+    VkStructureType = 1000158005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_2_EXT:
+    VkStructureType = 1000158006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT: VkStructureType =
+    1000160000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT:
+    VkStructureType = 1000160001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV: VkStructureType = 1000164000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV: VkStructureType = 1000164001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV: VkStructureType = 1000164002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV:
+    VkStructureType = 1000164001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV:
+    VkStructureType = 1000164002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV: VkStructureType = 1000164005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV: VkStructureType = 1000165000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: VkStructureType = 1000165001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV: VkStructureType =
+    1000165000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: VkStructureType =
+    1000165001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_GEOMETRY_NV: VkStructureType = 1000165003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV: VkStructureType = 1000165004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: VkStructureType = 1000165005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV: VkStructureType = 1000165006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV: VkStructureType = 1000165007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV: VkStructureType = 1000165008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV: VkStructureType = 1000165009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV: VkStructureType = 1000165011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: VkStructureType = 1000165012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV:
+    VkStructureType = 1000165006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV:
+    VkStructureType = 1000165007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV:
+    VkStructureType = 1000165008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV:
+    VkStructureType = 1000165009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV:
+    VkStructureType = 1000165011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: VkStructureType =
+    1000165012;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV: VkStructureType = 1000166000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV: VkStructureType = 1000166001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT: VkStructureType = 1000170000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT: VkStructureType = 1000170001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT:
+    VkStructureType = 1000170000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT:
+    VkStructureType = 1000170001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_CONVERSION_FEATURES_QCOM: VkStructureType = 1000172000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT: VkStructureType = 1000178000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: VkStructureType = 1000178001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: VkStructureType = 1000178002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: VkStructureType = 1000181000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: VkStructureType = 1000183000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: VkStructureType = 1000185000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR: VkStructureType = 1000187000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000187001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR: VkStructureType = 1000187002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR: VkStructureType = 1000187003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PICTURE_INFO_KHR: VkStructureType = 1000187004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR: VkStructureType = 1000187005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: VkStructureType = 1000189000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT: VkStructureType =
+    1000178000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: VkStructureType =
+    1000178001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT:
+    VkStructureType = 1000178002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR:
+    VkStructureType = 1000181000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD:
+    VkStructureType = 1000183000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD:
+    VkStructureType = 1000185000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR: VkStructureType =
+    1000187000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000187001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR:
+    VkStructureType = 1000187002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR: VkStructureType =
+    1000187003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PICTURE_INFO_KHR: VkStructureType =
+    1000187004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000187005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD:
+    VkStructureType = 1000189000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: VkStructureType = 1000190000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP: VkStructureType = 1000191000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: VkStructureType = 1000202000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV: VkStructureType = 1000202001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV: VkStructureType = 1000204000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV:
+    VkStructureType = 1000202000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV:
+    VkStructureType = 1000202001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV:
+    VkStructureType = 1000204000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: VkStructureType = 1000205000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV: VkStructureType = 1000205002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV:
+    VkStructureType = 1000205002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV: VkStructureType = 1000206000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: VkStructureType = 1000206001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_2_NV: VkStructureType = 1000314008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: VkStructureType =
+    1000206001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_2_NV:
+    VkStructureType = 1000314008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CHECKPOINT_DATA_2_NV: VkStructureType = 1000314009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT: VkStructureType = 1000208000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT: VkStructureType = 1000208001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT: VkStructureType = 1000208002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT:
+    VkStructureType = 1000208000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT: VkStructureType =
+    1000208001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT: VkStructureType =
+    1000208002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT: VkStructureType = 1000208003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT: VkStructureType = 1000208004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT: VkStructureType = 1000208005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT: VkStructureType = 1000208006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT: VkStructureType = 1000208007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT: VkStructureType = 1000208008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT: VkStructureType = 1000208009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT: VkStructureType =
+    1000208005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT:
+    VkStructureType = 1000208006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT: VkStructureType =
+    1000208007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT:
+    VkStructureType = 1000208008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT:
+    VkStructureType = 1000208009;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: VkStructureType = 1000209000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_QUERY_CREATE_INFO_INTEL: VkStructureType = 1000210000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL: VkStructureType = 1000210001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL: VkStructureType = 1000210002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL: VkStructureType = 1000210003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL: VkStructureType = 1000210004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL: VkStructureType = 1000210005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: VkStructureType = 1000212000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD: VkStructureType = 1000213000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD: VkStructureType = 1000213001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA: VkStructureType = 1000214000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT: VkStructureType = 1000217000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT: VkStructureType = 1000218000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT: VkStructureType = 1000218001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT: VkStructureType = 1000218002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT: VkStructureType = 1000044007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: VkStructureType = 1000226000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR: VkStructureType = 1000226001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: VkStructureType = 1000226002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: VkStructureType = 1000226003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: VkStructureType = 1000226004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: VkStructureType = 1000044006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: VkStructureType = 1000227000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: VkStructureType = 1000229000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CONSTANT_DATA_FEATURES_KHR: VkStructureType = 1000231000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ABORT_FEATURES_KHR: VkStructureType = 1000233000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_SHADER_ABORT_MESSAGE_INFO_KHR: VkStructureType = 1000233001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ABORT_PROPERTIES_KHR: VkStructureType = 1000233002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_QUERY_CREATE_INFO_INTEL:
+    VkStructureType = 1000210000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL: VkStructureType =
+    1000210001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL: VkStructureType =
+    1000210002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL: VkStructureType =
+    1000210003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL: VkStructureType =
+    1000210004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL:
+    VkStructureType = 1000210005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
+    VkStructureType = 1000212000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD:
+    VkStructureType = 1000213000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD:
+    VkStructureType = 1000213001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA: VkStructureType =
+    1000214000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT: VkStructureType =
+    1000217000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT:
+    VkStructureType = 1000218000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT:
+    VkStructureType = 1000218001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT:
+    VkStructureType = 1000218002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT:
+    VkStructureType = 1000044007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR:
+    VkStructureType = 1000226000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR:
+    VkStructureType = 1000226001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR:
+    VkStructureType = 1000226002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR:
+    VkStructureType = 1000226003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR:
+    VkStructureType = 1000226004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR:
+    VkStructureType = 1000044006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD:
+    VkStructureType = 1000227000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD:
+    VkStructureType = 1000229000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CONSTANT_DATA_FEATURES_KHR:
+    VkStructureType = 1000231000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ABORT_FEATURES_KHR:
+    VkStructureType = 1000233000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_SHADER_ABORT_MESSAGE_INFO_KHR:
+    VkStructureType = 1000233001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ABORT_PROPERTIES_KHR:
+    VkStructureType = 1000233002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: VkStructureType = 1000234000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR: VkStructureType = 1000235000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: VkStructureType = 1000237000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: VkStructureType = 1000238000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: VkStructureType = 1000238001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: VkStructureType = 1000239000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR:
+    VkStructureType = 1000235000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT:
+    VkStructureType = 1000237000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
+    VkStructureType = 1000238000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: VkStructureType =
+    1000238001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: VkStructureType =
+    1000239000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV: VkStructureType = 1000240000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: VkStructureType = 1000244000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT: VkStructureType = 1000244002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT:
+    VkStructureType = 1000244000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT: VkStructureType =
+    1000244002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT: VkStructureType = 1000247000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR: VkStructureType = 1000248000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV: VkStructureType = 1000249000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: VkStructureType = 1000249001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV: VkStructureType = 1000249002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV: VkStructureType = 1000250000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV: VkStructureType = 1000250001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV: VkStructureType = 1000250002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
+    VkStructureType = 1000248000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV:
+    VkStructureType = 1000249000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: VkStructureType =
+    1000249001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV:
+    VkStructureType = 1000249002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV:
+    VkStructureType = 1000250000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV:
+    VkStructureType = 1000250001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV:
+    VkStructureType = 1000250002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: VkStructureType = 1000251000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: VkStructureType = 1000252000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: VkStructureType = 1000254000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT:
+    VkStructureType = 1000252000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
+    VkStructureType = 1000254000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: VkStructureType = 1000254001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: VkStructureType = 1000254002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT: VkStructureType = 1000255000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT: VkStructureType = 1000255002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT: VkStructureType = 1000255001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT: VkStructureType = 1000256000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: VkStructureType = 1000260000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: VkStructureType = 1000267000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT:
+    VkStructureType = 1000254002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT:
+    VkStructureType = 1000255000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT:
+    VkStructureType = 1000255002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT:
+    VkStructureType = 1000255001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT: VkStructureType =
+    1000256000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT:
+    VkStructureType = 1000260000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
+    VkStructureType = 1000267000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: VkStructureType = 1000269000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR: VkStructureType = 1000269001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: VkStructureType = 1000269002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR: VkStructureType = 1000269003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR: VkStructureType = 1000269004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR: VkStructureType = 1000269005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT: VkStructureType = 1000272000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_PROPERTIES_EXT: VkStructureType = 1000272001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT: VkStructureType = 1000272002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: VkStructureType = 1000273000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: VkStructureType =
+    1000269002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR: VkStructureType =
+    1000269003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR: VkStructureType =
+    1000269004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR:
+    VkStructureType = 1000269005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT:
+    VkStructureType = 1000272000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_PROPERTIES_EXT:
+    VkStructureType = 1000272001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT: VkStructureType =
+    1000272002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT:
+    VkStructureType = 1000273000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: VkStructureType = 1000277000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: VkStructureType = 1000277001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV: VkStructureType = 1000277002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: VkStructureType = 1000277003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV: VkStructureType = 1000277004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: VkStructureType = 1000277005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV: VkStructureType = 1000277006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: VkStructureType =
+    1000277001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV:
+    VkStructureType = 1000277002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: VkStructureType =
+    1000277003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV:
+    VkStructureType = 1000277004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: VkStructureType =
+    1000277005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV:
+    VkStructureType = 1000277006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: VkStructureType = 1000277007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV: VkStructureType = 1000278000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV: VkStructureType = 1000278001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: VkStructureType = 1000281000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV:
+    VkStructureType = 1000278001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT:
+    VkStructureType = 1000281000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDER_PASS_TRANSFORM_INFO_QCOM: VkStructureType = 1000282000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: VkStructureType = 1000282001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT: VkStructureType = 1000283000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: VkStructureType =
+    1000282001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT:
+    VkStructureType = 1000283000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT: VkStructureType = 1000283001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT: VkStructureType = 1000283002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT: VkStructureType = 1000284000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_DEVICE_MEMORY_REPORT_CREATE_INFO_EXT: VkStructureType = 1000284001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_REPORT_CALLBACK_DATA_EXT: VkStructureType = 1000284002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: VkStructureType = 1000287000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: VkStructureType = 1000287001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: VkStructureType = 1000287002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT: VkStructureType =
+    1000283002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT:
+    VkStructureType = 1000284000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_DEVICE_MEMORY_REPORT_CREATE_INFO_EXT:
+    VkStructureType = 1000284001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_REPORT_CALLBACK_DATA_EXT:
+    VkStructureType = 1000284002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT:
+    VkStructureType = 1000287000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
+    VkStructureType = 1000287001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
+    VkStructureType = 1000287002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_3D_FEATURES_EXT: VkStructureType = 1000288000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR: VkStructureType = 1000290000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_BARRIER_FEATURES_NV: VkStructureType = 1000292000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_BARRIER_NV: VkStructureType = 1000292001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV: VkStructureType = 1000292002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR: VkStructureType =
+    1000290000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_BARRIER_FEATURES_NV:
+    VkStructureType = 1000292000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_BARRIER_NV:
+    VkStructureType = 1000292001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV:
+    VkStructureType = 1000292002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_ID_KHR: VkStructureType = 1000294000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR: VkStructureType = 1000294001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR:
+    VkStructureType = 1000294001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_INFO_KHR: VkStructureType = 1000299000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR: VkStructureType = 1000299001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR: VkStructureType = 1000299002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_CAPABILITIES_KHR: VkStructureType = 1000299003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR: VkStructureType = 1000299004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_VIDEO_ENCODE_FEEDBACK_CREATE_INFO_KHR: VkStructureType = 1000299005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR: VkStructureType = 1000299006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR: VkStructureType = 1000299007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR: VkStructureType = 1000299008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_GET_INFO_KHR: VkStructureType = 1000299009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR: VkStructureType = 1000299010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV: VkStructureType = 1000300000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV: VkStructureType = 1000300001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR: VkStructureType =
+    1000299001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_LAYER_INFO_KHR:
+    VkStructureType = 1000299002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_CAPABILITIES_KHR: VkStructureType =
+    1000299003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR: VkStructureType =
+    1000299004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_VIDEO_ENCODE_FEEDBACK_CREATE_INFO_KHR:
+    VkStructureType = 1000299005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR:
+    VkStructureType = 1000299006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR:
+    VkStructureType = 1000299007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR: VkStructureType =
+    1000299008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_GET_INFO_KHR:
+    VkStructureType = 1000299009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
+    VkStructureType = 1000299010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV:
+    VkStructureType = 1000300000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV:
+    VkStructureType = 1000300001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PERF_HINT_INFO_QCOM: VkStructureType = 1000302000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_QUEUE_PERF_HINT_FEATURES_QCOM: VkStructureType = 1000302001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_QUEUE_PERF_HINT_PROPERTIES_QCOM: VkStructureType = 1000302002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_FEATURES_QCOM: VkStructureType = 1000309000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_PROPERTIES_QCOM: VkStructureType = 1000309001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_TILE_SHADING_CREATE_INFO_QCOM: VkStructureType = 1000309002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_QUEUE_PERF_HINT_FEATURES_QCOM:
+    VkStructureType = 1000302001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_QUEUE_PERF_HINT_PROPERTIES_QCOM:
+    VkStructureType = 1000302002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_FEATURES_QCOM:
+    VkStructureType = 1000309000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_PROPERTIES_QCOM:
+    VkStructureType = 1000309001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_TILE_SHADING_CREATE_INFO_QCOM:
+    VkStructureType = 1000309002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PER_TILE_BEGIN_INFO_QCOM: VkStructureType = 1000309003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PER_TILE_END_INFO_QCOM: VkStructureType = 1000309004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPATCH_TILE_INFO_QCOM: VkStructureType = 1000309005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV: VkStructureType = 1000310000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: VkStructureType = 1000311000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECTS_INFO_EXT: VkStructureType = 1000311001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_DEVICE_INFO_EXT: VkStructureType = 1000311002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_COMMAND_QUEUE_INFO_EXT: VkStructureType = 1000311003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_BUFFER_INFO_EXT: VkStructureType = 1000311004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_BUFFER_INFO_EXT: VkStructureType = 1000311005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_TEXTURE_INFO_EXT: VkStructureType = 1000311006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: VkStructureType = 1000311007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT: VkStructureType = 1000311008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT: VkStructureType = 1000311009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_SHARED_EVENT_INFO_EXT: VkStructureType = 1000311010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_SHARED_EVENT_INFO_EXT: VkStructureType = 1000311011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT: VkStructureType = 1000316000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV: VkStructureType =
+    1000310000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT: VkStructureType =
+    1000311000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECTS_INFO_EXT: VkStructureType =
+    1000311001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_DEVICE_INFO_EXT: VkStructureType =
+    1000311002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_COMMAND_QUEUE_INFO_EXT: VkStructureType =
+    1000311003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_BUFFER_INFO_EXT: VkStructureType =
+    1000311004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_BUFFER_INFO_EXT: VkStructureType =
+    1000311005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_TEXTURE_INFO_EXT: VkStructureType =
+    1000311006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_TEXTURE_INFO_EXT: VkStructureType =
+    1000311007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT: VkStructureType =
+    1000311008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT: VkStructureType =
+    1000311009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_METAL_SHARED_EVENT_INFO_EXT: VkStructureType =
+    1000311010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_METAL_SHARED_EVENT_INFO_EXT: VkStructureType =
+    1000311011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT:
+    VkStructureType = 1000316000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_DENSITY_MAP_PROPERTIES_EXT: VkStructureType = 1000316001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT: VkStructureType = 1000316002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT: VkStructureType = 1000316003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT:
+    VkStructureType = 1000316002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT: VkStructureType =
+    1000316003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT: VkStructureType = 1000316004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: VkStructureType = 1000316005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: VkStructureType = 1000316006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: VkStructureType = 1000316007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: VkStructureType = 1000316008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT: VkStructureType = 1000316010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT: VkStructureType = 1000316011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+    VkStructureType = 1000316005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+    VkStructureType = 1000316006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+    VkStructureType = 1000316007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
+    VkStructureType = 1000316008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT:
+    VkStructureType = 1000316010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT: VkStructureType =
+    1000316011;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT: VkStructureType = 1000316012;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: VkStructureType = 1000316009;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_COPY_KHR: VkStructureType = 1000318000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_INFO_KHR: VkStructureType = 1000318001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_IMAGE_COPY_KHR: VkStructureType = 1000318002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_IMAGE_INFO_KHR: VkStructureType = 1000318003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_RANGE_BARRIERS_INFO_KHR: VkStructureType = 1000318004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_INFO_KHR: VkStructureType =
+    1000318001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_IMAGE_COPY_KHR: VkStructureType =
+    1000318002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_DEVICE_MEMORY_IMAGE_INFO_KHR: VkStructureType =
+    1000318003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_RANGE_BARRIERS_INFO_KHR: VkStructureType =
+    1000318004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_RANGE_BARRIER_KHR: VkStructureType = 1000318005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_ADDRESS_COMMANDS_FEATURES_KHR: VkStructureType = 1000318006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR: VkStructureType = 1000318007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_VERTEX_BUFFER_3_INFO_KHR: VkStructureType = 1000318008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_ADDRESS_COMMANDS_FEATURES_KHR:
+    VkStructureType = 1000318006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR: VkStructureType =
+    1000318007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_VERTEX_BUFFER_3_INFO_KHR: VkStructureType =
+    1000318008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DRAW_INDIRECT_2_INFO_KHR: VkStructureType = 1000318009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DRAW_INDIRECT_COUNT_2_INFO_KHR: VkStructureType = 1000318010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPATCH_INDIRECT_2_INFO_KHR: VkStructureType = 1000318011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_2_EXT: VkStructureType = 1000318012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_TRANSFORM_FEEDBACK_BUFFER_2_INFO_EXT: VkStructureType = 1000318013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DRAW_INDIRECT_COUNT_2_INFO_KHR: VkStructureType =
+    1000318010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPATCH_INDIRECT_2_INFO_KHR: VkStructureType =
+    1000318011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_2_EXT:
+    VkStructureType = 1000318012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_TRANSFORM_FEEDBACK_BUFFER_2_INFO_EXT:
+    VkStructureType = 1000318013;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_MARKER_INFO_AMD: VkStructureType = 1000318014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_2_KHR: VkStructureType = 1000318015;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_2_KHR:
+    VkStructureType = 1000318015;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT: VkStructureType = 1000320000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT: VkStructureType = 1000320001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT: VkStructureType = 1000320002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT:
+    VkStructureType = 1000320002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EARLY_AND_LATE_FRAGMENT_TESTS_FEATURES_AMD: VkStructureType = 1000321000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: VkStructureType = 1000203000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: VkStructureType = 1000322000;
@@ -4651,684 +5391,1183 @@ pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RAT
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV: VkStructureType = 1000326001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: VkStructureType = 1000326002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: VkStructureType = 1000327000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV: VkStructureType = 1000327001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV: VkStructureType = 1000327002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: VkStructureType = 1000328000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: VkStructureType = 1000328001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV:
+    VkStructureType = 1000327001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV: VkStructureType =
+    1000327002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT:
+    VkStructureType = 1000328000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT:
+    VkStructureType = 1000328001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT: VkStructureType = 1000330000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT: VkStructureType = 1000332000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT:
+    VkStructureType = 1000332000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT: VkStructureType = 1000332001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: VkStructureType = 1000333000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: VkStructureType =
+    1000333000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: VkStructureType = 1000336000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT: VkStructureType = 1000338000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: VkStructureType = 1000338001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_PROPERTIES_EXT: VkStructureType = 1000338004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: VkStructureType =
+    1000338001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_PROPERTIES_EXT: VkStructureType =
+    1000338004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT: VkStructureType = 1000339000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: VkStructureType = 1000340000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT: VkStructureType = 1000341000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
+    VkStructureType = 1000340000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT: VkStructureType =
+    1000341000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT: VkStructureType = 1000341001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT: VkStructureType = 1000341002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT: VkStructureType = 1000344000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECTFB_SURFACE_CREATE_INFO_EXT: VkStructureType = 1000346000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT:
+    VkStructureType = 1000344000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECTFB_SURFACE_CREATE_INFO_EXT: VkStructureType =
+    1000346000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: VkStructureType = 1000352000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT: VkStructureType = 1000352001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT: VkStructureType = 1000352002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: VkStructureType = 1000353000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT: VkStructureType = 1000354000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT: VkStructureType = 1000354001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: VkStructureType = 1000355000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: VkStructureType = 1000355001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT:
+    VkStructureType = 1000352001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT:
+    VkStructureType = 1000352002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: VkStructureType =
+    1000353000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT:
+    VkStructureType = 1000354000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT:
+    VkStructureType = 1000354001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT:
+    VkStructureType = 1000355000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT:
+    VkStructureType = 1000355001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: VkStructureType = 1000356000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_ZIRCON_HANDLE_INFO_FUCHSIA: VkStructureType = 1000364000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ZIRCON_HANDLE_PROPERTIES_FUCHSIA: VkStructureType = 1000364001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_ZIRCON_HANDLE_INFO_FUCHSIA: VkStructureType = 1000364002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_ZIRCON_HANDLE_INFO_FUCHSIA: VkStructureType = 1000365000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_GET_ZIRCON_HANDLE_INFO_FUCHSIA: VkStructureType = 1000365001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_CREATE_INFO_FUCHSIA: VkStructureType = 1000366000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_BUFFER_COLLECTION_FUCHSIA: VkStructureType = 1000366001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_IMAGE_CREATE_INFO_FUCHSIA: VkStructureType = 1000366002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_PROPERTIES_FUCHSIA: VkStructureType = 1000366003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CONSTRAINTS_INFO_FUCHSIA: VkStructureType = 1000366004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_BUFFER_CREATE_INFO_FUCHSIA: VkStructureType = 1000366005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CONSTRAINTS_INFO_FUCHSIA: VkStructureType = 1000366006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_CONSTRAINTS_INFO_FUCHSIA: VkStructureType = 1000366007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SYSMEM_COLOR_SPACE_FUCHSIA: VkStructureType = 1000366008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_CONSTRAINTS_INFO_FUCHSIA: VkStructureType = 1000366009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI: VkStructureType = 1000369000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI: VkStructureType = 1000369001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_PROPERTIES_HUAWEI: VkStructureType = 1000369002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INVOCATION_MASK_FEATURES_HUAWEI: VkStructureType = 1000370000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_REMOTE_ADDRESS_INFO_NV: VkStructureType = 1000371000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_RDMA_FEATURES_NV: VkStructureType = 1000371001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_PROPERTIES_IDENTIFIER_EXT: VkStructureType = 1000372000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT: VkStructureType = 1000372001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAME_BOUNDARY_FEATURES_EXT: VkStructureType = 1000375000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_ZIRCON_HANDLE_INFO_FUCHSIA:
+    VkStructureType = 1000364000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ZIRCON_HANDLE_PROPERTIES_FUCHSIA:
+    VkStructureType = 1000364001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_ZIRCON_HANDLE_INFO_FUCHSIA: VkStructureType =
+    1000364002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_ZIRCON_HANDLE_INFO_FUCHSIA:
+    VkStructureType = 1000365000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_GET_ZIRCON_HANDLE_INFO_FUCHSIA:
+    VkStructureType = 1000365001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_CREATE_INFO_FUCHSIA: VkStructureType =
+    1000366000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_BUFFER_COLLECTION_FUCHSIA:
+    VkStructureType = 1000366001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_IMAGE_CREATE_INFO_FUCHSIA:
+    VkStructureType = 1000366002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_PROPERTIES_FUCHSIA: VkStructureType =
+    1000366003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CONSTRAINTS_INFO_FUCHSIA: VkStructureType =
+    1000366004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_BUFFER_CREATE_INFO_FUCHSIA:
+    VkStructureType = 1000366005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CONSTRAINTS_INFO_FUCHSIA: VkStructureType =
+    1000366006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_CONSTRAINTS_INFO_FUCHSIA: VkStructureType =
+    1000366007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SYSMEM_COLOR_SPACE_FUCHSIA: VkStructureType =
+    1000366008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COLLECTION_CONSTRAINTS_INFO_FUCHSIA:
+    VkStructureType = 1000366009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI:
+    VkStructureType = 1000369000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI:
+    VkStructureType = 1000369001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_PROPERTIES_HUAWEI:
+    VkStructureType = 1000369002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INVOCATION_MASK_FEATURES_HUAWEI:
+    VkStructureType = 1000370000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_REMOTE_ADDRESS_INFO_NV: VkStructureType =
+    1000371000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_RDMA_FEATURES_NV:
+    VkStructureType = 1000371001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_PROPERTIES_IDENTIFIER_EXT: VkStructureType =
+    1000372000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT:
+    VkStructureType = 1000372001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAME_BOUNDARY_FEATURES_EXT:
+    VkStructureType = 1000375000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FRAME_BOUNDARY_EXT: VkStructureType = 1000375001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT: VkStructureType = 1000376000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT: VkStructureType = 1000376001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT: VkStructureType = 1000376002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT: VkStructureType =
+    1000376001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT:
+    VkStructureType = 1000376002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: VkStructureType = 1000377000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_SURFACE_CREATE_INFO_QNX: VkStructureType = 1000378000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: VkStructureType = 1000381000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT: VkStructureType = 1000381001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_SURFACE_CREATE_INFO_QNX: VkStructureType =
+    1000378000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT:
+    VkStructureType = 1000381000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT: VkStructureType =
+    1000381001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT: VkStructureType = 1000382000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR: VkStructureType = 1000386000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR: VkStructureType = 1000387000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR:
+    VkStructureType = 1000387000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_RGB_CONVERSION_FEATURES_VALVE: VkStructureType = 1000390000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RGB_CONVERSION_CAPABILITIES_VALVE: VkStructureType = 1000390001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_PROFILE_RGB_CONVERSION_INFO_VALVE: VkStructureType = 1000390002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_RGB_CONVERSION_CAPABILITIES_VALVE:
+    VkStructureType = 1000390001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_PROFILE_RGB_CONVERSION_INFO_VALVE:
+    VkStructureType = 1000390002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_RGB_CONVERSION_CREATE_INFO_VALVE: VkStructureType = 1000390003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT: VkStructureType = 1000391000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT: VkStructureType = 1000391001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: VkStructureType = 1000392000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: VkStructureType = 1000392001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: VkStructureType = 1000393000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_FEATURES_EXT: VkStructureType = 1000395000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT: VkStructureType = 1000395001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT:
+    VkStructureType = 1000391000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT: VkStructureType =
+    1000391001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT:
+    VkStructureType = 1000392000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT:
+    VkStructureType = 1000392001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT:
+    VkStructureType = 1000393000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_FEATURES_EXT:
+    VkStructureType = 1000395000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT:
+    VkStructureType = 1000395001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MICROMAP_BUILD_INFO_EXT: VkStructureType = 1000396000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MICROMAP_VERSION_INFO_EXT: VkStructureType = 1000396001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT: VkStructureType = 1000396002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT: VkStructureType = 1000396003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT: VkStructureType = 1000396004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT: VkStructureType = 1000396005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT: VkStructureType = 1000396006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT: VkStructureType =
+    1000396003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT: VkStructureType =
+    1000396004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT:
+    VkStructureType = 1000396005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT:
+    VkStructureType = 1000396006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MICROMAP_CREATE_INFO_EXT: VkStructureType = 1000396007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT: VkStructureType = 1000396008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT: VkStructureType =
+    1000396008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT: VkStructureType = 1000396009;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_FEATURES_HUAWEI: VkStructureType = 1000404000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_PROPERTIES_HUAWEI: VkStructureType = 1000404001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_VRS_FEATURES_HUAWEI: VkStructureType = 1000404002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: VkStructureType = 1000411000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT:
+    VkStructureType = 1000411000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT: VkStructureType = 1000411001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT: VkStructureType = 1000412000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM: VkStructureType = 1000415000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM: VkStructureType = 1000417000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_FEATURES_ARM: VkStructureType = 1000417001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_PROPERTIES_ARM: VkStructureType = 1000417002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM:
+    VkStructureType = 1000415000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM:
+    VkStructureType = 1000417000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_FEATURES_ARM:
+    VkStructureType = 1000417001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_PROPERTIES_ARM:
+    VkStructureType = 1000417002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DISPATCH_PARAMETERS_ARM: VkStructureType = 1000417003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_DISPATCH_PARAMETERS_PROPERTIES_ARM: VkStructureType = 1000417004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT: VkStructureType = 1000418000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT: VkStructureType = 1000418001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT:
+    VkStructureType = 1000418000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_SLICED_CREATE_INFO_EXT: VkStructureType =
+    1000418001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_SET_HOST_MAPPING_FEATURES_VALVE: VkStructureType = 1000420000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE: VkStructureType = 1000420001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE: VkStructureType = 1000420002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: VkStructureType = 1000422000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_FEATURES_ARM: VkStructureType = 1000424000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM: VkStructureType = 1000424001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM: VkStructureType = 1000424002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM: VkStructureType = 1000424003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_SUBMIT_INFO_ARM: VkStructureType = 1000424004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV: VkStructureType = 1000426000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE:
+    VkStructureType = 1000420001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE:
+    VkStructureType = 1000420002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT:
+    VkStructureType = 1000422000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_FEATURES_ARM:
+    VkStructureType = 1000424000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM:
+    VkStructureType = 1000424001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM: VkStructureType =
+    1000424002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM: VkStructureType =
+    1000424003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_SUBMIT_INFO_ARM: VkStructureType =
+    1000424004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV:
+    VkStructureType = 1000426000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_COMPUTE_FEATURES_NV: VkStructureType = 1000428000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_INDIRECT_BUFFER_INFO_NV: VkStructureType = 1000428001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV: VkStructureType = 1000428002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_INDIRECT_BUFFER_INFO_NV:
+    VkStructureType = 1000428001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV:
+    VkStructureType = 1000428002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_LINEAR_SWEPT_SPHERES_FEATURES_NV: VkStructureType = 1000429008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_LINEAR_SWEPT_SPHERES_DATA_NV: VkStructureType = 1000429009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_SPHERES_DATA_NV: VkStructureType = 1000429010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV: VkStructureType = 1000430000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_SPHERES_DATA_NV:
+    VkStructureType = 1000429010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV:
+    VkStructureType = 1000430000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: VkStructureType = 1000434000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT: VkStructureType = 1000437000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM: VkStructureType = 1000440000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM: VkStructureType = 1000440001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM: VkStructureType = 1000440002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: VkStructureType = 1000451000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: VkStructureType = 1000451001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM:
+    VkStructureType = 1000440000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM:
+    VkStructureType = 1000440001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM:
+    VkStructureType = 1000440002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT:
+    VkStructureType = 1000451000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT:
+    VkStructureType = 1000451001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_NATIVE_BUFFER_USAGE_OHOS: VkStructureType = 1000452000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_NATIVE_BUFFER_PROPERTIES_OHOS: VkStructureType = 1000452001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_NATIVE_BUFFER_FORMAT_PROPERTIES_OHOS: VkStructureType = 1000452002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_NATIVE_BUFFER_INFO_OHOS: VkStructureType = 1000452003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_NATIVE_BUFFER_INFO_OHOS: VkStructureType = 1000452004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_NATIVE_BUFFER_PROPERTIES_OHOS: VkStructureType =
+    1000452001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_NATIVE_BUFFER_FORMAT_PROPERTIES_OHOS: VkStructureType =
+    1000452002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_NATIVE_BUFFER_INFO_OHOS: VkStructureType =
+    1000452003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_NATIVE_BUFFER_INFO_OHOS: VkStructureType =
+    1000452004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_OHOS: VkStructureType = 1000452005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT: VkStructureType = 1000453000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT:
+    VkStructureType = 1000453000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: VkStructureType = 1000455000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: VkStructureType = 1000455001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT: VkStructureType = 1000458000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT: VkStructureType = 1000458001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_FEEDBACK_CREATE_INFO_EXT: VkStructureType = 1000458002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_SUBPASS_FEEDBACK_CREATE_INFO_EXT: VkStructureType = 1000458003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECT_DRIVER_LOADING_INFO_LUNARG: VkStructureType = 1000459000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECT_DRIVER_LOADING_LIST_LUNARG: VkStructureType = 1000459001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT:
+    VkStructureType = 1000458000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT: VkStructureType =
+    1000458001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_FEEDBACK_CREATE_INFO_EXT:
+    VkStructureType = 1000458002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_SUBPASS_FEEDBACK_CREATE_INFO_EXT:
+    VkStructureType = 1000458003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECT_DRIVER_LOADING_INFO_LUNARG: VkStructureType =
+    1000459000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DIRECT_DRIVER_LOADING_LIST_LUNARG: VkStructureType =
+    1000459001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_CREATE_INFO_ARM: VkStructureType = 1000460000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_VIEW_CREATE_INFO_ARM: VkStructureType = 1000460001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_TENSOR_MEMORY_INFO_ARM: VkStructureType = 1000460002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_TENSOR_ARM: VkStructureType = 1000460003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TENSOR_PROPERTIES_ARM: VkStructureType = 1000460004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_FORMAT_PROPERTIES_ARM: VkStructureType = 1000460005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_VIEW_CREATE_INFO_ARM: VkStructureType =
+    1000460001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_TENSOR_MEMORY_INFO_ARM: VkStructureType =
+    1000460002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_TENSOR_ARM: VkStructureType =
+    1000460003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TENSOR_PROPERTIES_ARM: VkStructureType =
+    1000460004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_FORMAT_PROPERTIES_ARM: VkStructureType =
+    1000460005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_DESCRIPTION_ARM: VkStructureType = 1000460006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_MEMORY_REQUIREMENTS_INFO_ARM: VkStructureType = 1000460007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_MEMORY_REQUIREMENTS_INFO_ARM: VkStructureType =
+    1000460007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_MEMORY_BARRIER_ARM: VkStructureType = 1000460008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TENSOR_FEATURES_ARM: VkStructureType = 1000460009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_TENSOR_MEMORY_REQUIREMENTS_ARM: VkStructureType = 1000460010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TENSOR_FEATURES_ARM: VkStructureType =
+    1000460009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_TENSOR_MEMORY_REQUIREMENTS_ARM: VkStructureType =
+    1000460010;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_TENSOR_INFO_ARM: VkStructureType = 1000460011;
 pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_COPY_ARM: VkStructureType = 1000460012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_DEPENDENCY_INFO_ARM: VkStructureType = 1000460013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_TENSOR_ARM: VkStructureType = 1000460014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_TENSOR_INFO_ARM: VkStructureType = 1000460015;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_TENSOR_PROPERTIES_ARM: VkStructureType = 1000460016;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_TENSOR_CREATE_INFO_ARM: VkStructureType = 1000460017;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_DEPENDENCY_INFO_ARM: VkStructureType =
+    1000460013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_TENSOR_ARM:
+    VkStructureType = 1000460014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_TENSOR_INFO_ARM:
+    VkStructureType = 1000460015;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_TENSOR_PROPERTIES_ARM: VkStructureType =
+    1000460016;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_TENSOR_CREATE_INFO_ARM:
+    VkStructureType = 1000460017;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_TENSOR_FEATURES_ARM: VkStructureType = 1000460018;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_TENSOR_PROPERTIES_ARM: VkStructureType = 1000460019;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_GET_TENSOR_INFO_ARM: VkStructureType = 1000460020;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_CAPTURE_DESCRIPTOR_DATA_INFO_ARM: VkStructureType = 1000460021;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_ARM: VkStructureType = 1000460022;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAME_BOUNDARY_TENSORS_ARM: VkStructureType = 1000460023;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_GET_TENSOR_INFO_ARM: VkStructureType =
+    1000460020;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_CAPTURE_DESCRIPTOR_DATA_INFO_ARM:
+    VkStructureType = 1000460021;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TENSOR_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_ARM:
+    VkStructureType = 1000460022;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAME_BOUNDARY_TENSORS_ARM: VkStructureType =
+    1000460023;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: VkStructureType = 1000462000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_PROPERTIES_EXT: VkStructureType = 1000462001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT: VkStructureType = 1000462002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT: VkStructureType = 1000462003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT: VkStructureType =
+    1000462003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT: VkStructureType = 1000342000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_FEATURES_NV: VkStructureType = 1000464000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV: VkStructureType = 1000464001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV: VkStructureType = 1000464002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV: VkStructureType = 1000464003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV: VkStructureType = 1000464004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_EXECUTE_INFO_NV: VkStructureType = 1000464005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_PRIVATE_DATA_INFO_NV: VkStructureType = 1000464010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT: VkStructureType = 1000465000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_FEATURES_NV:
+    VkStructureType = 1000464000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV:
+    VkStructureType = 1000464001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV: VkStructureType =
+    1000464002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV:
+    VkStructureType = 1000464003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV: VkStructureType =
+    1000464004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_EXECUTE_INFO_NV: VkStructureType =
+    1000464005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_PRIVATE_DATA_INFO_NV:
+    VkStructureType = 1000464010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT:
+    VkStructureType = 1000465000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_FEATURES_ANDROID: VkStructureType = 1000468000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FORMAT_RESOLVE_PROPERTIES_ANDROID: VkStructureType = 1000468001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_RESOLVE_PROPERTIES_ANDROID: VkStructureType = 1000468002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ANTI_LAG_FEATURES_AMD: VkStructureType = 1000476000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ANTI_LAG_FEATURES_AMD: VkStructureType =
+    1000476000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD: VkStructureType = 1000476001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ANTI_LAG_PRESENTATION_INFO_AMD: VkStructureType = 1000476002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR: VkStructureType = 1000479000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ANTI_LAG_PRESENTATION_INFO_AMD: VkStructureType =
+    1000476002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR: VkStructureType =
+    1000479000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR: VkStructureType = 1000479001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR: VkStructureType = 1000479002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR: VkStructureType = 1000480000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR: VkStructureType = 1000480001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR:
+    VkStructureType = 1000479002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR:
+    VkStructureType = 1000480000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR:
+    VkStructureType = 1000480001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR: VkStructureType = 1000480002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR: VkStructureType = 1000481000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT: VkStructureType = 1000482000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT: VkStructureType = 1000482001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT:
+    VkStructureType = 1000482000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT:
+    VkStructureType = 1000482001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT: VkStructureType = 1000482002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR: VkStructureType = 1000483000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR: VkStructureType = 1000483001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_FEATURES_KHR:
+    VkStructureType = 1000483000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR: VkStructureType =
+    1000483001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_INFO_KHR: VkStructureType = 1000483002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_KEY_KHR: VkStructureType = 1000483003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR: VkStructureType = 1000483004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_CAPTURED_PIPELINE_DATA_INFO_KHR: VkStructureType = 1000483005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_DATA_INFO_KHR: VkStructureType = 1000483006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR:
+    VkStructureType = 1000483004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_CAPTURED_PIPELINE_DATA_INFO_KHR:
+    VkStructureType = 1000483005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_DATA_INFO_KHR: VkStructureType =
+    1000483006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO_KHR: VkStructureType = 1000483007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PIPELINE_BINARY_INTERNAL_CACHE_CONTROL_KHR: VkStructureType = 1000483008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR: VkStructureType = 1000483009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM: VkStructureType = 1000484000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PIPELINE_BINARY_INTERNAL_CACHE_CONTROL_KHR:
+    VkStructureType = 1000483008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR: VkStructureType =
+    1000483009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM:
+    VkStructureType = 1000484000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_PROPERTIES_QCOM: VkStructureType = 1000484001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_AMIGO_PROFILING_FEATURES_SEC: VkStructureType = 1000485000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_AMIGO_PROFILING_SUBMIT_INFO_SEC: VkStructureType = 1000485001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_AMIGO_PROFILING_FEATURES_SEC:
+    VkStructureType = 1000485000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_AMIGO_PROFILING_SUBMIT_INFO_SEC: VkStructureType =
+    1000485001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR: VkStructureType = 1000274000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR: VkStructureType = 1000274001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR: VkStructureType = 1000274002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR: VkStructureType = 1000275000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR: VkStructureType = 1000275001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR: VkStructureType = 1000275002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR: VkStructureType = 1000275003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR: VkStructureType = 1000275004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR: VkStructureType = 1000275005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR:
+    VkStructureType = 1000274001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR:
+    VkStructureType = 1000274002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR:
+    VkStructureType = 1000275000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR: VkStructureType =
+    1000275001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR:
+    VkStructureType = 1000275002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR: VkStructureType =
+    1000275003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR:
+    VkStructureType = 1000275004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR: VkStructureType =
+    1000275005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_VIEWPORTS_FEATURES_QCOM: VkStructureType = 1000488000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV: VkStructureType = 1000490000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV: VkStructureType = 1000490001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV: VkStructureType = 1000491000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_PROPERTIES_NV: VkStructureType = 1000491001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV: VkStructureType = 1000491002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV: VkStructureType = 1000491004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV:
+    VkStructureType = 1000491000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_PROPERTIES_NV:
+    VkStructureType = 1000491001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV: VkStructureType =
+    1000491002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV:
+    VkStructureType = 1000491004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV: VkStructureType = 1000492000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV: VkStructureType = 1000492001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT: VkStructureType = 1000351000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT: VkStructureType = 1000351002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT:
+    VkStructureType = 1000351000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT:
+    VkStructureType = 1000351002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_VERTEX_ATTRIBUTES_FEATURES_EXT: VkStructureType = 1000495000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_VERTEX_ATTRIBUTES_PROPERTIES_EXT: VkStructureType = 1000495001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT: VkStructureType = 1000496000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM: VkStructureType = 1000497000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_PROPERTIES_ARM: VkStructureType = 1000497001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT: VkStructureType =
+    1000496000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM:
+    VkStructureType = 1000497000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_PROPERTIES_ARM:
+    VkStructureType = 1000497001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT: VkStructureType = 1000498000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT: VkStructureType = 1000499000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INTERNALLY_SYNCHRONIZED_QUEUES_FEATURES_KHR: VkStructureType = 1000504000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV: VkStructureType = 1000505000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV: VkStructureType =
+    1000505000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV: VkStructureType = 1000505001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV: VkStructureType = 1000505002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV: VkStructureType = 1000505003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV: VkStructureType = 1000505004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV: VkStructureType = 1000505005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV: VkStructureType = 1000505006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV: VkStructureType = 1000505007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV: VkStructureType = 1000505008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: VkStructureType = 1000506000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR: VkStructureType = 1000506001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_KHR: VkStructureType = 1000506002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_CREATE_INFO_ARM: VkStructureType = 1000507000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_CREATE_INFO_ARM: VkStructureType = 1000507001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_RESOURCE_INFO_ARM: VkStructureType = 1000507002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_CONSTANT_ARM: VkStructureType = 1000507003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV: VkStructureType =
+    1000505002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV: VkStructureType =
+    1000505003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV: VkStructureType =
+    1000505004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV: VkStructureType =
+    1000505005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV: VkStructureType =
+    1000505006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV: VkStructureType =
+    1000505007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV: VkStructureType =
+    1000505008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR:
+    VkStructureType = 1000506000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR: VkStructureType =
+    1000506001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_KHR:
+    VkStructureType = 1000506002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_CREATE_INFO_ARM: VkStructureType =
+    1000507000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_CREATE_INFO_ARM:
+    VkStructureType = 1000507001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_RESOURCE_INFO_ARM: VkStructureType =
+    1000507002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_CONSTANT_ARM: VkStructureType =
+    1000507003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_MEMORY_REQUIREMENTS_INFO_ARM: VkStructureType = 1000507004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DATA_GRAPH_PIPELINE_SESSION_MEMORY_INFO_ARM: VkStructureType = 1000507005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_FEATURES_ARM: VkStructureType = 1000507006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SHADER_MODULE_CREATE_INFO_ARM: VkStructureType = 1000507007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_PROPERTY_QUERY_RESULT_ARM: VkStructureType = 1000507008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_INFO_ARM: VkStructureType = 1000507009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_COMPILER_CONTROL_CREATE_INFO_ARM: VkStructureType = 1000507010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DATA_GRAPH_PIPELINE_SESSION_MEMORY_INFO_ARM:
+    VkStructureType = 1000507005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_FEATURES_ARM:
+    VkStructureType = 1000507006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SHADER_MODULE_CREATE_INFO_ARM:
+    VkStructureType = 1000507007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_PROPERTY_QUERY_RESULT_ARM:
+    VkStructureType = 1000507008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_INFO_ARM: VkStructureType =
+    1000507009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_COMPILER_CONTROL_CREATE_INFO_ARM:
+    VkStructureType = 1000507010;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_BIND_POINT_REQUIREMENTS_INFO_ARM: VkStructureType = 1000507011;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_BIND_POINT_REQUIREMENT_ARM: VkStructureType = 1000507012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_IDENTIFIER_CREATE_INFO_ARM: VkStructureType = 1000507013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_DISPATCH_INFO_ARM: VkStructureType = 1000507014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PROCESSING_ENGINE_CREATE_INFO_ARM: VkStructureType = 1000507016;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_IDENTIFIER_CREATE_INFO_ARM:
+    VkStructureType = 1000507013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_DISPATCH_INFO_ARM: VkStructureType =
+    1000507014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PROCESSING_ENGINE_CREATE_INFO_ARM:
+    VkStructureType = 1000507016;
 pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_PROCESSING_ENGINE_PROPERTIES_ARM: VkStructureType = 1000507017;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_PROPERTIES_ARM: VkStructureType = 1000507018;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_PROPERTIES_ARM:
+    VkStructureType = 1000507018;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_QUEUE_FAMILY_DATA_GRAPH_PROCESSING_ENGINE_INFO_ARM: VkStructureType = 1000507019;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_CONSTANT_TENSOR_SEMI_STRUCTURED_SPARSITY_INFO_ARM: VkStructureType = 1000507015;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_TOSA_PROPERTIES_ARM: VkStructureType = 1000508000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_TOSA_PROPERTIES_ARM:
+    VkStructureType = 1000508000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_RENDER_AREAS_FEATURES_QCOM: VkStructureType = 1000510000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MULTIVIEW_PER_VIEW_RENDER_AREAS_RENDER_PASS_BEGIN_INFO_QCOM: VkStructureType = 1000510001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR: VkStructureType = 1000201000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_PROPERTIES_KHR: VkStructureType = 1000511000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR: VkStructureType = 1000512000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR: VkStructureType = 1000512001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR: VkStructureType = 1000512003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000512004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_KHR: VkStructureType = 1000512005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR: VkStructureType = 1000513000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000513001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR: VkStructureType = 1000513002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR: VkStructureType = 1000513003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR: VkStructureType = 1000513004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR: VkStructureType = 1000513005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR: VkStructureType = 1000513006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_LAYER_INFO_KHR: VkStructureType = 1000513007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR: VkStructureType = 1000513008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_CREATE_INFO_KHR: VkStructureType = 1000513009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR: VkStructureType = 1000513010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_DECODE_VP9_FEATURES_KHR: VkStructureType = 1000514000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_CAPABILITIES_KHR: VkStructureType = 1000514001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_PICTURE_INFO_KHR: VkStructureType = 1000514002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_PROFILE_INFO_KHR: VkStructureType = 1000514003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR: VkStructureType = 1000515000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR: VkStructureType = 1000515001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PER_STAGE_DESCRIPTOR_SET_FEATURES_NV: VkStructureType = 1000516000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM: VkStructureType = 1000518000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_PROPERTIES_QCOM: VkStructureType = 1000518001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM: VkStructureType = 1000518002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUBIC_WEIGHTS_CREATE_INFO_QCOM: VkStructureType = 1000519000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM: VkStructureType = 1000519001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM: VkStructureType = 1000519002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM: VkStructureType = 1000520000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR: VkStructureType =
+    1000512000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR: VkStructureType =
+    1000512001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR: VkStructureType =
+    1000512003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000512004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000512005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_CAPABILITIES_KHR: VkStructureType =
+    1000513000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR:
+    VkStructureType = 1000513001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR: VkStructureType =
+    1000513002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR: VkStructureType =
+    1000513003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR:
+    VkStructureType = 1000513004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR: VkStructureType =
+    1000513005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_INFO_KHR:
+    VkStructureType = 1000513006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_RATE_CONTROL_LAYER_INFO_KHR:
+    VkStructureType = 1000513007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR:
+    VkStructureType = 1000513008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_CREATE_INFO_KHR:
+    VkStructureType = 1000513009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR:
+    VkStructureType = 1000513010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_DECODE_VP9_FEATURES_KHR:
+    VkStructureType = 1000514000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_CAPABILITIES_KHR: VkStructureType =
+    1000514001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_PICTURE_INFO_KHR: VkStructureType =
+    1000514002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_VP9_PROFILE_INFO_KHR: VkStructureType =
+    1000514003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR:
+    VkStructureType = 1000515000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR: VkStructureType =
+    1000515001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PER_STAGE_DESCRIPTOR_SET_FEATURES_NV:
+    VkStructureType = 1000516000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM:
+    VkStructureType = 1000518000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_PROPERTIES_QCOM:
+    VkStructureType = 1000518001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM:
+    VkStructureType = 1000518002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CUBIC_WEIGHTS_CREATE_INFO_QCOM:
+    VkStructureType = 1000519000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM:
+    VkStructureType = 1000519001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM: VkStructureType =
+    1000519002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM:
+    VkStructureType = 1000520000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM: VkStructureType = 1000520001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM: VkStructureType = 1000521000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM:
+    VkStructureType = 1000521000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT: VkStructureType = 1000524000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR: VkStructureType = 1000527000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT: VkStructureType = 1000527001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_BUFFER_PROPERTIES_QNX: VkStructureType = 1000529000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_BUFFER_FORMAT_PROPERTIES_QNX: VkStructureType = 1000529001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SCREEN_BUFFER_INFO_QNX: VkStructureType = 1000529002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR:
+    VkStructureType = 1000527000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT: VkStructureType =
+    1000527001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_BUFFER_PROPERTIES_QNX: VkStructureType =
+    1000529000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SCREEN_BUFFER_FORMAT_PROPERTIES_QNX: VkStructureType =
+    1000529001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_SCREEN_BUFFER_INFO_QNX: VkStructureType =
+    1000529002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_QNX: VkStructureType = 1000529003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_SCREEN_BUFFER_FEATURES_QNX: VkStructureType = 1000529004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT: VkStructureType = 1000530000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR: VkStructureType = 1000184000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT: VkStructureType = 1000545007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_BUFFER_EMBEDDED_SAMPLERS_INFO_EXT: VkStructureType = 1000545008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT:
+    VkStructureType = 1000530000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR: VkStructureType =
+    1000184000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT:
+    VkStructureType = 1000545007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_BUFFER_EMBEDDED_SAMPLERS_INFO_EXT:
+    VkStructureType = 1000545008;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV: VkStructureType = 1000546000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_FEATURES_QCOM: VkStructureType = 1000547000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_PROPERTIES_QCOM: VkStructureType = 1000547001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_REQUIREMENTS_QCOM: VkStructureType = 1000547002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_BIND_INFO_QCOM: VkStructureType = 1000547003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_SIZE_INFO_QCOM: VkStructureType = 1000547004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_KHR: VkStructureType = 1000549000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_KHR: VkStructureType = 1000426001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_INDIRECT_INFO_KHR: VkStructureType = 1000549002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INDIRECT_INFO_KHR: VkStructureType = 1000549003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_EXT: VkStructureType = 1000427000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_EXT: VkStructureType = 1000427001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DECOMPRESS_MEMORY_INFO_EXT: VkStructureType = 1000550002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_SURFACE_STEREO_CREATE_INFO_NV: VkStructureType = 1000551000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV: VkStructureType = 1000551001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_CAPABILITIES_KHR: VkStructureType = 1000552000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_INTRA_REFRESH_CREATE_INFO_KHR: VkStructureType = 1000552001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_INFO_KHR: VkStructureType = 1000552002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_REFERENCE_INTRA_REFRESH_INFO_KHR: VkStructureType = 1000552003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_FEATURES_QCOM:
+    VkStructureType = 1000547000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_PROPERTIES_QCOM:
+    VkStructureType = 1000547001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_REQUIREMENTS_QCOM: VkStructureType =
+    1000547002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_BIND_INFO_QCOM: VkStructureType =
+    1000547003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TILE_MEMORY_SIZE_INFO_QCOM: VkStructureType =
+    1000547004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_KHR:
+    VkStructureType = 1000549000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_KHR:
+    VkStructureType = 1000426001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_INDIRECT_INFO_KHR: VkStructureType =
+    1000549002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INDIRECT_INFO_KHR:
+    VkStructureType = 1000549003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_EXT:
+    VkStructureType = 1000427000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_EXT:
+    VkStructureType = 1000427001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DECOMPRESS_MEMORY_INFO_EXT: VkStructureType =
+    1000550002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_SURFACE_STEREO_CREATE_INFO_NV: VkStructureType =
+    1000551000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV: VkStructureType =
+    1000551001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_CAPABILITIES_KHR:
+    VkStructureType = 1000552000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_INTRA_REFRESH_CREATE_INFO_KHR:
+    VkStructureType = 1000552001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_INFO_KHR: VkStructureType =
+    1000552002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_REFERENCE_INTRA_REFRESH_INFO_KHR:
+    VkStructureType = 1000552003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_INTRA_REFRESH_FEATURES_KHR: VkStructureType = 1000552004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR: VkStructureType = 1000553000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR: VkStructureType = 1000553001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR: VkStructureType = 1000553002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR:
+    VkStructureType = 1000553000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR:
+    VkStructureType = 1000553001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR:
+    VkStructureType = 1000553002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_SESSION_PARAMETERS_CREATE_INFO_KHR: VkStructureType = 1000553005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR: VkStructureType = 1000553009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR: VkStructureType = 1000553003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR: VkStructureType = 1000553004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_H265_QUANTIZATION_MAP_PROPERTIES_KHR: VkStructureType = 1000553006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUANTIZATION_MAP_CAPABILITIES_KHR: VkStructureType = 1000553007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_AV1_QUANTIZATION_MAP_PROPERTIES_KHR: VkStructureType = 1000553008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV: VkStructureType = 1000555000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV: VkStructureType = 1000556000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV: VkStructureType = 1000556001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV: VkStructureType = 1000556002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV: VkStructureType = 1000556003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR:
+    VkStructureType = 1000553003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR:
+    VkStructureType = 1000553004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_H265_QUANTIZATION_MAP_PROPERTIES_KHR:
+    VkStructureType = 1000553006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUANTIZATION_MAP_CAPABILITIES_KHR:
+    VkStructureType = 1000553007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_FORMAT_AV1_QUANTIZATION_MAP_PROPERTIES_KHR:
+    VkStructureType = 1000553008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV:
+    VkStructureType = 1000555000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV:
+    VkStructureType = 1000556000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV: VkStructureType =
+    1000556001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV: VkStructureType =
+    1000556002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV:
+    VkStructureType = 1000556003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR: VkStructureType = 1000558000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMMAND_BUFFER_INHERITANCE_FEATURES_NV: VkStructureType = 1000559000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR: VkStructureType = 1000562000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR: VkStructureType = 1000562001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_PROPERTIES_LIST_KHR: VkStructureType = 1000562002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_PROPERTIES_KHR: VkStructureType = 1000562003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_VULKAN_PROPERTIES_KHR: VkStructureType = 1000562004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR:
+    VkStructureType = 1000562000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR:
+    VkStructureType = 1000562001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_PROPERTIES_LIST_KHR:
+    VkStructureType = 1000562002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_PROPERTIES_KHR:
+    VkStructureType = 1000562003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_API_VULKAN_PROPERTIES_KHR:
+    VkStructureType = 1000562004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT16_VECTOR_FEATURES_NV: VkStructureType = 1000563000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT: VkStructureType = 1000564000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT8_FEATURES_EXT: VkStructureType = 1000567000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV: VkStructureType = 1000568000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT8_FEATURES_EXT:
+    VkStructureType = 1000567000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV:
+    VkStructureType = 1000568000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_ACCELERATION_STRUCTURE_FEATURES_NV: VkStructureType = 1000569000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_ACCELERATION_STRUCTURE_PROPERTIES_NV: VkStructureType = 1000569001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_CLUSTERS_BOTTOM_LEVEL_INPUT_NV: VkStructureType = 1000569002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_TRIANGLE_CLUSTER_INPUT_NV: VkStructureType = 1000569003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_MOVE_OBJECTS_INPUT_NV: VkStructureType = 1000569004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_INPUT_INFO_NV: VkStructureType = 1000569005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_COMMANDS_INFO_NV: VkStructureType = 1000569006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_MOVE_OBJECTS_INPUT_NV:
+    VkStructureType = 1000569004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_INPUT_INFO_NV:
+    VkStructureType = 1000569005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CLUSTER_ACCELERATION_STRUCTURE_COMMANDS_INFO_NV:
+    VkStructureType = 1000569006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CLUSTER_ACCELERATION_STRUCTURE_CREATE_INFO_NV: VkStructureType = 1000569007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_FEATURES_NV: VkStructureType = 1000570000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_PROPERTIES_NV: VkStructureType = 1000570001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_PARTITIONED_ACCELERATION_STRUCTURE_NV: VkStructureType = 1000570002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_INSTANCES_INPUT_NV: VkStructureType = 1000570003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUILD_PARTITIONED_ACCELERATION_STRUCTURE_INFO_NV: VkStructureType = 1000570004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_FLAGS_NV: VkStructureType = 1000570005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUILD_PARTITIONED_ACCELERATION_STRUCTURE_INFO_NV:
+    VkStructureType = 1000570004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_FLAGS_NV:
+    VkStructureType = 1000570005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_EXT: VkStructureType = 1000572000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_EXT: VkStructureType = 1000572001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT: VkStructureType = 1000572002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_CREATE_INFO_EXT: VkStructureType = 1000572003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT: VkStructureType = 1000572004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_EXT: VkStructureType = 1000572006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_EXT: VkStructureType = 1000572007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT: VkStructureType = 1000572008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT: VkStructureType = 1000572009;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT: VkStructureType = 1000572010;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_INFO_EXT: VkStructureType = 1000572011;
-pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_LAYOUT_INFO_EXT: VkStructureType = 1000572012;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT: VkStructureType = 1000572013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_SHADER_INFO_EXT: VkStructureType = 1000572014;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_KHR: VkStructureType = 1000573000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_PROPERTIES_KHR: VkStructureType = 1000573001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT:
+    VkStructureType = 1000572002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_CREATE_INFO_EXT:
+    VkStructureType = 1000572003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT: VkStructureType =
+    1000572004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_EXT:
+    VkStructureType = 1000572006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_EXT: VkStructureType =
+    1000572007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT:
+    VkStructureType = 1000572008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT:
+    VkStructureType = 1000572009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT:
+    VkStructureType = 1000572010;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_INFO_EXT:
+    VkStructureType = 1000572011;
+pub const VkStructureType_VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_LAYOUT_INFO_EXT:
+    VkStructureType = 1000572012;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT: VkStructureType =
+    1000572013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_GENERATED_COMMANDS_SHADER_INFO_EXT: VkStructureType =
+    1000572014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_KHR: VkStructureType =
+    1000573000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_PROPERTIES_KHR: VkStructureType =
+    1000573001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR: VkStructureType = 1000573002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR: VkStructureType = 1000573003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR: VkStructureType = 1000574000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_BARRIER_ACCESS_FLAGS_3_KHR: VkStructureType = 1000574002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR: VkStructureType =
+    1000573003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR:
+    VkStructureType = 1000574000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_BARRIER_ACCESS_FLAGS_3_KHR: VkStructureType =
+    1000574002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_FEATURES_MESA: VkStructureType = 1000575000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_PROPERTIES_MESA: VkStructureType = 1000575001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_ALIGNMENT_CONTROL_CREATE_INFO_MESA: VkStructureType = 1000575002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR: VkStructureType = 1000579000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_CONSTANT_BANK_INFO_NV: VkStructureType = 1000580000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_CONSTANT_BANK_FEATURES_NV: VkStructureType = 1000580001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_CONSTANT_BANK_PROPERTIES_NV: VkStructureType = 1000580002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_ALIGNMENT_CONTROL_CREATE_INFO_MESA:
+    VkStructureType = 1000575002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR:
+    VkStructureType = 1000579000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_CONSTANT_BANK_INFO_NV: VkStructureType =
+    1000580000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_CONSTANT_BANK_FEATURES_NV:
+    VkStructureType = 1000580001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_CONSTANT_BANK_PROPERTIES_NV:
+    VkStructureType = 1000580002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_EXT: VkStructureType = 1000581000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_EXT: VkStructureType = 1000581001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT: VkStructureType = 1000582000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT:
+    VkStructureType = 1000582000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLAMP_CONTROL_CREATE_INFO_EXT: VkStructureType = 1000582001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR: VkStructureType = 1000584000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR: VkStructureType = 1000584001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR: VkStructureType = 1000584002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR: VkStructureType = 1000586000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_INLINE_SESSION_PARAMETERS_INFO_KHR: VkStructureType = 1000586001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_INLINE_SESSION_PARAMETERS_INFO_KHR: VkStructureType = 1000586002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR: VkStructureType = 1000586003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR:
+    VkStructureType = 1000584000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR:
+    VkStructureType = 1000584001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR:
+    VkStructureType = 1000584002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR:
+    VkStructureType = 1000586000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_INLINE_SESSION_PARAMETERS_INFO_KHR:
+    VkStructureType = 1000586001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_INLINE_SESSION_PARAMETERS_INFO_KHR:
+    VkStructureType = 1000586002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR:
+    VkStructureType = 1000586003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS: VkStructureType = 1000685000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI: VkStructureType = 1000590000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HDR_VIVID_DYNAMIC_METADATA_HUAWEI: VkStructureType = 1000590001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV: VkStructureType = 1000593000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_FLEXIBLE_DIMENSIONS_PROPERTIES_NV: VkStructureType = 1000593001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV: VkStructureType = 1000593002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI:
+    VkStructureType = 1000590000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HDR_VIVID_DYNAMIC_METADATA_HUAWEI: VkStructureType =
+    1000590001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV:
+    VkStructureType = 1000593000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_FLEXIBLE_DIMENSIONS_PROPERTIES_NV:
+    VkStructureType = 1000593001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV:
+    VkStructureType = 1000593002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_OPACITY_MICROMAP_FEATURES_ARM: VkStructureType = 1000596000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_METAL_HANDLE_INFO_EXT: VkStructureType = 1000602000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_METAL_HANDLE_PROPERTIES_EXT: VkStructureType = 1000602001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_METAL_HANDLE_INFO_EXT: VkStructureType = 1000602002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_KHR: VkStructureType = 1000421000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_METAL_HANDLE_INFO_EXT: VkStructureType =
+    1000602000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_METAL_HANDLE_PROPERTIES_EXT: VkStructureType =
+    1000602001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_GET_METAL_HANDLE_INFO_EXT: VkStructureType =
+    1000602002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_KHR:
+    VkStructureType = 1000421000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_FEATURES_ARM: VkStructureType = 1000605000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_PROPERTIES_ARM: VkStructureType = 1000605001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_ARM: VkStructureType = 1000605002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_ARM: VkStructureType = 1000605003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_ARM: VkStructureType =
+    1000605003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_PERFORMANCE_COUNTERS_BY_REGION_BEGIN_INFO_ARM: VkStructureType = 1000605004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INSTRUMENTATION_FEATURES_ARM: VkStructureType = 1000607000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INSTRUMENTATION_FEATURES_ARM:
+    VkStructureType = 1000607000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INSTRUMENTATION_PROPERTIES_ARM: VkStructureType = 1000607001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_INSTRUMENTATION_CREATE_INFO_ARM: VkStructureType = 1000607002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_INSTRUMENTATION_METRIC_DESCRIPTION_ARM: VkStructureType = 1000607003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_INSTRUMENTATION_CREATE_INFO_ARM:
+    VkStructureType = 1000607002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_INSTRUMENTATION_METRIC_DESCRIPTION_ARM:
+    VkStructureType = 1000607003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_ROBUSTNESS_FEATURES_EXT: VkStructureType = 1000608000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FORMAT_PACK_FEATURES_ARM: VkStructureType = 1000609000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FORMAT_PACK_FEATURES_ARM:
+    VkStructureType = 1000609000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_FEATURES_VALVE: VkStructureType = 1000611000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_PROPERTIES_VALVE: VkStructureType = 1000611001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_DENSITY_MAP_LAYERED_CREATE_INFO_VALVE: VkStructureType = 1000611002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: VkStructureType = 1000286000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: VkStructureType = 1000286001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR:
+    VkStructureType = 1000286000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR:
+    VkStructureType = 1000286001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SET_PRESENT_CONFIG_NV: VkStructureType = 1000613000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_METERING_FEATURES_NV: VkStructureType = 1000613001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_METERING_FEATURES_NV:
+    VkStructureType = 1000613001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_EXT: VkStructureType = 1000425000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_EXT: VkStructureType = 1000425001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_EXT: VkStructureType = 1000425002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_EXT:
+    VkStructureType = 1000425002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_DEVICE_MEMORY_FEATURES_EXT: VkStructureType = 1000620000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR: VkStructureType = 1000361000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_64_BIT_INDEXING_FEATURES_EXT: VkStructureType = 1000627000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_RESOLVE_FEATURES_EXT: VkStructureType = 1000628000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BEGIN_CUSTOM_RESOLVE_INFO_EXT: VkStructureType = 1000628001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CUSTOM_RESOLVE_CREATE_INFO_EXT: VkStructureType = 1000628002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_MODEL_FEATURES_QCOM: VkStructureType = 1000629000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_BUILTIN_MODEL_CREATE_INFO_QCOM: VkStructureType = 1000629001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_FEATURES_KHR: VkStructureType = 1000630000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR: VkStructureType = 1000630001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR: VkStructureType = 1000630002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_64_BIT_INDEXING_FEATURES_EXT:
+    VkStructureType = 1000627000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_RESOLVE_FEATURES_EXT:
+    VkStructureType = 1000628000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BEGIN_CUSTOM_RESOLVE_INFO_EXT: VkStructureType =
+    1000628001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CUSTOM_RESOLVE_CREATE_INFO_EXT: VkStructureType =
+    1000628002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_MODEL_FEATURES_QCOM:
+    VkStructureType = 1000629000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_BUILTIN_MODEL_CREATE_INFO_QCOM:
+    VkStructureType = 1000629001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_FEATURES_KHR:
+    VkStructureType = 1000630000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR:
+    VkStructureType = 1000630001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR: VkStructureType =
+    1000630002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_END_INFO_KHR: VkStructureType = 1000619003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR: VkStructureType = 1000630004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_OPTICAL_FLOW_FEATURES_ARM: VkStructureType = 1000631000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_OPTICAL_FLOW_PROPERTIES_ARM: VkStructureType = 1000631001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_OPTICAL_FLOW_IMAGE_FORMAT_INFO_ARM: VkStructureType = 1000631003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_ARM: VkStructureType = 1000631004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_OPTICAL_FLOW_DISPATCH_INFO_ARM: VkStructureType = 1000631005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_OPTICAL_FLOW_CREATE_INFO_ARM: VkStructureType = 1000631002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_RESOURCE_INFO_IMAGE_LAYOUT_ARM: VkStructureType = 1000631006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SINGLE_NODE_CREATE_INFO_ARM: VkStructureType = 1000631007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SINGLE_NODE_CONNECTION_ARM: VkStructureType = 1000631008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_LONG_VECTOR_FEATURES_EXT: VkStructureType = 1000635000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_LONG_VECTOR_PROPERTIES_EXT: VkStructureType = 1000635001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR: VkStructureType =
+    1000630004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_OPTICAL_FLOW_FEATURES_ARM:
+    VkStructureType = 1000631000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_DATA_GRAPH_OPTICAL_FLOW_PROPERTIES_ARM:
+    VkStructureType = 1000631001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_OPTICAL_FLOW_IMAGE_FORMAT_INFO_ARM:
+    VkStructureType = 1000631003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_ARM:
+    VkStructureType = 1000631004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_OPTICAL_FLOW_DISPATCH_INFO_ARM:
+    VkStructureType = 1000631005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_OPTICAL_FLOW_CREATE_INFO_ARM:
+    VkStructureType = 1000631002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_RESOURCE_INFO_IMAGE_LAYOUT_ARM:
+    VkStructureType = 1000631006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SINGLE_NODE_CREATE_INFO_ARM:
+    VkStructureType = 1000631007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SINGLE_NODE_CONNECTION_ARM:
+    VkStructureType = 1000631008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_LONG_VECTOR_FEATURES_EXT:
+    VkStructureType = 1000635000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_LONG_VECTOR_PROPERTIES_EXT:
+    VkStructureType = 1000635001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CACHE_INCREMENTAL_MODE_FEATURES_SEC: VkStructureType = 1000637000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNIFORM_BUFFER_UNSIZED_ARRAY_FEATURES_EXT: VkStructureType = 1000642000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_OCCUPANCY_PRIORITY_PARAMETERS_NV: VkStructureType = 1000645000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_OCCUPANCY_PRIORITY_PARAMETERS_NV:
+    VkStructureType = 1000645000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_OCCUPANCY_PRIORITY_FEATURES_NV: VkStructureType = 1000645001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_11_FEATURES_KHR: VkStructureType = 1000657000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_11_FEATURES_KHR:
+    VkStructureType = 1000657000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_OPTIMAL_IMAGE_TRANSFER_GRANULARITY_PROPERTIES_KHR: VkStructureType = 1000657001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_PARTITIONED_FEATURES_EXT: VkStructureType = 1000662000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_UBM_SURFACE_CREATE_INFO_SEC: VkStructureType = 1000664000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_UBM_SURFACE_CREATE_INFO_SEC: VkStructureType =
+    1000664000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MIXED_FLOAT_DOT_PRODUCT_FEATURES_VALVE: VkStructureType = 1000673000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_THROTTLE_HINT_FEATURES_SEC: VkStructureType = 1000674000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_THROTTLE_HINT_SUBMIT_INFO_SEC: VkStructureType = 1000674001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_THROTTLE_HINT_FEATURES_SEC:
+    VkStructureType = 1000674000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_THROTTLE_HINT_SUBMIT_INFO_SEC: VkStructureType =
+    1000674001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_NEURAL_STATISTICS_CREATE_INFO_ARM: VkStructureType = 1000676000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_SESSION_NEURAL_STATISTICS_CREATE_INFO_ARM: VkStructureType = 1000676001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_NEURAL_ACCELERATOR_STATISTICS_FEATURES_ARM: VkStructureType = 1000676002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_RESTART_INDEX_FEATURES_EXT: VkStructureType = 1000678000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: VkStructureType = 1000120000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES: VkStructureType = 1000063000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT: VkStructureType = 1000011000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_RESTART_INDEX_FEATURES_EXT:
+    VkStructureType = 1000678000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES:
+    VkStructureType = 1000120000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES:
+    VkStructureType = 1000063000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT: VkStructureType =
+    1000011000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INFO_KHR: VkStructureType = 1000044000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR: VkStructureType = 1000044001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR: VkStructureType = 1000044002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: VkStructureType = 1000044003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR: VkStructureType = 1000044004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR: VkStructureType = 1000053000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR: VkStructureType = 1000053001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR: VkStructureType = 1000053002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR: VkStructureType = 1000059000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR: VkStructureType = 1000059001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR: VkStructureType =
+    1000044001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR: VkStructureType =
+    1000044002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR:
+    VkStructureType = 1000044003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR:
+    VkStructureType = 1000044004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR: VkStructureType =
+    1000053000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR:
+    VkStructureType = 1000053001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR:
+    VkStructureType = 1000053002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR: VkStructureType =
+    1000059000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR: VkStructureType =
+    1000059001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR: VkStructureType = 1000059002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR: VkStructureType = 1000059003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR: VkStructureType = 1000059004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR: VkStructureType = 1000059005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR: VkStructureType = 1000059006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR: VkStructureType = 1000059007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR: VkStructureType = 1000059008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR: VkStructureType = 1000060000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHR: VkStructureType = 1000060003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHR: VkStructureType = 1000060004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHR: VkStructureType = 1000060005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHR: VkStructureType = 1000060006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR: VkStructureType = 1000060013;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR: VkStructureType = 1000060014;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR: VkStructureType =
+    1000059003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR:
+    VkStructureType = 1000059004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR: VkStructureType =
+    1000059005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR:
+    VkStructureType = 1000059006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR: VkStructureType =
+    1000059007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR:
+    VkStructureType = 1000059008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR: VkStructureType =
+    1000060000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHR:
+    VkStructureType = 1000060003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHR:
+    VkStructureType = 1000060004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHR: VkStructureType =
+    1000060005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHR: VkStructureType =
+    1000060006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR:
+    VkStructureType = 1000060013;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR:
+    VkStructureType = 1000060014;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT: VkStructureType = 1000066000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT: VkStructureType = 1000068000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT: VkStructureType = 1000068001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: VkStructureType = 1000068002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHR: VkStructureType = 1000070000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHR: VkStructureType = 1000070001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHR: VkStructureType = 1000071000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHR: VkStructureType = 1000071001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHR: VkStructureType = 1000071002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHR: VkStructureType = 1000071003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR: VkStructureType = 1000071004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR: VkStructureType = 1000072000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR: VkStructureType = 1000072001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR: VkStructureType = 1000072002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHR: VkStructureType = 1000076000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHR: VkStructureType = 1000076001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR: VkStructureType = 1000077000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: VkStructureType = 1000080000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR: VkStructureType = 1000082000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: VkStructureType = 1000082000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR: VkStructureType = 1000083000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR: VkStructureType = 1000085000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO_EXT: VkStructureType =
+    1000068000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT:
+    VkStructureType = 1000068001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT:
+    VkStructureType = 1000068002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHR: VkStructureType =
+    1000070000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO_KHR: VkStructureType =
+    1000070001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHR:
+    VkStructureType = 1000071000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHR: VkStructureType =
+    1000071001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO_KHR:
+    VkStructureType = 1000071002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES_KHR: VkStructureType =
+    1000071003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR: VkStructureType =
+    1000071004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO_KHR:
+    VkStructureType = 1000072000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR: VkStructureType =
+    1000072001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR: VkStructureType =
+    1000072002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO_KHR:
+    VkStructureType = 1000076000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES_KHR: VkStructureType =
+    1000076001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO_KHR: VkStructureType =
+    1000077000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR:
+    VkStructureType = 1000080000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR:
+    VkStructureType = 1000082000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR:
+    VkStructureType = 1000082000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR:
+    VkStructureType = 1000083000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR:
+    VkStructureType = 1000085000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT: VkStructureType = 1000090000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: VkStructureType = 1000108000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO_KHR: VkStructureType = 1000108001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO_KHR: VkStructureType = 1000108002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR: VkStructureType = 1000108003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR: VkStructureType = 1000109000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR: VkStructureType = 1000109001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR:
+    VkStructureType = 1000108000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO_KHR:
+    VkStructureType = 1000108001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO_KHR: VkStructureType =
+    1000108002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR: VkStructureType =
+    1000108003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR: VkStructureType =
+    1000109000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR: VkStructureType =
+    1000109001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR: VkStructureType = 1000109002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2_KHR: VkStructureType = 1000109003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR: VkStructureType = 1000109004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR: VkStructureType =
+    1000109004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO_KHR: VkStructureType = 1000109005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_END_INFO_KHR: VkStructureType = 1000109006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO_KHR: VkStructureType = 1000112000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES_KHR: VkStructureType = 1000112001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO_KHR: VkStructureType = 1000113000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR: VkStructureType = 1000117000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR: VkStructureType = 1000117001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR: VkStructureType = 1000117002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO_KHR:
+    VkStructureType = 1000112000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES_KHR: VkStructureType =
+    1000112001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO_KHR: VkStructureType =
+    1000113000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR:
+    VkStructureType = 1000117000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR:
+    VkStructureType = 1000117001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR: VkStructureType =
+    1000117002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO_KHR: VkStructureType = 1000117003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES_KHR: VkStructureType = 1000120000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR: VkStructureType = 1000120000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: VkStructureType = 1000127000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: VkStructureType = 1000127001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: VkStructureType = 1000130000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT: VkStructureType = 1000130001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: VkStructureType = 1000138000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: VkStructureType = 1000138001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: VkStructureType = 1000138002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: VkStructureType = 1000138003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR: VkStructureType = 1000146000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR: VkStructureType = 1000146001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2_KHR: VkStructureType = 1000146002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES_KHR:
+    VkStructureType = 1000120000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR:
+    VkStructureType = 1000120000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: VkStructureType =
+    1000127000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: VkStructureType =
+    1000127001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT:
+    VkStructureType = 1000130000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT:
+    VkStructureType = 1000130001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT:
+    VkStructureType = 1000138000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT:
+    VkStructureType = 1000138001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT:
+    VkStructureType = 1000138002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT:
+    VkStructureType = 1000138003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR: VkStructureType =
+    1000146000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR: VkStructureType =
+    1000146001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2_KHR:
+    VkStructureType = 1000146002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR: VkStructureType = 1000146003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR: VkStructureType = 1000146004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: VkStructureType = 1000147000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_NV: VkStructureType = 1000044008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR: VkStructureType = 1000156000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: VkStructureType = 1000156001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR: VkStructureType = 1000156002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR: VkStructureType = 1000156003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR:
+    VkStructureType = 1000146004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: VkStructureType =
+    1000147000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_NV: VkStructureType =
+    1000044008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR:
+    VkStructureType = 1000156000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: VkStructureType =
+    1000156001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR: VkStructureType =
+    1000156002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR:
+    VkStructureType = 1000156003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES_KHR: VkStructureType = 1000156004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR: VkStructureType = 1000156005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR: VkStructureType = 1000157000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR: VkStructureType = 1000157001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT: VkStructureType = 1000161000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: VkStructureType = 1000161001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: VkStructureType = 1000161002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR:
+    VkStructureType = 1000156005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR: VkStructureType =
+    1000157000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR: VkStructureType =
+    1000157001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT:
+    VkStructureType = 1000161000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT:
+    VkStructureType = 1000161001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT:
+    VkStructureType = 1000161002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT: VkStructureType = 1000161003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT: VkStructureType = 1000161004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES_KHR: VkStructureType = 1000168000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT_KHR: VkStructureType = 1000168001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT: VkStructureType = 1000174000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES_KHR:
+    VkStructureType = 1000168000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT_KHR: VkStructureType =
+    1000168001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT:
+    VkStructureType = 1000174000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: VkStructureType = 1000175000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: VkStructureType = 1000177000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: VkStructureType = 1000180000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT: VkStructureType = 1000184000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR: VkStructureType = 1000174000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: VkStructureType = 1000388000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR: VkStructureType = 1000388001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: VkStructureType = 1000190001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR:
+    VkStructureType = 1000177000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR:
+    VkStructureType = 1000180000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT: VkStructureType =
+    1000184000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR:
+    VkStructureType = 1000174000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR:
+    VkStructureType = 1000388000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR:
+    VkStructureType = 1000388001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+    VkStructureType = 1000190001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: VkStructureType = 1000190002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: VkStructureType = 1000192000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: VkStructureType = 1000196000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR: VkStructureType = 1000197000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: VkStructureType = 1000199000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR: VkStructureType = 1000199001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT:
+    VkStructureType = 1000192000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: VkStructureType =
+    1000196000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR:
+    VkStructureType = 1000197000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR:
+    VkStructureType = 1000199000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR:
+    VkStructureType = 1000199001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: VkStructureType = 1000201000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV: VkStructureType = 1000203000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR: VkStructureType = 1000207000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR: VkStructureType = 1000207001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR: VkStructureType = 1000207002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR: VkStructureType = 1000207003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR:
+    VkStructureType = 1000207000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR:
+    VkStructureType = 1000207001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR: VkStructureType =
+    1000207002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR: VkStructureType =
+    1000207003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR: VkStructureType = 1000207004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR: VkStructureType = 1000207005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL: VkStructureType = 1000210000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: VkStructureType = 1000211000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO_INTEL: VkStructureType =
+    1000210000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR:
+    VkStructureType = 1000211000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: VkStructureType = 1000215000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: VkStructureType = 1000221000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: VkStructureType = 1000225000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT:
+    VkStructureType = 1000221000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT:
+    VkStructureType = 1000225000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT: VkStructureType = 1000225001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: VkStructureType = 1000225002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT:
+    VkStructureType = 1000225002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR: VkStructureType = 1000232000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR: VkStructureType = 1000232001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO_KHR: VkStructureType = 1000232002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR:
+    VkStructureType = 1000232001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO_KHR:
+    VkStructureType = 1000232002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: VkStructureType = 1000241000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR: VkStructureType = 1000241001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR: VkStructureType = 1000241002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT: VkStructureType = 1000244000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT: VkStructureType = 1000244001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT: VkStructureType = 1000245000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT: VkStructureType = 1000246000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR:
+    VkStructureType = 1000241001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR:
+    VkStructureType = 1000241002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT:
+    VkStructureType = 1000244000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT: VkStructureType =
+    1000244001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT: VkStructureType =
+    1000245000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT: VkStructureType =
+    1000246000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: VkStructureType = 1000253000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: VkStructureType = 1000257000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR: VkStructureType = 1000244001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO_KHR: VkStructureType = 1000257002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO_KHR: VkStructureType = 1000257003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO_KHR: VkStructureType = 1000257004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: VkStructureType = 1000259000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: VkStructureType = 1000259001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: VkStructureType = 1000259002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: VkStructureType = 1000261000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: VkStructureType = 1000265000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT: VkStructureType = 1000270000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: VkStructureType = 1000270001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR:
+    VkStructureType = 1000257000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR: VkStructureType =
+    1000244001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO_KHR:
+    VkStructureType = 1000257002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO_KHR:
+    VkStructureType = 1000257003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO_KHR:
+    VkStructureType = 1000257004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
+    VkStructureType = 1000259000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT:
+    VkStructureType = 1000259001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT:
+    VkStructureType = 1000259002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT:
+    VkStructureType = 1000261000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT:
+    VkStructureType = 1000265000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT:
+    VkStructureType = 1000270000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT:
+    VkStructureType = 1000270001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT: VkStructureType = 1000270002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY_EXT: VkStructureType = 1000270003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT: VkStructureType = 1000270004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT: VkStructureType = 1000270005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT: VkStructureType = 1000270006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_IMAGE_INFO_EXT: VkStructureType = 1000270007;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE_EXT: VkStructureType = 1000270008;
-pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT: VkStructureType = 1000270009;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT: VkStructureType =
+    1000270004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT: VkStructureType =
+    1000270005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT: VkStructureType =
+    1000270006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_IMAGE_INFO_EXT: VkStructureType =
+    1000270007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE_EXT: VkStructureType =
+    1000270008;
+pub const VkStructureType_VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT:
+    VkStructureType = 1000270009;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_MAP_INFO_KHR: VkStructureType = 1000271000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO_KHR: VkStructureType = 1000271001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: VkStructureType = 1000274000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: VkStructureType = 1000274001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: VkStructureType = 1000274002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: VkStructureType = 1000275000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT: VkStructureType = 1000275001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT: VkStructureType = 1000275002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT: VkStructureType = 1000275003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT: VkStructureType = 1000275004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT: VkStructureType = 1000275005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT:
+    VkStructureType = 1000274001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT:
+    VkStructureType = 1000274002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT:
+    VkStructureType = 1000275000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT: VkStructureType =
+    1000275001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT:
+    VkStructureType = 1000275002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT: VkStructureType =
+    1000275003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT:
+    VkStructureType = 1000275004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT: VkStructureType =
+    1000275005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: VkStructureType = 1000276000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES_KHR: VkStructureType = 1000280000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES_KHR: VkStructureType = 1000280001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: VkStructureType = 1000281001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: VkStructureType = 1000286000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: VkStructureType = 1000286001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: VkStructureType = 1000295000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: VkStructureType = 1000295001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO_EXT: VkStructureType = 1000295002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT:
+    VkStructureType = 1000286000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
+    VkStructureType = 1000286001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT:
+    VkStructureType = 1000295000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: VkStructureType =
+    1000295001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO_EXT: VkStructureType =
+    1000295002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: VkStructureType = 1000297000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR: VkStructureType = 1000314000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR: VkStructureType = 1000314001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR: VkStructureType = 1000314002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR: VkStructureType =
+    1000314001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR: VkStructureType =
+    1000314002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR: VkStructureType = 1000314003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO_2_KHR: VkStructureType = 1000314004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR: VkStructureType = 1000314005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR: VkStructureType = 1000314006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR: VkStructureType = 1000314007;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR: VkStructureType =
+    1000314006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR:
+    VkStructureType = 1000314007;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR: VkStructureType = 1000325000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: VkStructureType = 1000335000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT:
+    VkStructureType = 1000335000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR: VkStructureType = 1000337000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2_KHR: VkStructureType = 1000337001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2_KHR: VkStructureType = 1000337002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2_KHR: VkStructureType = 1000337003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2_KHR: VkStructureType =
+    1000337002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2_KHR: VkStructureType =
+    1000337003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2_KHR: VkStructureType = 1000337004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR: VkStructureType = 1000337005;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR: VkStructureType = 1000337006;
@@ -5340,63 +6579,106 @@ pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_EXT: VkStructur
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_EXT: VkStructureType = 1000338003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_ARM: VkStructureType = 1000342000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: VkStructureType = 1000351000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE: VkStructureType = 1000351002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE:
+    VkStructureType = 1000351002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR: VkStructureType = 1000360000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT: VkStructureType = 1000361000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INFO_EXT: VkStructureType = 1000269001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: VkStructureType = 1000388000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: VkStructureType = 1000388001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR: VkStructureType = 1000413000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: VkStructureType = 1000413001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS_KHR: VkStructureType = 1000413002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS_KHR: VkStructureType = 1000413003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR: VkStructureType = 1000416000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT: VkStructureType = 1000421000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT:
+    VkStructureType = 1000388000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT:
+    VkStructureType = 1000388001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR:
+    VkStructureType = 1000413000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR:
+    VkStructureType = 1000413001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS_KHR: VkStructureType =
+    1000413002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS_KHR: VkStructureType =
+    1000413003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR:
+    VkStructureType = 1000416000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT:
+    VkStructureType = 1000421000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_QCOM: VkStructureType = 1000425000;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_QCOM: VkStructureType = 1000425001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM: VkStructureType = 1000425002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV: VkStructureType = 1000426001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV: VkStructureType = 1000427000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV: VkStructureType = 1000427001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM:
+    VkStructureType = 1000425002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV:
+    VkStructureType = 1000426001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV:
+    VkStructureType = 1000427000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV:
+    VkStructureType = 1000427001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT: VkStructureType = 1000466000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR: VkStructureType = 1000470000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: VkStructureType = 1000470001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR:
+    VkStructureType = 1000470000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR:
+    VkStructureType = 1000470001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_AREA_INFO_KHR: VkStructureType = 1000470003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO_KHR: VkStructureType = 1000470004;
+pub const VkStructureType_VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO_KHR: VkStructureType =
+    1000470004;
 pub const VkStructureType_VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR: VkStructureType = 1000338002;
 pub const VkStructureType_VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR: VkStructureType = 1000338003;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR: VkStructureType = 1000470005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR: VkStructureType = 1000470006;
-pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT: VkStructureType = 1000225001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR:
+    VkStructureType = 1000470005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR: VkStructureType =
+    1000470006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_SHADER_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT:
+    VkStructureType = 1000225001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_KHR: VkStructureType = 1000525000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_KHR: VkStructureType = 1000190001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_KHR:
+    VkStructureType = 1000190001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_KHR: VkStructureType = 1000190002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES_KHR: VkStructureType = 1000528000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_KHR: VkStructureType = 1000265000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR: VkStructureType = 1000259000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR: VkStructureType = 1000259001;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_KHR: VkStructureType = 1000259002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES_KHR: VkStructureType = 1000544000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR: VkStructureType = 1000545000;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR: VkStructureType = 1000545001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES_KHR:
+    VkStructureType = 1000528000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_KHR:
+    VkStructureType = 1000265000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR:
+    VkStructureType = 1000259000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR:
+    VkStructureType = 1000259001;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_KHR:
+    VkStructureType = 1000259002;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES_KHR:
+    VkStructureType = 1000544000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR:
+    VkStructureType = 1000545000;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR:
+    VkStructureType = 1000545001;
 pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_MEMORY_STATUS_KHR: VkStructureType = 1000545002;
-pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO_KHR: VkStructureType = 1000545003;
+pub const VkStructureType_VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO_KHR: VkStructureType =
+    1000545003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR: VkStructureType = 1000545004;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR: VkStructureType = 1000545005;
-pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO_KHR: VkStructureType = 1000545006;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_INFO_KHR: VkStructureType =
+    1000545005;
+pub const VkStructureType_VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO_KHR:
+    VkStructureType = 1000545006;
 pub const VkStructureType_VK_STRUCTURE_TYPE_RENDERING_END_INFO_EXT: VkStructureType = 1000619003;
 pub const VkStructureType_VK_STRUCTURE_TYPE_MAX_ENUM: VkStructureType = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkStructureType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkStructureType = ::std::os::raw::c_int;
 pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_COMMAND: VkSystemAllocationScope = 0;
 pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_OBJECT: VkSystemAllocationScope = 1;
 pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_CACHE: VkSystemAllocationScope = 2;
 pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_DEVICE: VkSystemAllocationScope = 3;
 pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE: VkSystemAllocationScope = 4;
-pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_MAX_ENUM: VkSystemAllocationScope = 2147483647;
+pub const VkSystemAllocationScope_VK_SYSTEM_ALLOCATION_SCOPE_MAX_ENUM: VkSystemAllocationScope =
+    2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkSystemAllocationScope = ::std::os::raw::c_uint;
-pub const VkInternalAllocationType_VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE: VkInternalAllocationType = 0;
-pub const VkInternalAllocationType_VK_INTERNAL_ALLOCATION_TYPE_MAX_ENUM: VkInternalAllocationType = 2147483647;
+#[cfg(target_os = "windows")]
+pub type VkSystemAllocationScope = ::std::os::raw::c_int;
+pub const VkInternalAllocationType_VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE:
+    VkInternalAllocationType = 0;
+pub const VkInternalAllocationType_VK_INTERNAL_ALLOCATION_TYPE_MAX_ENUM: VkInternalAllocationType =
+    2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkInternalAllocationType = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkInternalAllocationType = ::std::os::raw::c_int;
 pub const VkFormat_VK_FORMAT_UNDEFINED: VkFormat = 0;
 pub const VkFormat_VK_FORMAT_R4G4_UNORM_PACK8: VkFormat = 1;
 pub const VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16: VkFormat = 2;
@@ -5753,12 +7035,18 @@ pub const VkFormat_VK_FORMAT_R16G16_S10_5_NV: VkFormat = 1000464000;
 pub const VkFormat_VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR: VkFormat = 1000470000;
 pub const VkFormat_VK_FORMAT_A8_UNORM_KHR: VkFormat = 1000470001;
 pub const VkFormat_VK_FORMAT_MAX_ENUM: VkFormat = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkFormat = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkFormat = ::std::os::raw::c_int;
 pub const VkImageTiling_VK_IMAGE_TILING_OPTIMAL: VkImageTiling = 0;
 pub const VkImageTiling_VK_IMAGE_TILING_LINEAR: VkImageTiling = 1;
 pub const VkImageTiling_VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT: VkImageTiling = 1000158000;
 pub const VkImageTiling_VK_IMAGE_TILING_MAX_ENUM: VkImageTiling = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkImageTiling = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkImageTiling = ::std::os::raw::c_int;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED: VkImageLayout = 0;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_GENERAL: VkImageLayout = 1;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: VkImageLayout = 2;
@@ -5768,8 +7056,10 @@ pub const VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: VkImageLayout 
 pub const VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL: VkImageLayout = 6;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: VkImageLayout = 7;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED: VkImageLayout = 8;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL: VkImageLayout = 1000117000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL: VkImageLayout = 1000117001;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL: VkImageLayout =
+    1000117000;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL: VkImageLayout =
+    1000117001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL: VkImageLayout = 1000241000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL: VkImageLayout = 1000241001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL: VkImageLayout = 1000241002;
@@ -5782,17 +7072,23 @@ pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR: VkImageLayout = 10
 pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR: VkImageLayout = 1000024001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_DECODE_DPB_KHR: VkImageLayout = 1000024002;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR: VkImageLayout = 1000111000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT: VkImageLayout = 1000218000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR: VkImageLayout = 1000164003;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT: VkImageLayout =
+    1000218000;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+    VkImageLayout = 1000164003;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_ENCODE_DST_KHR: VkImageLayout = 1000299000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_ENCODE_SRC_KHR: VkImageLayout = 1000299001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_ENCODE_DPB_KHR: VkImageLayout = 1000299002;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT: VkImageLayout = 1000339000;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT: VkImageLayout =
+    1000339000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_TENSOR_ALIASING_ARM: VkImageLayout = 1000460000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_ENCODE_QUANTIZATION_MAP_KHR: VkImageLayout = 1000553000;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_VIDEO_ENCODE_QUANTIZATION_MAP_KHR: VkImageLayout =
+    1000553000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT: VkImageLayout = 1000620000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR: VkImageLayout = 1000117000;
-pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR: VkImageLayout = 1000117001;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR:
+    VkImageLayout = 1000117000;
+pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR:
+    VkImageLayout = 1000117001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV: VkImageLayout = 1000164003;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_RENDERING_LOCAL_READ_KHR: VkImageLayout = 1000232000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR: VkImageLayout = 1000241000;
@@ -5802,48 +7098,78 @@ pub const VkImageLayout_VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR: VkImageLa
 pub const VkImageLayout_VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR: VkImageLayout = 1000314000;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR: VkImageLayout = 1000314001;
 pub const VkImageLayout_VK_IMAGE_LAYOUT_MAX_ENUM: VkImageLayout = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkImageLayout = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkImageLayout = ::std::os::raw::c_int;
 pub type VkImageCreateFlags = VkFlags;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT: VkImageUsageFlagBits = 1;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT: VkImageUsageFlagBits = 2;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT: VkImageUsageFlagBits = 4;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT: VkImageUsageFlagBits = 8;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT: VkImageUsageFlagBits = 16;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT: VkImageUsageFlagBits = 32;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT: VkImageUsageFlagBits =
+    32;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT: VkImageUsageFlagBits = 64;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT: VkImageUsageFlagBits = 128;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_HOST_TRANSFER_BIT: VkImageUsageFlagBits = 4194304;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR: VkImageUsageFlagBits = 1024;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR: VkImageUsageFlagBits = 2048;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR: VkImageUsageFlagBits = 4096;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT: VkImageUsageFlagBits = 512;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR: VkImageUsageFlagBits = 256;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT: VkImageUsageFlagBits =
+    512;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:
+    VkImageUsageFlagBits = 256;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_DST_BIT_KHR: VkImageUsageFlagBits = 8192;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR: VkImageUsageFlagBits = 16384;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR: VkImageUsageFlagBits = 32768;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT: VkImageUsageFlagBits = 524288;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI: VkImageUsageFlagBits = 262144;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLE_WEIGHT_BIT_QCOM: VkImageUsageFlagBits = 1048576;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLE_BLOCK_MATCH_BIT_QCOM: VkImageUsageFlagBits = 2097152;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TENSOR_ALIASING_BIT_ARM: VkImageUsageFlagBits = 8388608;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TILE_MEMORY_BIT_QCOM: VkImageUsageFlagBits = 134217728;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_QUANTIZATION_DELTA_MAP_BIT_KHR: VkImageUsageFlagBits = 33554432;
-pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_EMPHASIS_MAP_BIT_KHR: VkImageUsageFlagBits = 67108864;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR: VkImageUsageFlagBits =
+    16384;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR: VkImageUsageFlagBits =
+    32768;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT:
+    VkImageUsageFlagBits = 524288;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI: VkImageUsageFlagBits =
+    262144;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLE_WEIGHT_BIT_QCOM: VkImageUsageFlagBits =
+    1048576;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLE_BLOCK_MATCH_BIT_QCOM: VkImageUsageFlagBits =
+    2097152;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TENSOR_ALIASING_BIT_ARM: VkImageUsageFlagBits =
+    8388608;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_TILE_MEMORY_BIT_QCOM: VkImageUsageFlagBits =
+    134217728;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_QUANTIZATION_DELTA_MAP_BIT_KHR:
+    VkImageUsageFlagBits = 33554432;
+pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_VIDEO_ENCODE_EMPHASIS_MAP_BIT_KHR:
+    VkImageUsageFlagBits = 67108864;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV: VkImageUsageFlagBits = 256;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT: VkImageUsageFlagBits = 4194304;
 pub const VkImageUsageFlagBits_VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM: VkImageUsageFlagBits = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkImageUsageFlagBits = ::std::os::raw::c_uint;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT: VkMemoryPropertyFlagBits = 1;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT: VkMemoryPropertyFlagBits = 2;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT: VkMemoryPropertyFlagBits = 4;
+#[cfg(target_os = "windows")]
+pub type VkImageUsageFlagBits = ::std::os::raw::c_int;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT: VkMemoryPropertyFlagBits =
+    1;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT: VkMemoryPropertyFlagBits =
+    2;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT: VkMemoryPropertyFlagBits =
+    4;
 pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_CACHED_BIT: VkMemoryPropertyFlagBits = 8;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT: VkMemoryPropertyFlagBits = 16;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT:
+    VkMemoryPropertyFlagBits = 16;
 pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_PROTECTED_BIT: VkMemoryPropertyFlagBits = 32;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD: VkMemoryPropertyFlagBits = 64;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD: VkMemoryPropertyFlagBits = 128;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_RDMA_CAPABLE_BIT_NV: VkMemoryPropertyFlagBits = 256;
-pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM: VkMemoryPropertyFlagBits = 2147483647;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD:
+    VkMemoryPropertyFlagBits = 64;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD:
+    VkMemoryPropertyFlagBits = 128;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_RDMA_CAPABLE_BIT_NV:
+    VkMemoryPropertyFlagBits = 256;
+pub const VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM: VkMemoryPropertyFlagBits =
+    2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkMemoryPropertyFlagBits = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkMemoryPropertyFlagBits = ::std::os::raw::c_int;
 pub const VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT: VkQueueFlagBits = 1;
 pub const VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT: VkQueueFlagBits = 2;
 pub const VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT: VkQueueFlagBits = 4;
@@ -5854,7 +7180,10 @@ pub const VkQueueFlagBits_VK_QUEUE_VIDEO_ENCODE_BIT_KHR: VkQueueFlagBits = 64;
 pub const VkQueueFlagBits_VK_QUEUE_OPTICAL_FLOW_BIT_NV: VkQueueFlagBits = 256;
 pub const VkQueueFlagBits_VK_QUEUE_DATA_GRAPH_BIT_ARM: VkQueueFlagBits = 1024;
 pub const VkQueueFlagBits_VK_QUEUE_FLAG_BITS_MAX_ENUM: VkQueueFlagBits = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkQueueFlagBits = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkQueueFlagBits = ::std::os::raw::c_int;
 pub const VkAccessFlagBits_VK_ACCESS_INDIRECT_COMMAND_READ_BIT: VkAccessFlagBits = 1;
 pub const VkAccessFlagBits_VK_ACCESS_INDEX_READ_BIT: VkAccessFlagBits = 2;
 pub const VkAccessFlagBits_VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT: VkAccessFlagBits = 4;
@@ -5874,24 +7203,34 @@ pub const VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT: VkAccessFlagBits = 32768;
 pub const VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT: VkAccessFlagBits = 65536;
 pub const VkAccessFlagBits_VK_ACCESS_NONE: VkAccessFlagBits = 0;
 pub const VkAccessFlagBits_VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT: VkAccessFlagBits = 33554432;
-pub const VkAccessFlagBits_VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: VkAccessFlagBits = 67108864;
-pub const VkAccessFlagBits_VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: VkAccessFlagBits = 134217728;
+pub const VkAccessFlagBits_VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT: VkAccessFlagBits =
+    67108864;
+pub const VkAccessFlagBits_VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT: VkAccessFlagBits =
+    134217728;
 pub const VkAccessFlagBits_VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT: VkAccessFlagBits = 1048576;
-pub const VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT: VkAccessFlagBits = 524288;
-pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR: VkAccessFlagBits = 2097152;
-pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR: VkAccessFlagBits = 4194304;
+pub const VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT: VkAccessFlagBits =
+    524288;
+pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR: VkAccessFlagBits =
+    2097152;
+pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR: VkAccessFlagBits =
+    4194304;
 pub const VkAccessFlagBits_VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT: VkAccessFlagBits = 16777216;
-pub const VkAccessFlagBits_VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR: VkAccessFlagBits = 8388608;
+pub const VkAccessFlagBits_VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR:
+    VkAccessFlagBits = 8388608;
 pub const VkAccessFlagBits_VK_ACCESS_COMMAND_PREPROCESS_READ_BIT_EXT: VkAccessFlagBits = 131072;
 pub const VkAccessFlagBits_VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_EXT: VkAccessFlagBits = 262144;
 pub const VkAccessFlagBits_VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV: VkAccessFlagBits = 8388608;
 pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV: VkAccessFlagBits = 2097152;
-pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV: VkAccessFlagBits = 4194304;
+pub const VkAccessFlagBits_VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV: VkAccessFlagBits =
+    4194304;
 pub const VkAccessFlagBits_VK_ACCESS_COMMAND_PREPROCESS_READ_BIT_NV: VkAccessFlagBits = 131072;
 pub const VkAccessFlagBits_VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_NV: VkAccessFlagBits = 262144;
 pub const VkAccessFlagBits_VK_ACCESS_NONE_KHR: VkAccessFlagBits = 0;
 pub const VkAccessFlagBits_VK_ACCESS_FLAG_BITS_MAX_ENUM: VkAccessFlagBits = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkAccessFlagBits = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkAccessFlagBits = ::std::os::raw::c_int;
 pub type PFN_vkAllocationFunction = ::std::option::Option<
     unsafe extern "C" fn(
         pUserData: *mut ::std::os::raw::c_void,
@@ -6014,16 +7353,28 @@ pub struct VkPhysicalDeviceFeatures2 {
     pub pNext: *mut ::std::os::raw::c_void,
     pub features: VkPhysicalDeviceFeatures,
 }
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_NONE_KHR: VkVideoCodecOperationFlagBitsKHR = 0;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 65536;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 131072;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 1;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 2;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 4;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 262144;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_VP9_BIT_KHR: VkVideoCodecOperationFlagBitsKHR = 8;
-pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_FLAG_BITS_MAX_ENUM_KHR: VkVideoCodecOperationFlagBitsKHR = 2147483647;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_NONE_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 0;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 65536;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 131072;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 1;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 2;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 4;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 262144;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_DECODE_VP9_BIT_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 8;
+pub const VkVideoCodecOperationFlagBitsKHR_VK_VIDEO_CODEC_OPERATION_FLAG_BITS_MAX_ENUM_KHR:
+    VkVideoCodecOperationFlagBitsKHR = 2147483647;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type VkVideoCodecOperationFlagBitsKHR = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type VkVideoCodecOperationFlagBitsKHR = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVVulkanDeviceQueueFamily {
@@ -6066,7 +7417,10 @@ pub struct AVVulkanDeviceContext {
 }
 pub const AVVkFrameFlags_AV_VK_FRAME_FLAG_NONE: AVVkFrameFlags = 1;
 pub const AVVkFrameFlags_AV_VK_FRAME_FLAG_DISABLE_MULTIPLANE: AVVkFrameFlags = 4;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub type AVVkFrameFlags = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AVVkFrameFlags = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVVulkanFramesContext {
@@ -6101,7 +7455,10 @@ pub struct AVVkFrame {
     pub offset: [isize; 8usize],
     pub queue_family: [u32; 8usize],
 }
+#[cfg(target_os = "macos")]
 pub type __builtin_va_list = *mut ::std::os::raw::c_char;
+#[cfg(target_os = "linux")]
+pub type __builtin_va_list = [__va_list_tag; 1usize];
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVCodecInternal {
@@ -6117,11 +7474,13533 @@ pub struct AVFilterCommand {
 pub struct AVVkFrameInternal {
     pub _address: u8,
 }
+pub type __off_t = ::std::os::raw::c_long;
+pub type __off64_t = ::std::os::raw::c_long;
+pub type __time_t = ::std::os::raw::c_long;
+pub type __gnuc_va_list = __builtin_va_list;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_marker {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_codecvt {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_wide_data {
+    _unused: [u8; 0],
+}
+pub type _IO_lock_t = ::std::os::raw::c_void;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_FILE {
+    pub _flags: ::std::os::raw::c_int,
+    pub _IO_read_ptr: *mut ::std::os::raw::c_char,
+    pub _IO_read_end: *mut ::std::os::raw::c_char,
+    pub _IO_read_base: *mut ::std::os::raw::c_char,
+    pub _IO_write_base: *mut ::std::os::raw::c_char,
+    pub _IO_write_ptr: *mut ::std::os::raw::c_char,
+    pub _IO_write_end: *mut ::std::os::raw::c_char,
+    pub _IO_buf_base: *mut ::std::os::raw::c_char,
+    pub _IO_buf_end: *mut ::std::os::raw::c_char,
+    pub _IO_save_base: *mut ::std::os::raw::c_char,
+    pub _IO_backup_base: *mut ::std::os::raw::c_char,
+    pub _IO_save_end: *mut ::std::os::raw::c_char,
+    pub _markers: *mut _IO_marker,
+    pub _chain: *mut _IO_FILE,
+    pub _fileno: ::std::os::raw::c_int,
+    pub _flags2: ::std::os::raw::c_int,
+    pub _old_offset: __off_t,
+    pub _cur_column: ::std::os::raw::c_ushort,
+    pub _vtable_offset: ::std::os::raw::c_schar,
+    pub _shortbuf: [::std::os::raw::c_char; 1usize],
+    pub _lock: *mut _IO_lock_t,
+    pub _offset: __off64_t,
+    pub _codecvt: *mut _IO_codecvt,
+    pub _wide_data: *mut _IO_wide_data,
+    pub _freeres_list: *mut _IO_FILE,
+    pub _freeres_buf: *mut ::std::os::raw::c_void,
+    pub __pad5: usize,
+    pub _mode: ::std::os::raw::c_int,
+    pub _unused2: [::std::os::raw::c_char; 20usize],
+}
+#[cfg(target_os = "linux")]
+pub type wchar_t = ::std::os::raw::c_int;
+#[cfg(target_os = "windows")]
+pub type wchar_t = ::std::os::raw::c_ushort;
+pub type _bindgen_ty_8 = ::std::os::raw::c_uint;
+pub type VADisplay = *mut ::std::os::raw::c_void;
+pub type VAGenericID = ::std::os::raw::c_uint;
+pub type VAConfigID = VAGenericID;
+pub type VASurfaceID = VAGenericID;
+pub const VAGenericValueType_VAGenericValueTypeInteger: VAGenericValueType = 1;
+pub const VAGenericValueType_VAGenericValueTypeFloat: VAGenericValueType = 2;
+pub const VAGenericValueType_VAGenericValueTypePointer: VAGenericValueType = 3;
+pub const VAGenericValueType_VAGenericValueTypeFunc: VAGenericValueType = 4;
+pub type VAGenericValueType = ::std::os::raw::c_uint;
+pub type VAGenericFunc = ::std::option::Option<unsafe extern "C" fn()>;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _VAGenericValue {
+    pub type_: VAGenericValueType,
+    pub value: _VAGenericValue__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _VAGenericValue__bindgen_ty_1 {
+    pub i: i32,
+    pub f: f32,
+    pub p: *mut ::std::os::raw::c_void,
+    pub fn_: VAGenericFunc,
+}
+pub type VAGenericValue = _VAGenericValue;
+pub const VASurfaceAttribType_VASurfaceAttribNone: VASurfaceAttribType = 0;
+pub const VASurfaceAttribType_VASurfaceAttribPixelFormat: VASurfaceAttribType = 1;
+pub const VASurfaceAttribType_VASurfaceAttribMinWidth: VASurfaceAttribType = 2;
+pub const VASurfaceAttribType_VASurfaceAttribMaxWidth: VASurfaceAttribType = 3;
+pub const VASurfaceAttribType_VASurfaceAttribMinHeight: VASurfaceAttribType = 4;
+pub const VASurfaceAttribType_VASurfaceAttribMaxHeight: VASurfaceAttribType = 5;
+pub const VASurfaceAttribType_VASurfaceAttribMemoryType: VASurfaceAttribType = 6;
+pub const VASurfaceAttribType_VASurfaceAttribExternalBufferDescriptor: VASurfaceAttribType = 7;
+pub const VASurfaceAttribType_VASurfaceAttribUsageHint: VASurfaceAttribType = 8;
+pub const VASurfaceAttribType_VASurfaceAttribDRMFormatModifiers: VASurfaceAttribType = 9;
+pub const VASurfaceAttribType_VASurfaceAttribAlignmentSize: VASurfaceAttribType = 10;
+pub const VASurfaceAttribType_VASurfaceAttribCount: VASurfaceAttribType = 11;
+pub type VASurfaceAttribType = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _VASurfaceAttrib {
+    pub type_: VASurfaceAttribType,
+    pub flags: u32,
+    pub value: VAGenericValue,
+}
+pub type VASurfaceAttrib = _VASurfaceAttrib;
+pub const AV_VAAPI_DRIVER_QUIRK_USER_SET: _bindgen_ty_9 = 1;
+pub const AV_VAAPI_DRIVER_QUIRK_RENDER_PARAM_BUFFERS: _bindgen_ty_9 = 2;
+pub const AV_VAAPI_DRIVER_QUIRK_ATTRIB_MEMTYPE: _bindgen_ty_9 = 4;
+pub const AV_VAAPI_DRIVER_QUIRK_SURFACE_ATTRIBUTES: _bindgen_ty_9 = 8;
+pub type _bindgen_ty_9 = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVVAAPIDeviceContext {
+    pub display: VADisplay,
+    pub driver_quirks: ::std::os::raw::c_uint,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVVAAPIFramesContext {
+    pub attributes: *mut VASurfaceAttrib,
+    pub nb_attributes: ::std::os::raw::c_int,
+    pub surface_ids: *mut VASurfaceID,
+    pub nb_surfaces: ::std::os::raw::c_int,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVVAAPIHWConfig {
+    pub config_id: VAConfigID,
+}
+pub type VdpChromaType = u32;
+pub const VdpStatus_VDP_STATUS_OK: VdpStatus = 0;
+pub const VdpStatus_VDP_STATUS_NO_IMPLEMENTATION: VdpStatus = 1;
+pub const VdpStatus_VDP_STATUS_DISPLAY_PREEMPTED: VdpStatus = 2;
+pub const VdpStatus_VDP_STATUS_INVALID_HANDLE: VdpStatus = 3;
+pub const VdpStatus_VDP_STATUS_INVALID_POINTER: VdpStatus = 4;
+pub const VdpStatus_VDP_STATUS_INVALID_CHROMA_TYPE: VdpStatus = 5;
+pub const VdpStatus_VDP_STATUS_INVALID_Y_CB_CR_FORMAT: VdpStatus = 6;
+pub const VdpStatus_VDP_STATUS_INVALID_RGBA_FORMAT: VdpStatus = 7;
+pub const VdpStatus_VDP_STATUS_INVALID_INDEXED_FORMAT: VdpStatus = 8;
+pub const VdpStatus_VDP_STATUS_INVALID_COLOR_STANDARD: VdpStatus = 9;
+pub const VdpStatus_VDP_STATUS_INVALID_COLOR_TABLE_FORMAT: VdpStatus = 10;
+pub const VdpStatus_VDP_STATUS_INVALID_BLEND_FACTOR: VdpStatus = 11;
+pub const VdpStatus_VDP_STATUS_INVALID_BLEND_EQUATION: VdpStatus = 12;
+pub const VdpStatus_VDP_STATUS_INVALID_FLAG: VdpStatus = 13;
+pub const VdpStatus_VDP_STATUS_INVALID_DECODER_PROFILE: VdpStatus = 14;
+pub const VdpStatus_VDP_STATUS_INVALID_VIDEO_MIXER_FEATURE: VdpStatus = 15;
+pub const VdpStatus_VDP_STATUS_INVALID_VIDEO_MIXER_PARAMETER: VdpStatus = 16;
+pub const VdpStatus_VDP_STATUS_INVALID_VIDEO_MIXER_ATTRIBUTE: VdpStatus = 17;
+pub const VdpStatus_VDP_STATUS_INVALID_VIDEO_MIXER_PICTURE_STRUCTURE: VdpStatus = 18;
+pub const VdpStatus_VDP_STATUS_INVALID_FUNC_ID: VdpStatus = 19;
+pub const VdpStatus_VDP_STATUS_INVALID_SIZE: VdpStatus = 20;
+pub const VdpStatus_VDP_STATUS_INVALID_VALUE: VdpStatus = 21;
+pub const VdpStatus_VDP_STATUS_INVALID_STRUCT_VERSION: VdpStatus = 22;
+pub const VdpStatus_VDP_STATUS_RESOURCES: VdpStatus = 23;
+pub const VdpStatus_VDP_STATUS_HANDLE_DEVICE_MISMATCH: VdpStatus = 24;
+pub const VdpStatus_VDP_STATUS_ERROR: VdpStatus = 25;
+pub type VdpStatus = ::std::os::raw::c_uint;
+pub type VdpDevice = u32;
+pub type VdpVideoSurface = u32;
+pub type VdpDecoder = u32;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct VdpBitstreamBuffer {
+    pub struct_version: u32,
+    pub bitstream: *const ::std::os::raw::c_void,
+    pub bitstream_bytes: u32,
+}
+pub type VdpPictureInfo = ::std::os::raw::c_void;
+pub type VdpDecoderRender = ::std::option::Option<
+    unsafe extern "C" fn(
+        decoder: VdpDecoder,
+        target: VdpVideoSurface,
+        picture_info: *const VdpPictureInfo,
+        bitstream_buffer_count: u32,
+        bitstream_buffers: *const VdpBitstreamBuffer,
+    ) -> VdpStatus,
+>;
+pub type VdpFuncId = u32;
+pub type VdpGetProcAddress = ::std::option::Option<
+    unsafe extern "C" fn(
+        device: VdpDevice,
+        function_id: VdpFuncId,
+        function_pointer: *mut *mut ::std::os::raw::c_void,
+    ) -> VdpStatus,
+>;
+pub type AVVDPAU_Render2 = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut AVCodecContext,
+        arg2: *mut AVFrame,
+        arg3: *const VdpPictureInfo,
+        arg4: u32,
+        arg5: *const VdpBitstreamBuffer,
+    ) -> ::std::os::raw::c_int,
+>;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVVDPAUContext {
+    pub decoder: VdpDecoder,
+    pub render: VdpDecoderRender,
+    pub render2: AVVDPAU_Render2,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVVDPAUDeviceContext {
+    pub device: VdpDevice,
+    pub get_proc_address: VdpGetProcAddress,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _cl_device_id {
+    _unused: [u8; 0],
+}
+pub type cl_device_id = *mut _cl_device_id;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _cl_context {
+    _unused: [u8; 0],
+}
+pub type cl_context = *mut _cl_context;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _cl_command_queue {
+    _unused: [u8; 0],
+}
+pub type cl_command_queue = *mut _cl_command_queue;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _cl_mem {
+    _unused: [u8; 0],
+}
+pub type cl_mem = *mut _cl_mem;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVOpenCLFrameDescriptor {
+    pub nb_planes: ::std::os::raw::c_int,
+    pub planes: [cl_mem; 8usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVOpenCLDeviceContext {
+    pub device_id: cl_device_id,
+    pub context: cl_context,
+    pub command_queue: cl_command_queue,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVOpenCLFramesContext {
+    pub command_queue: cl_command_queue,
+}
+pub type amf_int64 = i64;
+pub type amf_int32 = i32;
+pub type amf_uint64 = u64;
+pub type amf_uint32 = u32;
+pub type amf_uint16 = u16;
+pub type amf_uint8 = u8;
+pub type amf_size = usize;
+pub type amf_handle = *mut ::std::os::raw::c_void;
+pub type amf_double = f64;
+pub type amf_float = f32;
+pub type amf_bool = amf_uint8;
+pub type amf_long = ::std::os::raw::c_long;
+pub type amf_int = ::std::os::raw::c_int;
+pub type amf_uint = ::std::os::raw::c_uint;
+pub type amf_pts = amf_int64;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFRect {
+    pub left: amf_int32,
+    pub top: amf_int32,
+    pub right: amf_int32,
+    pub bottom: amf_int32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFSize {
+    pub width: amf_int32,
+    pub height: amf_int32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPoint {
+    pub x: amf_int32,
+    pub y: amf_int32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFloatPoint2D {
+    pub x: amf_float,
+    pub y: amf_float,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFloatSize {
+    pub width: amf_float,
+    pub height: amf_float,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFloatPoint3D {
+    pub x: amf_float,
+    pub y: amf_float,
+    pub z: amf_float,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFloatVector4D {
+    pub x: amf_float,
+    pub y: amf_float,
+    pub z: amf_float,
+    pub w: amf_float,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFRate {
+    pub num: amf_uint32,
+    pub den: amf_uint32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFRatio {
+    pub num: amf_uint32,
+    pub den: amf_uint32,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct AMFColor {
+    pub __bindgen_anon_1: AMFColor__bindgen_ty_1,
+}
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union AMFColor__bindgen_ty_1 {
+    pub __bindgen_anon_1: AMFColor__bindgen_ty_1__bindgen_ty_1,
+    pub rgba: amf_uint32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFColor__bindgen_ty_1__bindgen_ty_1 {
+    pub r: amf_uint8,
+    pub g: amf_uint8,
+    pub b: amf_uint8,
+    pub a: amf_uint8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFGuid {
+    pub data1: amf_uint32,
+    pub data2: amf_uint16,
+    pub data3: amf_uint16,
+    pub data41: amf_uint8,
+    pub data42: amf_uint8,
+    pub data43: amf_uint8,
+    pub data44: amf_uint8,
+    pub data45: amf_uint8,
+    pub data46: amf_uint8,
+    pub data47: amf_uint8,
+    pub data48: amf_uint8,
+}
+pub const AMF_RESULT_AMF_OK: AMF_RESULT = 0;
+pub const AMF_RESULT_AMF_FAIL: AMF_RESULT = 1;
+pub const AMF_RESULT_AMF_UNEXPECTED: AMF_RESULT = 2;
+pub const AMF_RESULT_AMF_ACCESS_DENIED: AMF_RESULT = 3;
+pub const AMF_RESULT_AMF_INVALID_ARG: AMF_RESULT = 4;
+pub const AMF_RESULT_AMF_OUT_OF_RANGE: AMF_RESULT = 5;
+pub const AMF_RESULT_AMF_OUT_OF_MEMORY: AMF_RESULT = 6;
+pub const AMF_RESULT_AMF_INVALID_POINTER: AMF_RESULT = 7;
+pub const AMF_RESULT_AMF_NO_INTERFACE: AMF_RESULT = 8;
+pub const AMF_RESULT_AMF_NOT_IMPLEMENTED: AMF_RESULT = 9;
+pub const AMF_RESULT_AMF_NOT_SUPPORTED: AMF_RESULT = 10;
+pub const AMF_RESULT_AMF_NOT_FOUND: AMF_RESULT = 11;
+pub const AMF_RESULT_AMF_ALREADY_INITIALIZED: AMF_RESULT = 12;
+pub const AMF_RESULT_AMF_NOT_INITIALIZED: AMF_RESULT = 13;
+pub const AMF_RESULT_AMF_INVALID_FORMAT: AMF_RESULT = 14;
+pub const AMF_RESULT_AMF_WRONG_STATE: AMF_RESULT = 15;
+pub const AMF_RESULT_AMF_FILE_NOT_OPEN: AMF_RESULT = 16;
+pub const AMF_RESULT_AMF_NO_DEVICE: AMF_RESULT = 17;
+pub const AMF_RESULT_AMF_DIRECTX_FAILED: AMF_RESULT = 18;
+pub const AMF_RESULT_AMF_OPENCL_FAILED: AMF_RESULT = 19;
+pub const AMF_RESULT_AMF_GLX_FAILED: AMF_RESULT = 20;
+pub const AMF_RESULT_AMF_XV_FAILED: AMF_RESULT = 21;
+pub const AMF_RESULT_AMF_ALSA_FAILED: AMF_RESULT = 22;
+pub const AMF_RESULT_AMF_EOF: AMF_RESULT = 23;
+pub const AMF_RESULT_AMF_REPEAT: AMF_RESULT = 24;
+pub const AMF_RESULT_AMF_INPUT_FULL: AMF_RESULT = 25;
+pub const AMF_RESULT_AMF_RESOLUTION_CHANGED: AMF_RESULT = 26;
+pub const AMF_RESULT_AMF_RESOLUTION_UPDATED: AMF_RESULT = 27;
+pub const AMF_RESULT_AMF_INVALID_DATA_TYPE: AMF_RESULT = 28;
+pub const AMF_RESULT_AMF_INVALID_RESOLUTION: AMF_RESULT = 29;
+pub const AMF_RESULT_AMF_CODEC_NOT_SUPPORTED: AMF_RESULT = 30;
+pub const AMF_RESULT_AMF_SURFACE_FORMAT_NOT_SUPPORTED: AMF_RESULT = 31;
+pub const AMF_RESULT_AMF_SURFACE_MUST_BE_SHARED: AMF_RESULT = 32;
+pub const AMF_RESULT_AMF_DECODER_NOT_PRESENT: AMF_RESULT = 33;
+pub const AMF_RESULT_AMF_DECODER_SURFACE_ALLOCATION_FAILED: AMF_RESULT = 34;
+pub const AMF_RESULT_AMF_DECODER_NO_FREE_SURFACES: AMF_RESULT = 35;
+pub const AMF_RESULT_AMF_ENCODER_NOT_PRESENT: AMF_RESULT = 36;
+pub const AMF_RESULT_AMF_DEM_ERROR: AMF_RESULT = 37;
+pub const AMF_RESULT_AMF_DEM_PROPERTY_READONLY: AMF_RESULT = 38;
+pub const AMF_RESULT_AMF_DEM_REMOTE_DISPLAY_CREATE_FAILED: AMF_RESULT = 39;
+pub const AMF_RESULT_AMF_DEM_START_ENCODING_FAILED: AMF_RESULT = 40;
+pub const AMF_RESULT_AMF_DEM_QUERY_OUTPUT_FAILED: AMF_RESULT = 41;
+pub const AMF_RESULT_AMF_TAN_CLIPPING_WAS_REQUIRED: AMF_RESULT = 42;
+pub const AMF_RESULT_AMF_TAN_UNSUPPORTED_VERSION: AMF_RESULT = 43;
+pub const AMF_RESULT_AMF_NEED_MORE_INPUT: AMF_RESULT = 44;
+pub const AMF_RESULT_AMF_VULKAN_FAILED: AMF_RESULT = 45;
+#[cfg(target_os = "linux")]
+pub type AMF_RESULT = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_RESULT = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFInterfaceVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFInterface) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFInterface) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFInterface,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFInterface {
+    pub pVtbl: *const AMFInterfaceVtbl,
+}
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_EMPTY: AMF_VARIANT_TYPE = 0;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_BOOL: AMF_VARIANT_TYPE = 1;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_INT64: AMF_VARIANT_TYPE = 2;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_DOUBLE: AMF_VARIANT_TYPE = 3;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_RECT: AMF_VARIANT_TYPE = 4;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_SIZE: AMF_VARIANT_TYPE = 5;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_POINT: AMF_VARIANT_TYPE = 6;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_RATE: AMF_VARIANT_TYPE = 7;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_RATIO: AMF_VARIANT_TYPE = 8;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_COLOR: AMF_VARIANT_TYPE = 9;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_STRING: AMF_VARIANT_TYPE = 10;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_WSTRING: AMF_VARIANT_TYPE = 11;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_INTERFACE: AMF_VARIANT_TYPE = 12;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT: AMF_VARIANT_TYPE = 13;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT_SIZE: AMF_VARIANT_TYPE = 14;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT_POINT2D: AMF_VARIANT_TYPE = 15;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT_POINT3D: AMF_VARIANT_TYPE = 16;
+pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT_VECTOR4D: AMF_VARIANT_TYPE = 17;
+#[cfg(target_os = "linux")]
+pub type AMF_VARIANT_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_VARIANT_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct AMFVariantStruct {
+    pub type_: AMF_VARIANT_TYPE,
+    pub __bindgen_anon_1: AMFVariantStruct__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union AMFVariantStruct__bindgen_ty_1 {
+    pub boolValue: amf_bool,
+    pub int64Value: amf_int64,
+    pub doubleValue: amf_double,
+    pub stringValue: *mut ::std::os::raw::c_char,
+    pub wstringValue: *mut wchar_t,
+    pub pInterface: *mut AMFInterface,
+    pub rectValue: AMFRect,
+    pub sizeValue: AMFSize,
+    pub pointValue: AMFPoint,
+    pub rateValue: AMFRate,
+    pub ratioValue: AMFRatio,
+    pub colorValue: AMFColor,
+    pub floatValue: amf_float,
+    pub floatSizeValue: AMFFloatSize,
+    pub floatPoint2DValue: AMFFloatPoint2D,
+    pub floatPoint3DValue: AMFFloatPoint3D,
+    pub floatVector4DValue: AMFFloatVector4D,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPropertyStorageObserverVtbl {
+    pub OnPropertyChanged: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFPropertyStorageObserver, name: *const wchar_t),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPropertyStorageObserver {
+    pub pVtbl: *const AMFPropertyStorageObserverVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPropertyStorageVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPropertyStorage) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPropertyStorage) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFPropertyStorage, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPropertyStorage) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPropertyStorage) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPropertyStorage,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPropertyStorage {
+    pub pVtbl: *const AMFPropertyStorageVtbl,
+}
+pub const AMF_DATA_TYPE_AMF_DATA_BUFFER: AMF_DATA_TYPE = 0;
+pub const AMF_DATA_TYPE_AMF_DATA_SURFACE: AMF_DATA_TYPE = 1;
+pub const AMF_DATA_TYPE_AMF_DATA_AUDIO_BUFFER: AMF_DATA_TYPE = 2;
+pub const AMF_DATA_TYPE_AMF_DATA_USER: AMF_DATA_TYPE = 1000;
+#[cfg(target_os = "linux")]
+pub type AMF_DATA_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_DATA_TYPE = ::std::os::raw::c_int;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_UNKNOWN: AMF_MEMORY_TYPE = 0;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_HOST: AMF_MEMORY_TYPE = 1;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_DX9: AMF_MEMORY_TYPE = 2;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_DX11: AMF_MEMORY_TYPE = 3;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_OPENCL: AMF_MEMORY_TYPE = 4;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_OPENGL: AMF_MEMORY_TYPE = 5;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_XV: AMF_MEMORY_TYPE = 6;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_GRALLOC: AMF_MEMORY_TYPE = 7;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_COMPUTE_FOR_DX9: AMF_MEMORY_TYPE = 8;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_COMPUTE_FOR_DX11: AMF_MEMORY_TYPE = 9;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_VULKAN: AMF_MEMORY_TYPE = 10;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_DX12: AMF_MEMORY_TYPE = 11;
+pub const AMF_MEMORY_TYPE_AMF_MEMORY_LAST: AMF_MEMORY_TYPE = 12;
+#[cfg(target_os = "linux")]
+pub type AMF_MEMORY_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_MEMORY_TYPE = ::std::os::raw::c_int;
+pub const AMF_DX_VERSION_AMF_DX9: AMF_DX_VERSION = 90;
+pub const AMF_DX_VERSION_AMF_DX9_EX: AMF_DX_VERSION = 91;
+pub const AMF_DX_VERSION_AMF_DX11_0: AMF_DX_VERSION = 110;
+pub const AMF_DX_VERSION_AMF_DX11_1: AMF_DX_VERSION = 111;
+pub const AMF_DX_VERSION_AMF_DX12: AMF_DX_VERSION = 120;
+#[cfg(target_os = "linux")]
+pub type AMF_DX_VERSION = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_DX_VERSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFDataVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFData, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFData, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFData, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub GetMemoryType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> AMF_MEMORY_TYPE>,
+    pub Duplicate: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFData,
+            type_: AMF_MEMORY_TYPE,
+            ppData: *mut *mut AMFData,
+        ) -> AMF_RESULT,
+    >,
+    pub Convert: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFData, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub Interop: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFData, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub GetDataType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> AMF_DATA_TYPE>,
+    pub IsReusable: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_bool>,
+    pub SetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData, pts: amf_pts)>,
+    pub GetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_pts>,
+    pub SetDuration:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData, duration: amf_pts)>,
+    pub GetDuration: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFData) -> amf_pts>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFData {
+    pub pVtbl: *const AMFDataVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFBufferObserverVtbl {
+    pub OnBufferDataRelease: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBufferObserver, pBuffer: *mut AMFBuffer),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFBufferObserver {
+    pub pVtbl: *const AMFBufferObserverVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFBufferVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub GetMemoryType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> AMF_MEMORY_TYPE>,
+    pub Duplicate: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFBuffer,
+            type_: AMF_MEMORY_TYPE,
+            ppData: *mut *mut AMFData,
+        ) -> AMF_RESULT,
+    >,
+    pub Convert: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub Interop: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub GetDataType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> AMF_DATA_TYPE>,
+    pub IsReusable: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_bool>,
+    pub SetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer, pts: amf_pts)>,
+    pub GetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_pts>,
+    pub SetDuration:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer, duration: amf_pts)>,
+    pub GetDuration: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_pts>,
+    pub SetSize: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, newSize: amf_size) -> AMF_RESULT,
+    >,
+    pub GetSize: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFBuffer) -> amf_size>,
+    pub GetNative: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer) -> *mut ::std::os::raw::c_void,
+    >,
+    pub AddObserver_Buffer: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, pObserver: *mut AMFBufferObserver),
+    >,
+    pub RemoveObserver_Buffer: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFBuffer, pObserver: *mut AMFBufferObserver),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFBuffer {
+    pub pVtbl: *const AMFBufferVtbl,
+}
+pub const AMF_AUDIO_FORMAT_AMFAF_UNKNOWN: AMF_AUDIO_FORMAT = -1;
+pub const AMF_AUDIO_FORMAT_AMFAF_U8: AMF_AUDIO_FORMAT = 0;
+pub const AMF_AUDIO_FORMAT_AMFAF_S16: AMF_AUDIO_FORMAT = 1;
+pub const AMF_AUDIO_FORMAT_AMFAF_S32: AMF_AUDIO_FORMAT = 2;
+pub const AMF_AUDIO_FORMAT_AMFAF_FLT: AMF_AUDIO_FORMAT = 3;
+pub const AMF_AUDIO_FORMAT_AMFAF_DBL: AMF_AUDIO_FORMAT = 4;
+pub const AMF_AUDIO_FORMAT_AMFAF_U8P: AMF_AUDIO_FORMAT = 5;
+pub const AMF_AUDIO_FORMAT_AMFAF_S16P: AMF_AUDIO_FORMAT = 6;
+pub const AMF_AUDIO_FORMAT_AMFAF_S32P: AMF_AUDIO_FORMAT = 7;
+pub const AMF_AUDIO_FORMAT_AMFAF_FLTP: AMF_AUDIO_FORMAT = 8;
+pub const AMF_AUDIO_FORMAT_AMFAF_DBLP: AMF_AUDIO_FORMAT = 9;
+pub const AMF_AUDIO_FORMAT_AMFAF_FIRST: AMF_AUDIO_FORMAT = 0;
+pub const AMF_AUDIO_FORMAT_AMFAF_LAST: AMF_AUDIO_FORMAT = 9;
+pub type AMF_AUDIO_FORMAT = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFAudioBufferObserverVtbl {
+    pub OnBufferDataRelease: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBufferObserver, pBuffer: *mut AMFAudioBuffer),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFAudioBufferObserver {
+    pub pVtbl: *const AMFAudioBufferObserverVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFAudioBufferVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+    pub GetMemoryType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> AMF_MEMORY_TYPE>,
+    pub Duplicate: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFAudioBuffer,
+            type_: AMF_MEMORY_TYPE,
+            ppData: *mut *mut AMFData,
+        ) -> AMF_RESULT,
+    >,
+    pub Convert: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub Interop: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub GetDataType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> AMF_DATA_TYPE>,
+    pub IsReusable:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_bool>,
+    pub SetPts:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, pts: amf_pts)>,
+    pub GetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_pts>,
+    pub SetDuration:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, duration: amf_pts)>,
+    pub GetDuration:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_pts>,
+    pub GetSampleCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_int32>,
+    pub GetSampleRate:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_int32>,
+    pub GetChannelCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_int32>,
+    pub GetSampleFormat:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> AMF_AUDIO_FORMAT>,
+    pub GetSampleSize:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_int32>,
+    pub GetChannelLayout:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_uint32>,
+    pub GetNative: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetSize:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFAudioBuffer) -> amf_size>,
+    pub AddObserver_AudioBuffer: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, pObserver: *mut AMFAudioBufferObserver),
+    >,
+    pub RemoveObserver_AudioBuffer: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFAudioBuffer, pObserver: *mut AMFAudioBufferObserver),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFAudioBuffer {
+    pub pVtbl: *const AMFAudioBufferVtbl,
+}
+pub const AMF_PLANE_TYPE_AMF_PLANE_UNKNOWN: AMF_PLANE_TYPE = 0;
+pub const AMF_PLANE_TYPE_AMF_PLANE_PACKED: AMF_PLANE_TYPE = 1;
+pub const AMF_PLANE_TYPE_AMF_PLANE_Y: AMF_PLANE_TYPE = 2;
+pub const AMF_PLANE_TYPE_AMF_PLANE_UV: AMF_PLANE_TYPE = 3;
+pub const AMF_PLANE_TYPE_AMF_PLANE_U: AMF_PLANE_TYPE = 4;
+pub const AMF_PLANE_TYPE_AMF_PLANE_V: AMF_PLANE_TYPE = 5;
+#[cfg(target_os = "linux")]
+pub type AMF_PLANE_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_PLANE_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPlaneVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPlane,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> AMF_PLANE_TYPE>,
+    pub GetNative: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFPlane) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetPixelSizeInBytes:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetOffsetX: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetOffsetY: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetWidth: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetHeight: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetHPitch: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub GetVPitch: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_int32>,
+    pub IsTiled: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFPlane) -> amf_bool>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPlane {
+    pub pVtbl: *const AMFPlaneVtbl,
+}
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_UNKNOWN: AMF_SURFACE_FORMAT = 0;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_NV12: AMF_SURFACE_FORMAT = 1;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_YV12: AMF_SURFACE_FORMAT = 2;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_BGRA: AMF_SURFACE_FORMAT = 3;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_ARGB: AMF_SURFACE_FORMAT = 4;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_RGBA: AMF_SURFACE_FORMAT = 5;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_GRAY8: AMF_SURFACE_FORMAT = 6;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_YUV420P: AMF_SURFACE_FORMAT = 7;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_U8V8: AMF_SURFACE_FORMAT = 8;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_YUY2: AMF_SURFACE_FORMAT = 9;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_P010: AMF_SURFACE_FORMAT = 10;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_RGBA_F16: AMF_SURFACE_FORMAT = 11;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_UYVY: AMF_SURFACE_FORMAT = 12;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_R10G10B10A2: AMF_SURFACE_FORMAT = 13;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_Y210: AMF_SURFACE_FORMAT = 14;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_AYUV: AMF_SURFACE_FORMAT = 15;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_Y410: AMF_SURFACE_FORMAT = 16;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_Y416: AMF_SURFACE_FORMAT = 17;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_GRAY32: AMF_SURFACE_FORMAT = 18;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_P012: AMF_SURFACE_FORMAT = 19;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_P016: AMF_SURFACE_FORMAT = 20;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_Y216: AMF_SURFACE_FORMAT = 21;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_R16G16: AMF_SURFACE_FORMAT = 22;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_R24G8: AMF_SURFACE_FORMAT = 23;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_R32: AMF_SURFACE_FORMAT = 24;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_R16: AMF_SURFACE_FORMAT = 25;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_FIRST: AMF_SURFACE_FORMAT = 1;
+pub const AMF_SURFACE_FORMAT_AMF_SURFACE_LAST: AMF_SURFACE_FORMAT = 25;
+#[cfg(target_os = "linux")]
+pub type AMF_SURFACE_FORMAT = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_SURFACE_FORMAT = ::std::os::raw::c_int;
+pub const AMF_FRAME_TYPE_AMF_FRAME_STEREO_FLAG: AMF_FRAME_TYPE = 268435456;
+pub const AMF_FRAME_TYPE_AMF_FRAME_LEFT_FLAG: AMF_FRAME_TYPE = 805306368;
+pub const AMF_FRAME_TYPE_AMF_FRAME_RIGHT_FLAG: AMF_FRAME_TYPE = 1342177280;
+pub const AMF_FRAME_TYPE_AMF_FRAME_BOTH_FLAG: AMF_FRAME_TYPE = 1879048192;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_FLAG: AMF_FRAME_TYPE = 16777216;
+pub const AMF_FRAME_TYPE_AMF_FRAME_FIELD_FLAG: AMF_FRAME_TYPE = 33554432;
+pub const AMF_FRAME_TYPE_AMF_FRAME_EVEN_FLAG: AMF_FRAME_TYPE = 67108864;
+pub const AMF_FRAME_TYPE_AMF_FRAME_ODD_FLAG: AMF_FRAME_TYPE = 134217728;
+pub const AMF_FRAME_TYPE_AMF_FRAME_UNKNOWN: AMF_FRAME_TYPE = -1;
+pub const AMF_FRAME_TYPE_AMF_FRAME_PROGRESSIVE: AMF_FRAME_TYPE = 0;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_EVEN_FIRST: AMF_FRAME_TYPE = 83886080;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_ODD_FIRST: AMF_FRAME_TYPE = 150994944;
+pub const AMF_FRAME_TYPE_AMF_FRAME_FIELD_SINGLE_EVEN: AMF_FRAME_TYPE = 100663296;
+pub const AMF_FRAME_TYPE_AMF_FRAME_FIELD_SINGLE_ODD: AMF_FRAME_TYPE = 167772160;
+pub const AMF_FRAME_TYPE_AMF_FRAME_STEREO_LEFT: AMF_FRAME_TYPE = 805306368;
+pub const AMF_FRAME_TYPE_AMF_FRAME_STEREO_RIGHT: AMF_FRAME_TYPE = 1342177280;
+pub const AMF_FRAME_TYPE_AMF_FRAME_STEREO_BOTH: AMF_FRAME_TYPE = 1879048192;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_EVEN_FIRST_STEREO_LEFT: AMF_FRAME_TYPE = 889192448;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_EVEN_FIRST_STEREO_RIGHT: AMF_FRAME_TYPE = 1426063360;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_EVEN_FIRST_STEREO_BOTH: AMF_FRAME_TYPE = 1962934272;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_ODD_FIRST_STEREO_LEFT: AMF_FRAME_TYPE = 956301312;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_ODD_FIRST_STEREO_RIGHT: AMF_FRAME_TYPE = 1493172224;
+pub const AMF_FRAME_TYPE_AMF_FRAME_INTERLEAVED_ODD_FIRST_STEREO_BOTH: AMF_FRAME_TYPE = 2030043136;
+pub type AMF_FRAME_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFSurfaceObserverVtbl {
+    pub OnSurfaceDataRelease: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurfaceObserver, pSurface: *mut AMFSurface),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFSurfaceObserver {
+    pub pVtbl: *const AMFSurfaceObserverVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFSurfaceVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub GetMemoryType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> AMF_MEMORY_TYPE>,
+    pub Duplicate: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            type_: AMF_MEMORY_TYPE,
+            ppData: *mut *mut AMFData,
+        ) -> AMF_RESULT,
+    >,
+    pub Convert: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub Interop: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, type_: AMF_MEMORY_TYPE) -> AMF_RESULT,
+    >,
+    pub GetDataType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> AMF_DATA_TYPE>,
+    pub IsReusable: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_bool>,
+    pub SetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface, pts: amf_pts)>,
+    pub GetPts: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_pts>,
+    pub SetDuration:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface, duration: amf_pts)>,
+    pub GetDuration: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_pts>,
+    pub GetFormat:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> AMF_SURFACE_FORMAT>,
+    pub GetPlanesCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> amf_size>,
+    pub GetPlaneAt: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, index: amf_size) -> *mut AMFPlane,
+    >,
+    pub GetPlane: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, type_: AMF_PLANE_TYPE) -> *mut AMFPlane,
+    >,
+    pub GetFrameType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface) -> AMF_FRAME_TYPE>,
+    pub SetFrameType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFSurface, type_: AMF_FRAME_TYPE)>,
+    pub SetCrop: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            x: amf_int32,
+            y: amf_int32,
+            width: amf_int32,
+            height: amf_int32,
+        ) -> AMF_RESULT,
+    >,
+    pub CopySurfaceRegion: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFSurface,
+            pDest: *mut AMFSurface,
+            dstX: amf_int32,
+            dstY: amf_int32,
+            srcX: amf_int32,
+            srcY: amf_int32,
+            width: amf_int32,
+            height: amf_int32,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver_Surface: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, pObserver: *mut AMFSurfaceObserver),
+    >,
+    pub RemoveObserver_Surface: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFSurface, pObserver: *mut AMFSurfaceObserver),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFSurface {
+    pub pVtbl: *const AMFSurfaceVtbl,
+}
+pub type AMF_KERNEL_ID = amf_uint64;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_INVALID: AMF_CHANNEL_ORDER = 0;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_R: AMF_CHANNEL_ORDER = 1;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_RG: AMF_CHANNEL_ORDER = 2;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_BGRA: AMF_CHANNEL_ORDER = 3;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_RGBA: AMF_CHANNEL_ORDER = 4;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_ARGB: AMF_CHANNEL_ORDER = 5;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_YUY2: AMF_CHANNEL_ORDER = 6;
+pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_ABGR: AMF_CHANNEL_ORDER = 7;
+#[cfg(target_os = "linux")]
+pub type AMF_CHANNEL_ORDER = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_CHANNEL_ORDER = ::std::os::raw::c_int;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_INVALID: AMF_CHANNEL_TYPE = 0;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNSIGNED_INT8: AMF_CHANNEL_TYPE = 1;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNSIGNED_INT32: AMF_CHANNEL_TYPE = 2;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNORM_INT8: AMF_CHANNEL_TYPE = 3;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNORM_INT16: AMF_CHANNEL_TYPE = 4;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_SNORM_INT16: AMF_CHANNEL_TYPE = 5;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_FLOAT: AMF_CHANNEL_TYPE = 6;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_FLOAT16: AMF_CHANNEL_TYPE = 7;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNSIGNED_INT16: AMF_CHANNEL_TYPE = 8;
+pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNORM_INT_101010: AMF_CHANNEL_TYPE = 9;
+#[cfg(target_os = "linux")]
+pub type AMF_CHANNEL_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_CHANNEL_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeKernelVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeKernel) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeKernel) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeKernel,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeKernel {
+    pub pVtbl: *const AMFComputeKernelVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeSyncPointVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeSyncPoint) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeSyncPoint) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeSyncPoint,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub IsCompleted:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeSyncPoint) -> amf_bool>,
+    pub Wait: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeSyncPoint)>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeSyncPoint {
+    pub pVtbl: *const AMFComputeSyncPointVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCompute) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCompute) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetMemoryType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCompute) -> AMF_MEMORY_TYPE>,
+    pub GetNativeContext: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCompute) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetNativeDeviceID: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCompute) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetNativeCommandQueue: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCompute) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetKernel: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            kernelID: AMF_KERNEL_ID,
+            kernel: *mut *mut AMFComputeKernel,
+        ) -> AMF_RESULT,
+    >,
+    pub PutSyncPoint: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            ppSyncPoint: *mut *mut AMFComputeSyncPoint,
+        ) -> AMF_RESULT,
+    >,
+    pub FinishQueue:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCompute) -> AMF_RESULT>,
+    pub FlushQueue:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCompute) -> AMF_RESULT>,
+    pub FillPlane: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pPlane: *mut AMFPlane,
+            origin: *const amf_size,
+            region: *const amf_size,
+            pColor: *const ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub FillBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pBuffer: *mut AMFBuffer,
+            dstOffset: amf_size,
+            dstSize: amf_size,
+            pSourcePattern: *const ::std::os::raw::c_void,
+            patternSize: amf_size,
+        ) -> AMF_RESULT,
+    >,
+    pub ConvertPlaneToBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcPlane: *mut AMFPlane,
+            ppDstBuffer: *mut *mut AMFBuffer,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcBuffer: *mut AMFBuffer,
+            srcOffset: amf_size,
+            size: amf_size,
+            pDstBuffer: *mut AMFBuffer,
+            dstOffset: amf_size,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyPlane: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcPlane: *mut AMFPlane,
+            srcOrigin: *const amf_size,
+            region: *const amf_size,
+            pDstPlane: *mut AMFPlane,
+            dstOrigin: *const amf_size,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyBufferToHost: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcBuffer: *mut AMFBuffer,
+            srcOffset: amf_size,
+            size: amf_size,
+            pDest: *mut ::std::os::raw::c_void,
+            blocking: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyBufferFromHost: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSource: *const ::std::os::raw::c_void,
+            size: amf_size,
+            pDstBuffer: *mut AMFBuffer,
+            dstOffsetInBytes: amf_size,
+            blocking: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyPlaneToHost: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcPlane: *mut AMFPlane,
+            origin: *const amf_size,
+            region: *const amf_size,
+            pDest: *mut ::std::os::raw::c_void,
+            dstPitch: amf_size,
+            blocking: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyPlaneFromHost: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSource: *mut ::std::os::raw::c_void,
+            origin: *const amf_size,
+            region: *const amf_size,
+            srcPitch: amf_size,
+            pDstPlane: *mut AMFPlane,
+            blocking: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub ConvertPlaneToPlane: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCompute,
+            pSrcPlane: *mut AMFPlane,
+            ppDstPlane: *mut *mut AMFPlane,
+            order: AMF_CHANNEL_ORDER,
+            type_: AMF_CHANNEL_TYPE,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFCompute {
+    pub pVtbl: *const AMFComputeVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFProgramsVtbl {
+    pub RegisterKernelSourceFile: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPrograms,
+            pKernelID: *mut AMF_KERNEL_ID,
+            kernelid_name: *const wchar_t,
+            kernelName: *const ::std::os::raw::c_char,
+            filepath: *const wchar_t,
+            options: *const ::std::os::raw::c_char,
+        ) -> AMF_RESULT,
+    >,
+    pub RegisterKernelSource: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPrograms,
+            pKernelID: *mut AMF_KERNEL_ID,
+            kernelid_name: *const wchar_t,
+            kernelName: *const ::std::os::raw::c_char,
+            dataSize: amf_size,
+            data: *const amf_uint8,
+            options: *const ::std::os::raw::c_char,
+        ) -> AMF_RESULT,
+    >,
+    pub RegisterKernelBinary: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPrograms,
+            pKernelID: *mut AMF_KERNEL_ID,
+            kernelid_name: *const wchar_t,
+            kernelName: *const ::std::os::raw::c_char,
+            dataSize: amf_size,
+            data: *const amf_uint8,
+            options: *const ::std::os::raw::c_char,
+        ) -> AMF_RESULT,
+    >,
+    pub RegisterKernelSource1: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPrograms,
+            eMemoryType: AMF_MEMORY_TYPE,
+            pKernelID: *mut AMF_KERNEL_ID,
+            kernelid_name: *const wchar_t,
+            kernelName: *const ::std::os::raw::c_char,
+            dataSize: amf_size,
+            data: *const amf_uint8,
+            options: *const ::std::os::raw::c_char,
+        ) -> AMF_RESULT,
+    >,
+    pub RegisterKernelBinary1: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFPrograms,
+            eMemoryType: AMF_MEMORY_TYPE,
+            pKernelID: *mut AMF_KERNEL_ID,
+            kernelid_name: *const wchar_t,
+            kernelName: *const ::std::os::raw::c_char,
+            dataSize: amf_size,
+            data: *const amf_uint8,
+            options: *const ::std::os::raw::c_char,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFPrograms {
+    pub pVtbl: *const AMFProgramsVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeDeviceVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComputeDevice, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            pObserver: *mut AMFPropertyStorageObserver,
+        ),
+    >,
+    pub GetNativePlatform: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetNativeDeviceID: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetNativeContext: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComputeDevice) -> *mut ::std::os::raw::c_void,
+    >,
+    pub CreateCompute: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            reserved: *mut ::std::os::raw::c_void,
+            ppCompute: *mut *mut AMFCompute,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateComputeEx: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeDevice,
+            pCommandQueue: *mut ::std::os::raw::c_void,
+            ppCompute: *mut *mut AMFCompute,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeDevice {
+    pub pVtbl: *const AMFComputeDeviceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeFactoryVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeFactory) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeFactory) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeFactory,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetDeviceCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComputeFactory) -> amf_int32>,
+    pub GetDeviceAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComputeFactory,
+            index: amf_int32,
+            ppDevice: *mut *mut AMFComputeDevice,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComputeFactory {
+    pub pVtbl: *const AMFComputeFactoryVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFContextVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub Terminate:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitDX9: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDX9Device: *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetDX9Device: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            dxVersionRequired: AMF_DX_VERSION,
+        ) -> *mut ::std::os::raw::c_void,
+    >,
+    pub LockDX9: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockDX9:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitDX11: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDX11Device: *mut ::std::os::raw::c_void,
+            dxVersionRequired: AMF_DX_VERSION,
+        ) -> AMF_RESULT,
+    >,
+    pub GetDX11Device: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            dxVersionRequired: AMF_DX_VERSION,
+        ) -> *mut ::std::os::raw::c_void,
+    >,
+    pub LockDX11: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockDX11:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitOpenCL: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pCommandQueue: *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetOpenCLContext: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetOpenCLCommandQueue: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetOpenCLDeviceID: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext) -> *mut ::std::os::raw::c_void,
+    >,
+    pub GetOpenCLComputeFactory: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            ppFactory: *mut *mut AMFComputeFactory,
+        ) -> AMF_RESULT,
+    >,
+    pub InitOpenCLEx: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext, pDevice: *mut AMFComputeDevice) -> AMF_RESULT,
+    >,
+    pub LockOpenCL:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockOpenCL:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitOpenGL: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            hOpenGLContext: amf_handle,
+            hWindow: amf_handle,
+            hDC: amf_handle,
+        ) -> AMF_RESULT,
+    >,
+    pub GetOpenGLContext:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> amf_handle>,
+    pub GetOpenGLDrawable:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> amf_handle>,
+    pub LockOpenGL:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockOpenGL:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitXV: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pXVDevice: *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetXVDevice: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext) -> *mut ::std::os::raw::c_void,
+    >,
+    pub LockXV: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockXV: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub InitGralloc: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pGrallocDevice: *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetGrallocDevice: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFContext) -> *mut ::std::os::raw::c_void,
+    >,
+    pub LockGralloc:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub UnlockGralloc:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFContext) -> AMF_RESULT>,
+    pub AllocBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            type_: AMF_MEMORY_TYPE,
+            size: amf_size,
+            ppBuffer: *mut *mut AMFBuffer,
+        ) -> AMF_RESULT,
+    >,
+    pub AllocSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            type_: AMF_MEMORY_TYPE,
+            format: AMF_SURFACE_FORMAT,
+            width: amf_int32,
+            height: amf_int32,
+            ppSurface: *mut *mut AMFSurface,
+        ) -> AMF_RESULT,
+    >,
+    pub AllocAudioBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            type_: AMF_MEMORY_TYPE,
+            format: AMF_AUDIO_FORMAT,
+            samples: amf_int32,
+            sampleRate: amf_int32,
+            channels: amf_int32,
+            ppAudioBuffer: *mut *mut AMFAudioBuffer,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateBufferFromHostNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pHostBuffer: *mut ::std::os::raw::c_void,
+            size: amf_size,
+            ppBuffer: *mut *mut AMFBuffer,
+            pObserver: *mut AMFBufferObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromHostNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            format: AMF_SURFACE_FORMAT,
+            width: amf_int32,
+            height: amf_int32,
+            hPitch: amf_int32,
+            vPitch: amf_int32,
+            pData: *mut ::std::os::raw::c_void,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromDX9Native: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDX9Surface: *mut ::std::os::raw::c_void,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromDX11Native: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pDX11Surface: *mut ::std::os::raw::c_void,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromOpenGLNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            format: AMF_SURFACE_FORMAT,
+            hGLTextureID: amf_handle,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromGrallocNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            hGrallocSurface: amf_handle,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateSurfaceFromOpenCLNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            format: AMF_SURFACE_FORMAT,
+            width: amf_int32,
+            height: amf_int32,
+            pClPlanes: *mut *mut ::std::os::raw::c_void,
+            ppSurface: *mut *mut AMFSurface,
+            pObserver: *mut AMFSurfaceObserver,
+        ) -> AMF_RESULT,
+    >,
+    pub CreateBufferFromOpenCLNative: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            pCLBuffer: *mut ::std::os::raw::c_void,
+            size: amf_size,
+            ppBuffer: *mut *mut AMFBuffer,
+        ) -> AMF_RESULT,
+    >,
+    pub GetCompute: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFContext,
+            eMemType: AMF_MEMORY_TYPE,
+            ppCompute: *mut *mut AMFCompute,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFContext {
+    pub pVtbl: *const AMFContextVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFDebugVtbl {
+    pub EnablePerformanceMonitor:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDebug, enable: amf_bool)>,
+    pub PerformanceMonitorEnabled:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDebug) -> amf_bool>,
+    pub AssertsEnable:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDebug, enable: amf_bool)>,
+    pub AssertsEnabled:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDebug) -> amf_bool>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFDebug {
+    pub pVtbl: *const AMFDebugVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFTraceWriterVtbl {
+    pub Write: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTraceWriter,
+            scope: *const wchar_t,
+            message: *const wchar_t,
+        ),
+    >,
+    pub Flush: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTraceWriter)>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFTraceWriter {
+    pub pVtbl: *const AMFTraceWriterVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFTraceVtbl {
+    pub TraceW: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            src_path: *const wchar_t,
+            line: amf_int32,
+            level: amf_int32,
+            scope: *const wchar_t,
+            countArgs: amf_int32,
+            format: *const wchar_t,
+            ...
+        ),
+    >,
+    pub Trace: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            src_path: *const wchar_t,
+            line: amf_int32,
+            level: amf_int32,
+            scope: *const wchar_t,
+            message: *const wchar_t,
+            pArglist: *mut va_list,
+        ),
+    >,
+    pub SetGlobalLevel: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, level: amf_int32) -> amf_int32,
+    >,
+    pub GetGlobalLevel:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTrace) -> amf_int32>,
+    pub EnableWriter: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            writerID: *const wchar_t,
+            enable: amf_bool,
+        ) -> amf_bool,
+    >,
+    pub WriterEnabled: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, writerID: *const wchar_t) -> amf_bool,
+    >,
+    pub TraceEnableAsync: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, enable: amf_bool) -> AMF_RESULT,
+    >,
+    pub TraceFlush: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTrace) -> AMF_RESULT>,
+    pub SetPath: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, path: *const wchar_t) -> AMF_RESULT,
+    >,
+    pub GetPath: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            path: *mut wchar_t,
+            pSize: *mut amf_size,
+        ) -> AMF_RESULT,
+    >,
+    pub SetWriterLevel: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            writerID: *const wchar_t,
+            level: amf_int32,
+        ) -> amf_int32,
+    >,
+    pub GetWriterLevel: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, writerID: *const wchar_t) -> amf_int32,
+    >,
+    pub SetWriterLevelForScope: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            writerID: *const wchar_t,
+            scope: *const wchar_t,
+            level: amf_int32,
+        ) -> amf_int32,
+    >,
+    pub GetWriterLevelForScope: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            writerID: *const wchar_t,
+            scope: *const wchar_t,
+        ) -> amf_int32,
+    >,
+    pub GetIndentation:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTrace) -> amf_int32>,
+    pub Indent:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTrace, addIndent: amf_int32)>,
+    pub RegisterWriter: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            writerID: *const wchar_t,
+            pWriter: *mut AMFTraceWriter,
+            enable: amf_bool,
+        ),
+    >,
+    pub UnregisterWriter:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFTrace, writerID: *const wchar_t)>,
+    pub GetResultText: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, res: AMF_RESULT) -> *const wchar_t,
+    >,
+    pub SurfaceGetFormatName: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFTrace,
+            eSurfaceFormat: AMF_SURFACE_FORMAT,
+        ) -> *const wchar_t,
+    >,
+    pub SurfaceGetFormatByName: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, name: *const wchar_t) -> AMF_SURFACE_FORMAT,
+    >,
+    pub GetMemoryTypeName: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, memoryType: AMF_MEMORY_TYPE) -> *const wchar_t,
+    >,
+    pub GetMemoryTypeByName: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, name: *const wchar_t) -> AMF_MEMORY_TYPE,
+    >,
+    pub GetSampleFormatName: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, eFormat: AMF_AUDIO_FORMAT) -> *const wchar_t,
+    >,
+    pub GetSampleFormatByName: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFTrace, name: *const wchar_t) -> AMF_AUDIO_FORMAT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFTrace {
+    pub pVtbl: *const AMFTraceVtbl,
+}
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_PRIVATE: AMF_PROPERTY_ACCESS_TYPE = 0;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_READ: AMF_PROPERTY_ACCESS_TYPE = 1;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_WRITE: AMF_PROPERTY_ACCESS_TYPE = 2;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_READ_WRITE: AMF_PROPERTY_ACCESS_TYPE = 3;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_WRITE_RUNTIME: AMF_PROPERTY_ACCESS_TYPE = 4;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_FULL: AMF_PROPERTY_ACCESS_TYPE = 255;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_NON_PERSISTANT: AMF_PROPERTY_ACCESS_TYPE =
+    16384;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_NON_PERSISTANT_READ:
+    AMF_PROPERTY_ACCESS_TYPE = 16385;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_NON_PERSISTANT_READ_WRITE:
+    AMF_PROPERTY_ACCESS_TYPE = 16387;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_NON_PERSISTANT_FULL:
+    AMF_PROPERTY_ACCESS_TYPE = 16639;
+pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_INVALID: AMF_PROPERTY_ACCESS_TYPE = 32768;
+#[cfg(target_os = "linux")]
+pub type AMF_PROPERTY_ACCESS_TYPE = ::std::os::raw::c_uint;
+#[cfg(target_os = "windows")]
+pub type AMF_PROPERTY_ACCESS_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFEnumDescriptionEntry {
+    pub value: amf_int,
+    pub name: *const wchar_t,
+}
+pub type AMF_PROPERTY_CONTENT_TYPE = amf_uint32;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct AMFPropertyInfo {
+    pub name: *const wchar_t,
+    pub desc: *const wchar_t,
+    pub type_: AMF_VARIANT_TYPE,
+    pub contentType: AMF_PROPERTY_CONTENT_TYPE,
+    pub defaultValue: AMFVariantStruct,
+    pub minValue: AMFVariantStruct,
+    pub maxValue: AMFVariantStruct,
+    pub accessType: AMF_PROPERTY_ACCESS_TYPE,
+    pub pEnumDescription: *const AMFEnumDescriptionEntry,
+}
+pub const AMF_ACCELERATION_TYPE_AMF_ACCEL_NOT_SUPPORTED: AMF_ACCELERATION_TYPE = -1;
+pub const AMF_ACCELERATION_TYPE_AMF_ACCEL_HARDWARE: AMF_ACCELERATION_TYPE = 0;
+pub const AMF_ACCELERATION_TYPE_AMF_ACCEL_GPU: AMF_ACCELERATION_TYPE = 1;
+pub const AMF_ACCELERATION_TYPE_AMF_ACCEL_SOFTWARE: AMF_ACCELERATION_TYPE = 2;
+pub type AMF_ACCELERATION_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFIOCapsVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFIOCaps,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub GetWidthRange: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFIOCaps,
+            minWidth: *mut amf_int32,
+            maxWidth: *mut amf_int32,
+        ),
+    >,
+    pub GetHeightRange: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFIOCaps,
+            minHeight: *mut amf_int32,
+            maxHeight: *mut amf_int32,
+        ),
+    >,
+    pub GetVertAlign:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_int32>,
+    pub GetNumOfFormats:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_int32>,
+    pub GetFormatAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFIOCaps,
+            index: amf_int32,
+            format: *mut AMF_SURFACE_FORMAT,
+            native: *mut amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub GetNumOfMemoryTypes:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_int32>,
+    pub GetMemoryTypeAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFIOCaps,
+            index: amf_int32,
+            memType: *mut AMF_MEMORY_TYPE,
+            native: *mut amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub IsInterlacedSupported:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFIOCaps) -> amf_bool>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFIOCaps {
+    pub pVtbl: *const AMFIOCapsVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFCapsVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCaps) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCaps) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCaps, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCaps) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCaps) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFCaps,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCaps, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCaps, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub GetAccelerationType:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFCaps) -> AMF_ACCELERATION_TYPE>,
+    pub GetInputCaps: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCaps, input: *mut *mut AMFIOCaps) -> AMF_RESULT,
+    >,
+    pub GetOutputCaps: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFCaps, output: *mut *mut AMFIOCaps) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFCaps {
+    pub pVtbl: *const AMFCapsVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFDataAllocatorCBVtbl {
+    pub Acquire:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDataAllocatorCB) -> amf_long>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFDataAllocatorCB) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFDataAllocatorCB,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub AllocBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFDataAllocatorCB,
+            type_: AMF_MEMORY_TYPE,
+            size: amf_size,
+            ppBuffer: *mut *mut AMFBuffer,
+        ) -> AMF_RESULT,
+    >,
+    pub AllocSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFDataAllocatorCB,
+            type_: AMF_MEMORY_TYPE,
+            format: AMF_SURFACE_FORMAT,
+            width: amf_int32,
+            height: amf_int32,
+            hPitch: amf_int32,
+            vPitch: amf_int32,
+            ppSurface: *mut *mut AMFSurface,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFDataAllocatorCB {
+    pub pVtbl: *const AMFDataAllocatorCBVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComponentOptimizationCallbackVtbl {
+    pub OnComponentOptimizationProgress: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponentOptimizationCallback,
+            percent: amf_uint,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComponentOptimizationCallback {
+    pub pVtbl: *const AMFComponentOptimizationCallbackVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComponentVtbl {
+    pub Acquire: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> amf_long>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> amf_long>,
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            interfaceID: *const AMFGuid,
+            ppInterface: *mut *mut ::std::os::raw::c_void,
+        ) -> AMF_RESULT,
+    >,
+    pub SetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub GetProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            name: *const wchar_t,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub HasProperty: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, name: *const wchar_t) -> amf_bool,
+    >,
+    pub GetPropertyCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> amf_size>,
+    pub GetPropertyAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            index: amf_size,
+            name: *mut wchar_t,
+            nameSize: amf_size,
+            pValue: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Clear: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> AMF_RESULT>,
+    pub AddTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            pDest: *mut AMFPropertyStorage,
+            overwrite: amf_bool,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub CopyTo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            pDest: *mut AMFPropertyStorage,
+            deep: amf_bool,
+        ) -> AMF_RESULT,
+    >,
+    pub AddObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub RemoveObserver: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, pObserver: *mut AMFPropertyStorageObserver),
+    >,
+    pub GetPropertiesInfoCount:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> amf_size>,
+    pub GetPropertyInfoAt: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            index: amf_size,
+            ppInfo: *mut *const AMFPropertyInfo,
+        ) -> AMF_RESULT,
+    >,
+    pub GetPropertyInfo: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            name: *const wchar_t,
+            ppInfo: *mut *const AMFPropertyInfo,
+        ) -> AMF_RESULT,
+    >,
+    pub ValidateProperty: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            name: *const wchar_t,
+            value: AMFVariantStruct,
+            pOutValidated: *mut AMFVariantStruct,
+        ) -> AMF_RESULT,
+    >,
+    pub Init: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            format: AMF_SURFACE_FORMAT,
+            width: amf_int32,
+            height: amf_int32,
+        ) -> AMF_RESULT,
+    >,
+    pub ReInit: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            width: amf_int32,
+            height: amf_int32,
+        ) -> AMF_RESULT,
+    >,
+    pub Terminate:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> AMF_RESULT>,
+    pub Drain: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> AMF_RESULT>,
+    pub Flush: ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> AMF_RESULT>,
+    pub SubmitInput: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, pData: *mut AMFData) -> AMF_RESULT,
+    >,
+    pub QueryOutput: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, ppData: *mut *mut AMFData) -> AMF_RESULT,
+    >,
+    pub GetContext:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFComponent) -> *mut AMFContext>,
+    pub SetOutputDataAllocatorCB: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            callback: *mut AMFDataAllocatorCB,
+        ) -> AMF_RESULT,
+    >,
+    pub GetCaps: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFComponent, ppCaps: *mut *mut AMFCaps) -> AMF_RESULT,
+    >,
+    pub Optimize: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFComponent,
+            pCallback: *mut AMFComponentOptimizationCallback,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFComponent {
+    pub pVtbl: *const AMFComponentVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFactoryVtbl {
+    pub CreateContext: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFFactory, ppContext: *mut *mut AMFContext) -> AMF_RESULT,
+    >,
+    pub CreateComponent: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFFactory,
+            pContext: *mut AMFContext,
+            id: *const wchar_t,
+            ppComponent: *mut *mut AMFComponent,
+        ) -> AMF_RESULT,
+    >,
+    pub SetCacheFolder: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFFactory, path: *const wchar_t) -> AMF_RESULT,
+    >,
+    pub GetCacheFolder:
+        ::std::option::Option<unsafe extern "C" fn(pThis: *mut AMFFactory) -> *const wchar_t>,
+    pub GetDebug: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFFactory, ppDebug: *mut *mut AMFDebug) -> AMF_RESULT,
+    >,
+    pub GetTrace: ::std::option::Option<
+        unsafe extern "C" fn(pThis: *mut AMFFactory, ppTrace: *mut *mut AMFTrace) -> AMF_RESULT,
+    >,
+    pub GetPrograms: ::std::option::Option<
+        unsafe extern "C" fn(
+            pThis: *mut AMFFactory,
+            ppPrograms: *mut *mut AMFPrograms,
+        ) -> AMF_RESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AMFFactory {
+    pub pVtbl: *const AMFFactoryVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVAMFDeviceContext {
+    pub library: *mut ::std::os::raw::c_void,
+    pub factory: *mut AMFFactory,
+    pub trace_writer: *mut ::std::os::raw::c_void,
+    pub version: i64,
+    pub context: *mut AMFContext,
+    pub memory_type: AMF_MEMORY_TYPE,
+    pub lock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub unlock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub lock_ctx: *mut ::std::os::raw::c_void,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __va_list_tag {
+    pub gp_offset: ::std::os::raw::c_uint,
+    pub fp_offset: ::std::os::raw::c_uint,
+    pub overflow_arg_area: *mut ::std::os::raw::c_void,
+    pub reg_save_area: *mut ::std::os::raw::c_void,
+}
+pub const FF_DONTCARE: u32 = 0;
+pub const FF_ROMAN: u32 = 16;
+pub const FF_SWISS: u32 = 32;
+pub const FF_MODERN: u32 = 48;
+pub const FF_SCRIPT: u32 = 64;
+pub const FF_DECORATIVE: u32 = 80;
+pub type __time64_t = ::std::os::raw::c_longlong;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _iobuf {
+    pub _Placeholder: *mut ::std::os::raw::c_void,
+}
+pub type ULONG = ::std::os::raw::c_ulong;
+pub type USHORT = ::std::os::raw::c_ushort;
+pub type DWORD = ::std::os::raw::c_ulong;
+pub type BOOL = ::std::os::raw::c_int;
+pub type BYTE = ::std::os::raw::c_uchar;
+pub type WORD = ::std::os::raw::c_ushort;
+pub type FLOAT = f32;
+pub type LPVOID = *mut ::std::os::raw::c_void;
+pub type INT = ::std::os::raw::c_int;
+pub type UINT = ::std::os::raw::c_uint;
+pub type UINT8 = ::std::os::raw::c_uchar;
+pub type UINT16 = ::std::os::raw::c_ushort;
+pub type UINT64 = ::std::os::raw::c_ulonglong;
+pub type ULONG_PTR = ::std::os::raw::c_ulonglong;
+pub type SIZE_T = ULONG_PTR;
+pub type PVOID = *mut ::std::os::raw::c_void;
+pub type CHAR = ::std::os::raw::c_char;
+pub type LONG = ::std::os::raw::c_long;
+pub type WCHAR = wchar_t;
+pub type LPCWSTR = *const WCHAR;
+pub type LPSTR = *mut CHAR;
+pub type LPCSTR = *const CHAR;
+pub type HANDLE = *mut ::std::os::raw::c_void;
+pub type HRESULT = ::std::os::raw::c_long;
+pub type LONGLONG = ::std::os::raw::c_longlong;
+pub type ULONGLONG = ::std::os::raw::c_ulonglong;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _LARGE_INTEGER {
+    pub __bindgen_anon_1: _LARGE_INTEGER__bindgen_ty_1,
+    pub u: _LARGE_INTEGER__bindgen_ty_2,
+    pub QuadPart: LONGLONG,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _LARGE_INTEGER__bindgen_ty_1 {
+    pub LowPart: DWORD,
+    pub HighPart: LONG,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _LARGE_INTEGER__bindgen_ty_2 {
+    pub LowPart: DWORD,
+    pub HighPart: LONG,
+}
+pub type LARGE_INTEGER = _LARGE_INTEGER;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _LUID {
+    pub LowPart: DWORD,
+    pub HighPart: LONG,
+}
+pub type LUID = _LUID;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _GUID {
+    pub Data1: ::std::os::raw::c_ulong,
+    pub Data2: ::std::os::raw::c_ushort,
+    pub Data3: ::std::os::raw::c_ushort,
+    pub Data4: [::std::os::raw::c_uchar; 8usize],
+}
+pub type GUID = _GUID;
+pub type IID = GUID;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct HWND__ {
+    pub unused: ::std::os::raw::c_int,
+}
+pub type HWND = *mut HWND__;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct HDC__ {
+    pub unused: ::std::os::raw::c_int,
+}
+pub type HDC = *mut HDC__;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct HMONITOR__ {
+    pub unused: ::std::os::raw::c_int,
+}
+pub type HMONITOR = *mut HMONITOR__;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tagRECT {
+    pub left: LONG,
+    pub top: LONG,
+    pub right: LONG,
+    pub bottom: LONG,
+}
+pub type RECT = tagRECT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tagPOINT {
+    pub x: LONG,
+    pub y: LONG,
+}
+pub type POINT = tagPOINT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tagSIZE {
+    pub cx: LONG,
+    pub cy: LONG,
+}
+pub type SIZE = tagSIZE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _SECURITY_ATTRIBUTES {
+    pub nLength: DWORD,
+    pub lpSecurityDescriptor: LPVOID,
+    pub bInheritHandle: BOOL,
+}
+pub type SECURITY_ATTRIBUTES = _SECURITY_ATTRIBUTES;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tagPALETTEENTRY {
+    pub peRed: BYTE,
+    pub peGreen: BYTE,
+    pub peBlue: BYTE,
+    pub peFlags: BYTE,
+}
+pub type PALETTEENTRY = tagPALETTEENTRY;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _RGNDATAHEADER {
+    pub dwSize: DWORD,
+    pub iType: DWORD,
+    pub nCount: DWORD,
+    pub nRgnSize: DWORD,
+    pub rcBound: RECT,
+}
+pub type RGNDATAHEADER = _RGNDATAHEADER;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _RGNDATA {
+    pub rdh: RGNDATAHEADER,
+    pub Buffer: [::std::os::raw::c_char; 1usize],
+}
+pub type RGNDATA = _RGNDATA;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IUnknownVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IUnknown,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IUnknown) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IUnknown) -> ULONG>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IUnknown {
+    pub lpVtbl: *mut IUnknownVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct DXGI_RATIONAL {
+    pub Numerator: UINT,
+    pub Denominator: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct DXGI_SAMPLE_DESC {
+    pub Count: UINT,
+    pub Quality: UINT,
+}
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709: DXGI_COLOR_SPACE_TYPE = 0;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709: DXGI_COLOR_SPACE_TYPE = 1;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709: DXGI_COLOR_SPACE_TYPE =
+    2;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020: DXGI_COLOR_SPACE_TYPE =
+    3;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RESERVED: DXGI_COLOR_SPACE_TYPE = 4;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601:
+    DXGI_COLOR_SPACE_TYPE = 5;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601: DXGI_COLOR_SPACE_TYPE =
+    6;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601: DXGI_COLOR_SPACE_TYPE =
+    7;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709: DXGI_COLOR_SPACE_TYPE =
+    8;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709: DXGI_COLOR_SPACE_TYPE =
+    9;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 10;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020: DXGI_COLOR_SPACE_TYPE =
+    11;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: DXGI_COLOR_SPACE_TYPE =
+    12;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 13;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020:
+    DXGI_COLOR_SPACE_TYPE = 14;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 15;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 16;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020: DXGI_COLOR_SPACE_TYPE =
+    17;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_GHLG_TOPLEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 18;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_FULL_GHLG_TOPLEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 19;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_STUDIO_G24_NONE_P709: DXGI_COLOR_SPACE_TYPE =
+    20;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_RGB_STUDIO_G24_NONE_P2020: DXGI_COLOR_SPACE_TYPE =
+    21;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709: DXGI_COLOR_SPACE_TYPE =
+    22;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 23;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020:
+    DXGI_COLOR_SPACE_TYPE = 24;
+pub const DXGI_COLOR_SPACE_TYPE_DXGI_COLOR_SPACE_CUSTOM: DXGI_COLOR_SPACE_TYPE = -1;
+pub type DXGI_COLOR_SPACE_TYPE = ::std::os::raw::c_int;
+pub const DXGI_FORMAT_DXGI_FORMAT_UNKNOWN: DXGI_FORMAT = 0;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_TYPELESS: DXGI_FORMAT = 1;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_FLOAT: DXGI_FORMAT = 2;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_UINT: DXGI_FORMAT = 3;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_SINT: DXGI_FORMAT = 4;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32_TYPELESS: DXGI_FORMAT = 5;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32_FLOAT: DXGI_FORMAT = 6;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32_UINT: DXGI_FORMAT = 7;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32B32_SINT: DXGI_FORMAT = 8;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_TYPELESS: DXGI_FORMAT = 9;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_FLOAT: DXGI_FORMAT = 10;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_UNORM: DXGI_FORMAT = 11;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_UINT: DXGI_FORMAT = 12;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_SNORM: DXGI_FORMAT = 13;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16B16A16_SINT: DXGI_FORMAT = 14;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32_TYPELESS: DXGI_FORMAT = 15;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32_FLOAT: DXGI_FORMAT = 16;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32_UINT: DXGI_FORMAT = 17;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G32_SINT: DXGI_FORMAT = 18;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32G8X24_TYPELESS: DXGI_FORMAT = 19;
+pub const DXGI_FORMAT_DXGI_FORMAT_D32_FLOAT_S8X24_UINT: DXGI_FORMAT = 20;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS: DXGI_FORMAT = 21;
+pub const DXGI_FORMAT_DXGI_FORMAT_X32_TYPELESS_G8X24_UINT: DXGI_FORMAT = 22;
+pub const DXGI_FORMAT_DXGI_FORMAT_R10G10B10A2_TYPELESS: DXGI_FORMAT = 23;
+pub const DXGI_FORMAT_DXGI_FORMAT_R10G10B10A2_UNORM: DXGI_FORMAT = 24;
+pub const DXGI_FORMAT_DXGI_FORMAT_R10G10B10A2_UINT: DXGI_FORMAT = 25;
+pub const DXGI_FORMAT_DXGI_FORMAT_R11G11B10_FLOAT: DXGI_FORMAT = 26;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_TYPELESS: DXGI_FORMAT = 27;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UNORM: DXGI_FORMAT = 28;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: DXGI_FORMAT = 29;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UINT: DXGI_FORMAT = 30;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_SNORM: DXGI_FORMAT = 31;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_SINT: DXGI_FORMAT = 32;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_TYPELESS: DXGI_FORMAT = 33;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_FLOAT: DXGI_FORMAT = 34;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_UNORM: DXGI_FORMAT = 35;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_UINT: DXGI_FORMAT = 36;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_SNORM: DXGI_FORMAT = 37;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16G16_SINT: DXGI_FORMAT = 38;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32_TYPELESS: DXGI_FORMAT = 39;
+pub const DXGI_FORMAT_DXGI_FORMAT_D32_FLOAT: DXGI_FORMAT = 40;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32_FLOAT: DXGI_FORMAT = 41;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32_UINT: DXGI_FORMAT = 42;
+pub const DXGI_FORMAT_DXGI_FORMAT_R32_SINT: DXGI_FORMAT = 43;
+pub const DXGI_FORMAT_DXGI_FORMAT_R24G8_TYPELESS: DXGI_FORMAT = 44;
+pub const DXGI_FORMAT_DXGI_FORMAT_D24_UNORM_S8_UINT: DXGI_FORMAT = 45;
+pub const DXGI_FORMAT_DXGI_FORMAT_R24_UNORM_X8_TYPELESS: DXGI_FORMAT = 46;
+pub const DXGI_FORMAT_DXGI_FORMAT_X24_TYPELESS_G8_UINT: DXGI_FORMAT = 47;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_TYPELESS: DXGI_FORMAT = 48;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_UNORM: DXGI_FORMAT = 49;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_UINT: DXGI_FORMAT = 50;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_SNORM: DXGI_FORMAT = 51;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_SINT: DXGI_FORMAT = 52;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_TYPELESS: DXGI_FORMAT = 53;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_FLOAT: DXGI_FORMAT = 54;
+pub const DXGI_FORMAT_DXGI_FORMAT_D16_UNORM: DXGI_FORMAT = 55;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_UNORM: DXGI_FORMAT = 56;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_UINT: DXGI_FORMAT = 57;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_SNORM: DXGI_FORMAT = 58;
+pub const DXGI_FORMAT_DXGI_FORMAT_R16_SINT: DXGI_FORMAT = 59;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8_TYPELESS: DXGI_FORMAT = 60;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8_UNORM: DXGI_FORMAT = 61;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8_UINT: DXGI_FORMAT = 62;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8_SNORM: DXGI_FORMAT = 63;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8_SINT: DXGI_FORMAT = 64;
+pub const DXGI_FORMAT_DXGI_FORMAT_A8_UNORM: DXGI_FORMAT = 65;
+pub const DXGI_FORMAT_DXGI_FORMAT_R1_UNORM: DXGI_FORMAT = 66;
+pub const DXGI_FORMAT_DXGI_FORMAT_R9G9B9E5_SHAREDEXP: DXGI_FORMAT = 67;
+pub const DXGI_FORMAT_DXGI_FORMAT_R8G8_B8G8_UNORM: DXGI_FORMAT = 68;
+pub const DXGI_FORMAT_DXGI_FORMAT_G8R8_G8B8_UNORM: DXGI_FORMAT = 69;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC1_TYPELESS: DXGI_FORMAT = 70;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC1_UNORM: DXGI_FORMAT = 71;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC1_UNORM_SRGB: DXGI_FORMAT = 72;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC2_TYPELESS: DXGI_FORMAT = 73;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC2_UNORM: DXGI_FORMAT = 74;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC2_UNORM_SRGB: DXGI_FORMAT = 75;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC3_TYPELESS: DXGI_FORMAT = 76;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC3_UNORM: DXGI_FORMAT = 77;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC3_UNORM_SRGB: DXGI_FORMAT = 78;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC4_TYPELESS: DXGI_FORMAT = 79;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC4_UNORM: DXGI_FORMAT = 80;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC4_SNORM: DXGI_FORMAT = 81;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC5_TYPELESS: DXGI_FORMAT = 82;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC5_UNORM: DXGI_FORMAT = 83;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC5_SNORM: DXGI_FORMAT = 84;
+pub const DXGI_FORMAT_DXGI_FORMAT_B5G6R5_UNORM: DXGI_FORMAT = 85;
+pub const DXGI_FORMAT_DXGI_FORMAT_B5G5R5A1_UNORM: DXGI_FORMAT = 86;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8A8_UNORM: DXGI_FORMAT = 87;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8X8_UNORM: DXGI_FORMAT = 88;
+pub const DXGI_FORMAT_DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM: DXGI_FORMAT = 89;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8A8_TYPELESS: DXGI_FORMAT = 90;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: DXGI_FORMAT = 91;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8X8_TYPELESS: DXGI_FORMAT = 92;
+pub const DXGI_FORMAT_DXGI_FORMAT_B8G8R8X8_UNORM_SRGB: DXGI_FORMAT = 93;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC6H_TYPELESS: DXGI_FORMAT = 94;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC6H_UF16: DXGI_FORMAT = 95;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC6H_SF16: DXGI_FORMAT = 96;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC7_TYPELESS: DXGI_FORMAT = 97;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC7_UNORM: DXGI_FORMAT = 98;
+pub const DXGI_FORMAT_DXGI_FORMAT_BC7_UNORM_SRGB: DXGI_FORMAT = 99;
+pub const DXGI_FORMAT_DXGI_FORMAT_AYUV: DXGI_FORMAT = 100;
+pub const DXGI_FORMAT_DXGI_FORMAT_Y410: DXGI_FORMAT = 101;
+pub const DXGI_FORMAT_DXGI_FORMAT_Y416: DXGI_FORMAT = 102;
+pub const DXGI_FORMAT_DXGI_FORMAT_NV12: DXGI_FORMAT = 103;
+pub const DXGI_FORMAT_DXGI_FORMAT_P010: DXGI_FORMAT = 104;
+pub const DXGI_FORMAT_DXGI_FORMAT_P016: DXGI_FORMAT = 105;
+pub const DXGI_FORMAT_DXGI_FORMAT_420_OPAQUE: DXGI_FORMAT = 106;
+pub const DXGI_FORMAT_DXGI_FORMAT_YUY2: DXGI_FORMAT = 107;
+pub const DXGI_FORMAT_DXGI_FORMAT_Y210: DXGI_FORMAT = 108;
+pub const DXGI_FORMAT_DXGI_FORMAT_Y216: DXGI_FORMAT = 109;
+pub const DXGI_FORMAT_DXGI_FORMAT_NV11: DXGI_FORMAT = 110;
+pub const DXGI_FORMAT_DXGI_FORMAT_AI44: DXGI_FORMAT = 111;
+pub const DXGI_FORMAT_DXGI_FORMAT_IA44: DXGI_FORMAT = 112;
+pub const DXGI_FORMAT_DXGI_FORMAT_P8: DXGI_FORMAT = 113;
+pub const DXGI_FORMAT_DXGI_FORMAT_A8P8: DXGI_FORMAT = 114;
+pub const DXGI_FORMAT_DXGI_FORMAT_B4G4R4A4_UNORM: DXGI_FORMAT = 115;
+pub const DXGI_FORMAT_DXGI_FORMAT_P208: DXGI_FORMAT = 130;
+pub const DXGI_FORMAT_DXGI_FORMAT_V208: DXGI_FORMAT = 131;
+pub const DXGI_FORMAT_DXGI_FORMAT_V408: DXGI_FORMAT = 132;
+pub const DXGI_FORMAT_DXGI_FORMAT_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE: DXGI_FORMAT = 189;
+pub const DXGI_FORMAT_DXGI_FORMAT_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE: DXGI_FORMAT = 190;
+pub const DXGI_FORMAT_DXGI_FORMAT_A4B4G4R4_UNORM: DXGI_FORMAT = 191;
+pub const DXGI_FORMAT_DXGI_FORMAT_FORCE_UINT: DXGI_FORMAT = -1;
+pub type DXGI_FORMAT = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DCOLORVALUE {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
+pub type D3DCOLORVALUE = _D3DCOLORVALUE;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_1_0_GENERIC: D3D_FEATURE_LEVEL = 256;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_1_0_CORE: D3D_FEATURE_LEVEL = 4096;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_9_1: D3D_FEATURE_LEVEL = 37120;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_9_2: D3D_FEATURE_LEVEL = 37376;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_9_3: D3D_FEATURE_LEVEL = 37632;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_10_0: D3D_FEATURE_LEVEL = 40960;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_10_1: D3D_FEATURE_LEVEL = 41216;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_11_0: D3D_FEATURE_LEVEL = 45056;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_11_1: D3D_FEATURE_LEVEL = 45312;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_12_0: D3D_FEATURE_LEVEL = 49152;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_12_1: D3D_FEATURE_LEVEL = 49408;
+pub const D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_12_2: D3D_FEATURE_LEVEL = 49664;
+pub type D3D_FEATURE_LEVEL = ::std::os::raw::c_int;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_UNDEFINED: D3D_PRIMITIVE_TOPOLOGY = 0;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_POINTLIST: D3D_PRIMITIVE_TOPOLOGY = 1;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_LINELIST: D3D_PRIMITIVE_TOPOLOGY = 2;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_LINESTRIP: D3D_PRIMITIVE_TOPOLOGY = 3;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST: D3D_PRIMITIVE_TOPOLOGY = 4;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP: D3D_PRIMITIVE_TOPOLOGY = 5;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN: D3D_PRIMITIVE_TOPOLOGY = 6;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY = 10;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ: D3D_PRIMITIVE_TOPOLOGY = 11;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    12;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    13;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 33;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 34;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 35;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 36;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 37;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 38;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 39;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 40;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 41;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 42;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 43;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 44;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 45;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 46;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 47;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 48;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 49;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 50;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 51;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 52;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 53;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 54;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 55;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 56;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 57;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 58;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 59;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 60;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 61;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 62;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 63;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 64;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_UNDEFINED: D3D_PRIMITIVE_TOPOLOGY = 0;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_POINTLIST: D3D_PRIMITIVE_TOPOLOGY = 1;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_LINELIST: D3D_PRIMITIVE_TOPOLOGY = 2;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_LINESTRIP: D3D_PRIMITIVE_TOPOLOGY = 3;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST: D3D_PRIMITIVE_TOPOLOGY = 4;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP: D3D_PRIMITIVE_TOPOLOGY = 5;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_LINELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY = 10;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    11;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    12;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+    D3D_PRIMITIVE_TOPOLOGY = 13;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED: D3D_PRIMITIVE_TOPOLOGY = 0;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_POINTLIST: D3D_PRIMITIVE_TOPOLOGY = 1;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_LINELIST: D3D_PRIMITIVE_TOPOLOGY = 2;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP: D3D_PRIMITIVE_TOPOLOGY = 3;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST: D3D_PRIMITIVE_TOPOLOGY = 4;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP: D3D_PRIMITIVE_TOPOLOGY = 5;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY = 10;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    11;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ: D3D_PRIMITIVE_TOPOLOGY =
+    12;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+    D3D_PRIMITIVE_TOPOLOGY = 13;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 33;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 34;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 35;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 36;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 37;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 38;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 39;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 40;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 41;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 42;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 43;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 44;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 45;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 46;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 47;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 48;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 49;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 50;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 51;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 52;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 53;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 54;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 55;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 56;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 57;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 58;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 59;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 60;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 61;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 62;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 63;
+pub const D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST:
+    D3D_PRIMITIVE_TOPOLOGY = 64;
+pub type D3D_PRIMITIVE_TOPOLOGY = ::std::os::raw::c_int;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_UNKNOWN: D3D_SRV_DIMENSION = 0;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_BUFFER: D3D_SRV_DIMENSION = 1;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE1D: D3D_SRV_DIMENSION = 2;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE1DARRAY: D3D_SRV_DIMENSION = 3;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE2D: D3D_SRV_DIMENSION = 4;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE2DARRAY: D3D_SRV_DIMENSION = 5;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE2DMS: D3D_SRV_DIMENSION = 6;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE2DMSARRAY: D3D_SRV_DIMENSION = 7;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURE3D: D3D_SRV_DIMENSION = 8;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURECUBE: D3D_SRV_DIMENSION = 9;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_TEXTURECUBEARRAY: D3D_SRV_DIMENSION = 10;
+pub const D3D_SRV_DIMENSION_D3D_SRV_DIMENSION_BUFFEREX: D3D_SRV_DIMENSION = 11;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_UNKNOWN: D3D_SRV_DIMENSION = 0;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_BUFFER: D3D_SRV_DIMENSION = 1;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE1D: D3D_SRV_DIMENSION = 2;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE1DARRAY: D3D_SRV_DIMENSION = 3;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE2D: D3D_SRV_DIMENSION = 4;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE2DARRAY: D3D_SRV_DIMENSION = 5;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE2DMS: D3D_SRV_DIMENSION = 6;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE2DMSARRAY: D3D_SRV_DIMENSION = 7;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURE3D: D3D_SRV_DIMENSION = 8;
+pub const D3D_SRV_DIMENSION_D3D10_SRV_DIMENSION_TEXTURECUBE: D3D_SRV_DIMENSION = 9;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_UNKNOWN: D3D_SRV_DIMENSION = 0;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_BUFFER: D3D_SRV_DIMENSION = 1;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE1D: D3D_SRV_DIMENSION = 2;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE1DARRAY: D3D_SRV_DIMENSION = 3;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE2D: D3D_SRV_DIMENSION = 4;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE2DARRAY: D3D_SRV_DIMENSION = 5;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE2DMS: D3D_SRV_DIMENSION = 6;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE2DMSARRAY: D3D_SRV_DIMENSION = 7;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURE3D: D3D_SRV_DIMENSION = 8;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURECUBE: D3D_SRV_DIMENSION = 9;
+pub const D3D_SRV_DIMENSION_D3D10_1_SRV_DIMENSION_TEXTURECUBEARRAY: D3D_SRV_DIMENSION = 10;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_UNKNOWN: D3D_SRV_DIMENSION = 0;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_BUFFER: D3D_SRV_DIMENSION = 1;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE1D: D3D_SRV_DIMENSION = 2;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE1DARRAY: D3D_SRV_DIMENSION = 3;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE2D: D3D_SRV_DIMENSION = 4;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE2DARRAY: D3D_SRV_DIMENSION = 5;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE2DMS: D3D_SRV_DIMENSION = 6;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY: D3D_SRV_DIMENSION = 7;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURE3D: D3D_SRV_DIMENSION = 8;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURECUBE: D3D_SRV_DIMENSION = 9;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_TEXTURECUBEARRAY: D3D_SRV_DIMENSION = 10;
+pub const D3D_SRV_DIMENSION_D3D11_SRV_DIMENSION_BUFFEREX: D3D_SRV_DIMENSION = 11;
+pub type D3D_SRV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D10BlobVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D10Blob,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D10Blob) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D10Blob) -> ULONG>,
+    pub GetBufferPointer:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D10Blob) -> LPVOID>,
+    pub GetBufferSize: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D10Blob) -> SIZE_T>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D10Blob {
+    pub lpVtbl: *mut ID3D10BlobVtbl,
+}
+pub type ID3DBlob = ID3D10Blob;
+pub const D3D11_INPUT_CLASSIFICATION_D3D11_INPUT_PER_VERTEX_DATA: D3D11_INPUT_CLASSIFICATION = 0;
+pub const D3D11_INPUT_CLASSIFICATION_D3D11_INPUT_PER_INSTANCE_DATA: D3D11_INPUT_CLASSIFICATION = 1;
+pub type D3D11_INPUT_CLASSIFICATION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_INPUT_ELEMENT_DESC {
+    pub SemanticName: LPCSTR,
+    pub SemanticIndex: UINT,
+    pub Format: DXGI_FORMAT,
+    pub InputSlot: UINT,
+    pub AlignedByteOffset: UINT,
+    pub InputSlotClass: D3D11_INPUT_CLASSIFICATION,
+    pub InstanceDataStepRate: UINT,
+}
+pub const D3D11_FILL_MODE_D3D11_FILL_WIREFRAME: D3D11_FILL_MODE = 2;
+pub const D3D11_FILL_MODE_D3D11_FILL_SOLID: D3D11_FILL_MODE = 3;
+pub type D3D11_FILL_MODE = ::std::os::raw::c_int;
+pub use self::D3D_PRIMITIVE_TOPOLOGY as D3D11_PRIMITIVE_TOPOLOGY;
+pub const D3D11_CULL_MODE_D3D11_CULL_NONE: D3D11_CULL_MODE = 1;
+pub const D3D11_CULL_MODE_D3D11_CULL_FRONT: D3D11_CULL_MODE = 2;
+pub const D3D11_CULL_MODE_D3D11_CULL_BACK: D3D11_CULL_MODE = 3;
+pub type D3D11_CULL_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_SO_DECLARATION_ENTRY {
+    pub Stream: UINT,
+    pub SemanticName: LPCSTR,
+    pub SemanticIndex: UINT,
+    pub StartComponent: BYTE,
+    pub ComponentCount: BYTE,
+    pub OutputSlot: BYTE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIEWPORT {
+    pub TopLeftX: FLOAT,
+    pub TopLeftY: FLOAT,
+    pub Width: FLOAT,
+    pub Height: FLOAT,
+    pub MinDepth: FLOAT,
+    pub MaxDepth: FLOAT,
+}
+pub const D3D11_RESOURCE_DIMENSION_D3D11_RESOURCE_DIMENSION_UNKNOWN: D3D11_RESOURCE_DIMENSION = 0;
+pub const D3D11_RESOURCE_DIMENSION_D3D11_RESOURCE_DIMENSION_BUFFER: D3D11_RESOURCE_DIMENSION = 1;
+pub const D3D11_RESOURCE_DIMENSION_D3D11_RESOURCE_DIMENSION_TEXTURE1D: D3D11_RESOURCE_DIMENSION = 2;
+pub const D3D11_RESOURCE_DIMENSION_D3D11_RESOURCE_DIMENSION_TEXTURE2D: D3D11_RESOURCE_DIMENSION = 3;
+pub const D3D11_RESOURCE_DIMENSION_D3D11_RESOURCE_DIMENSION_TEXTURE3D: D3D11_RESOURCE_DIMENSION = 4;
+pub type D3D11_RESOURCE_DIMENSION = ::std::os::raw::c_int;
+pub use self::D3D_SRV_DIMENSION as D3D11_SRV_DIMENSION;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_UNKNOWN: D3D11_DSV_DIMENSION = 0;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE1D: D3D11_DSV_DIMENSION = 1;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE1DARRAY: D3D11_DSV_DIMENSION = 2;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE2D: D3D11_DSV_DIMENSION = 3;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE2DARRAY: D3D11_DSV_DIMENSION = 4;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE2DMS: D3D11_DSV_DIMENSION = 5;
+pub const D3D11_DSV_DIMENSION_D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY: D3D11_DSV_DIMENSION = 6;
+pub type D3D11_DSV_DIMENSION = ::std::os::raw::c_int;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_UNKNOWN: D3D11_RTV_DIMENSION = 0;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_BUFFER: D3D11_RTV_DIMENSION = 1;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE1D: D3D11_RTV_DIMENSION = 2;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE1DARRAY: D3D11_RTV_DIMENSION = 3;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE2D: D3D11_RTV_DIMENSION = 4;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE2DARRAY: D3D11_RTV_DIMENSION = 5;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE2DMS: D3D11_RTV_DIMENSION = 6;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY: D3D11_RTV_DIMENSION = 7;
+pub const D3D11_RTV_DIMENSION_D3D11_RTV_DIMENSION_TEXTURE3D: D3D11_RTV_DIMENSION = 8;
+pub type D3D11_RTV_DIMENSION = ::std::os::raw::c_int;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_UNKNOWN: D3D11_UAV_DIMENSION = 0;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_BUFFER: D3D11_UAV_DIMENSION = 1;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_TEXTURE1D: D3D11_UAV_DIMENSION = 2;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_TEXTURE1DARRAY: D3D11_UAV_DIMENSION = 3;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_TEXTURE2D: D3D11_UAV_DIMENSION = 4;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_TEXTURE2DARRAY: D3D11_UAV_DIMENSION = 5;
+pub const D3D11_UAV_DIMENSION_D3D11_UAV_DIMENSION_TEXTURE3D: D3D11_UAV_DIMENSION = 8;
+pub type D3D11_UAV_DIMENSION = ::std::os::raw::c_int;
+pub const D3D11_USAGE_D3D11_USAGE_DEFAULT: D3D11_USAGE = 0;
+pub const D3D11_USAGE_D3D11_USAGE_IMMUTABLE: D3D11_USAGE = 1;
+pub const D3D11_USAGE_D3D11_USAGE_DYNAMIC: D3D11_USAGE = 2;
+pub const D3D11_USAGE_D3D11_USAGE_STAGING: D3D11_USAGE = 3;
+pub type D3D11_USAGE = ::std::os::raw::c_int;
+pub const D3D11_MAP_D3D11_MAP_READ: D3D11_MAP = 1;
+pub const D3D11_MAP_D3D11_MAP_WRITE: D3D11_MAP = 2;
+pub const D3D11_MAP_D3D11_MAP_READ_WRITE: D3D11_MAP = 3;
+pub const D3D11_MAP_D3D11_MAP_WRITE_DISCARD: D3D11_MAP = 4;
+pub const D3D11_MAP_D3D11_MAP_WRITE_NO_OVERWRITE: D3D11_MAP = 5;
+pub type D3D11_MAP = ::std::os::raw::c_int;
+pub type D3D11_RECT = RECT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_BOX {
+    pub left: UINT,
+    pub top: UINT,
+    pub front: UINT,
+    pub right: UINT,
+    pub bottom: UINT,
+    pub back: UINT,
+}
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_NEVER: D3D11_COMPARISON_FUNC = 1;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_LESS: D3D11_COMPARISON_FUNC = 2;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_EQUAL: D3D11_COMPARISON_FUNC = 3;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_LESS_EQUAL: D3D11_COMPARISON_FUNC = 4;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_GREATER: D3D11_COMPARISON_FUNC = 5;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_NOT_EQUAL: D3D11_COMPARISON_FUNC = 6;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_GREATER_EQUAL: D3D11_COMPARISON_FUNC = 7;
+pub const D3D11_COMPARISON_FUNC_D3D11_COMPARISON_ALWAYS: D3D11_COMPARISON_FUNC = 8;
+pub type D3D11_COMPARISON_FUNC = ::std::os::raw::c_int;
+pub const D3D11_DEPTH_WRITE_MASK_D3D11_DEPTH_WRITE_MASK_ZERO: D3D11_DEPTH_WRITE_MASK = 0;
+pub const D3D11_DEPTH_WRITE_MASK_D3D11_DEPTH_WRITE_MASK_ALL: D3D11_DEPTH_WRITE_MASK = 1;
+pub type D3D11_DEPTH_WRITE_MASK = ::std::os::raw::c_int;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_KEEP: D3D11_STENCIL_OP = 1;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_ZERO: D3D11_STENCIL_OP = 2;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_REPLACE: D3D11_STENCIL_OP = 3;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_INCR_SAT: D3D11_STENCIL_OP = 4;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_DECR_SAT: D3D11_STENCIL_OP = 5;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_INVERT: D3D11_STENCIL_OP = 6;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_INCR: D3D11_STENCIL_OP = 7;
+pub const D3D11_STENCIL_OP_D3D11_STENCIL_OP_DECR: D3D11_STENCIL_OP = 8;
+pub type D3D11_STENCIL_OP = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_DEPTH_STENCILOP_DESC {
+    pub StencilFailOp: D3D11_STENCIL_OP,
+    pub StencilDepthFailOp: D3D11_STENCIL_OP,
+    pub StencilPassOp: D3D11_STENCIL_OP,
+    pub StencilFunc: D3D11_COMPARISON_FUNC,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_DEPTH_STENCIL_DESC {
+    pub DepthEnable: BOOL,
+    pub DepthWriteMask: D3D11_DEPTH_WRITE_MASK,
+    pub DepthFunc: D3D11_COMPARISON_FUNC,
+    pub StencilEnable: BOOL,
+    pub StencilReadMask: UINT8,
+    pub StencilWriteMask: UINT8,
+    pub FrontFace: D3D11_DEPTH_STENCILOP_DESC,
+    pub BackFace: D3D11_DEPTH_STENCILOP_DESC,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DepthStencilStateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilState,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DepthStencilState) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DepthStencilState) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DepthStencilState, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilState,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilState,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilState,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilState,
+            pDesc: *mut D3D11_DEPTH_STENCIL_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DepthStencilState {
+    pub lpVtbl: *mut ID3D11DepthStencilStateVtbl,
+}
+pub const D3D11_BLEND_D3D11_BLEND_ZERO: D3D11_BLEND = 1;
+pub const D3D11_BLEND_D3D11_BLEND_ONE: D3D11_BLEND = 2;
+pub const D3D11_BLEND_D3D11_BLEND_SRC_COLOR: D3D11_BLEND = 3;
+pub const D3D11_BLEND_D3D11_BLEND_INV_SRC_COLOR: D3D11_BLEND = 4;
+pub const D3D11_BLEND_D3D11_BLEND_SRC_ALPHA: D3D11_BLEND = 5;
+pub const D3D11_BLEND_D3D11_BLEND_INV_SRC_ALPHA: D3D11_BLEND = 6;
+pub const D3D11_BLEND_D3D11_BLEND_DEST_ALPHA: D3D11_BLEND = 7;
+pub const D3D11_BLEND_D3D11_BLEND_INV_DEST_ALPHA: D3D11_BLEND = 8;
+pub const D3D11_BLEND_D3D11_BLEND_DEST_COLOR: D3D11_BLEND = 9;
+pub const D3D11_BLEND_D3D11_BLEND_INV_DEST_COLOR: D3D11_BLEND = 10;
+pub const D3D11_BLEND_D3D11_BLEND_SRC_ALPHA_SAT: D3D11_BLEND = 11;
+pub const D3D11_BLEND_D3D11_BLEND_BLEND_FACTOR: D3D11_BLEND = 14;
+pub const D3D11_BLEND_D3D11_BLEND_INV_BLEND_FACTOR: D3D11_BLEND = 15;
+pub const D3D11_BLEND_D3D11_BLEND_SRC1_COLOR: D3D11_BLEND = 16;
+pub const D3D11_BLEND_D3D11_BLEND_INV_SRC1_COLOR: D3D11_BLEND = 17;
+pub const D3D11_BLEND_D3D11_BLEND_SRC1_ALPHA: D3D11_BLEND = 18;
+pub const D3D11_BLEND_D3D11_BLEND_INV_SRC1_ALPHA: D3D11_BLEND = 19;
+pub type D3D11_BLEND = ::std::os::raw::c_int;
+pub const D3D11_BLEND_OP_D3D11_BLEND_OP_ADD: D3D11_BLEND_OP = 1;
+pub const D3D11_BLEND_OP_D3D11_BLEND_OP_SUBTRACT: D3D11_BLEND_OP = 2;
+pub const D3D11_BLEND_OP_D3D11_BLEND_OP_REV_SUBTRACT: D3D11_BLEND_OP = 3;
+pub const D3D11_BLEND_OP_D3D11_BLEND_OP_MIN: D3D11_BLEND_OP = 4;
+pub const D3D11_BLEND_OP_D3D11_BLEND_OP_MAX: D3D11_BLEND_OP = 5;
+pub type D3D11_BLEND_OP = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_RENDER_TARGET_BLEND_DESC {
+    pub BlendEnable: BOOL,
+    pub SrcBlend: D3D11_BLEND,
+    pub DestBlend: D3D11_BLEND,
+    pub BlendOp: D3D11_BLEND_OP,
+    pub SrcBlendAlpha: D3D11_BLEND,
+    pub DestBlendAlpha: D3D11_BLEND,
+    pub BlendOpAlpha: D3D11_BLEND_OP,
+    pub RenderTargetWriteMask: UINT8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_BLEND_DESC {
+    pub AlphaToCoverageEnable: BOOL,
+    pub IndependentBlendEnable: BOOL,
+    pub RenderTarget: [D3D11_RENDER_TARGET_BLEND_DESC; 8usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11BlendStateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11BlendState,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11BlendState) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11BlendState) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11BlendState, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11BlendState,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11BlendState,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11BlendState,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11BlendState, pDesc: *mut D3D11_BLEND_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11BlendState {
+    pub lpVtbl: *mut ID3D11BlendStateVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_RASTERIZER_DESC {
+    pub FillMode: D3D11_FILL_MODE,
+    pub CullMode: D3D11_CULL_MODE,
+    pub FrontCounterClockwise: BOOL,
+    pub DepthBias: INT,
+    pub DepthBiasClamp: FLOAT,
+    pub SlopeScaledDepthBias: FLOAT,
+    pub DepthClipEnable: BOOL,
+    pub ScissorEnable: BOOL,
+    pub MultisampleEnable: BOOL,
+    pub AntialiasedLineEnable: BOOL,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11RasterizerStateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RasterizerState,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11RasterizerState) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11RasterizerState) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11RasterizerState, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RasterizerState,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RasterizerState,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RasterizerState,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11RasterizerState, pDesc: *mut D3D11_RASTERIZER_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11RasterizerState {
+    pub lpVtbl: *mut ID3D11RasterizerStateVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_SUBRESOURCE_DATA {
+    pub pSysMem: *const ::std::os::raw::c_void,
+    pub SysMemPitch: UINT,
+    pub SysMemSlicePitch: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_MAPPED_SUBRESOURCE {
+    pub pData: *mut ::std::os::raw::c_void,
+    pub RowPitch: UINT,
+    pub DepthPitch: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ResourceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Resource,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Resource) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Resource) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Resource, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Resource,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Resource,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Resource,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Resource,
+            pResourceDimension: *mut D3D11_RESOURCE_DIMENSION,
+        ),
+    >,
+    pub SetEvictionPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Resource, EvictionPriority: UINT),
+    >,
+    pub GetEvictionPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Resource) -> UINT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Resource {
+    pub lpVtbl: *mut ID3D11ResourceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_BUFFER_DESC {
+    pub ByteWidth: UINT,
+    pub Usage: D3D11_USAGE,
+    pub BindFlags: UINT,
+    pub CPUAccessFlags: UINT,
+    pub MiscFlags: UINT,
+    pub StructureByteStride: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11BufferVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Buffer,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Buffer) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Buffer) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Buffer, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Buffer,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Buffer,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Buffer,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Buffer,
+            pResourceDimension: *mut D3D11_RESOURCE_DIMENSION,
+        ),
+    >,
+    pub SetEvictionPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Buffer, EvictionPriority: UINT),
+    >,
+    pub GetEvictionPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Buffer) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Buffer, pDesc: *mut D3D11_BUFFER_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Buffer {
+    pub lpVtbl: *mut ID3D11BufferVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEXTURE1D_DESC {
+    pub Width: UINT,
+    pub MipLevels: UINT,
+    pub ArraySize: UINT,
+    pub Format: DXGI_FORMAT,
+    pub Usage: D3D11_USAGE,
+    pub BindFlags: UINT,
+    pub CPUAccessFlags: UINT,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture1DVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture1D,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture1D) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture1D) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture1D, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture1D,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture1D,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture1D,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture1D,
+            pResourceDimension: *mut D3D11_RESOURCE_DIMENSION,
+        ),
+    >,
+    pub SetEvictionPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture1D, EvictionPriority: UINT),
+    >,
+    pub GetEvictionPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture1D) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture1D, pDesc: *mut D3D11_TEXTURE1D_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture1D {
+    pub lpVtbl: *mut ID3D11Texture1DVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEXTURE2D_DESC {
+    pub Width: UINT,
+    pub Height: UINT,
+    pub MipLevels: UINT,
+    pub ArraySize: UINT,
+    pub Format: DXGI_FORMAT,
+    pub SampleDesc: DXGI_SAMPLE_DESC,
+    pub Usage: D3D11_USAGE,
+    pub BindFlags: UINT,
+    pub CPUAccessFlags: UINT,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture2DVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture2D,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture2D) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture2D) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture2D, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture2D,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture2D,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture2D,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture2D,
+            pResourceDimension: *mut D3D11_RESOURCE_DIMENSION,
+        ),
+    >,
+    pub SetEvictionPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture2D, EvictionPriority: UINT),
+    >,
+    pub GetEvictionPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture2D) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture2D, pDesc: *mut D3D11_TEXTURE2D_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture2D {
+    pub lpVtbl: *mut ID3D11Texture2DVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEXTURE3D_DESC {
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Depth: UINT,
+    pub MipLevels: UINT,
+    pub Format: DXGI_FORMAT,
+    pub Usage: D3D11_USAGE,
+    pub BindFlags: UINT,
+    pub CPUAccessFlags: UINT,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture3DVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture3D,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture3D) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture3D) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture3D, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture3D,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture3D,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture3D,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Texture3D,
+            pResourceDimension: *mut D3D11_RESOURCE_DIMENSION,
+        ),
+    >,
+    pub SetEvictionPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture3D, EvictionPriority: UINT),
+    >,
+    pub GetEvictionPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Texture3D) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Texture3D, pDesc: *mut D3D11_TEXTURE3D_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Texture3D {
+    pub lpVtbl: *mut ID3D11Texture3DVtbl,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_BUFFER_SRV {
+    pub __bindgen_anon_1: D3D11_BUFFER_SRV__bindgen_ty_1,
+    pub __bindgen_anon_2: D3D11_BUFFER_SRV__bindgen_ty_2,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_BUFFER_SRV__bindgen_ty_1 {
+    pub FirstElement: UINT,
+    pub ElementOffset: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_BUFFER_SRV__bindgen_ty_2 {
+    pub NumElements: UINT,
+    pub ElementWidth: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_BUFFEREX_SRV {
+    pub FirstElement: UINT,
+    pub NumElements: UINT,
+    pub Flags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX3D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEXCUBE_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEXCUBE_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub First2DArrayFace: UINT,
+    pub NumCubes: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_SRV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_ARRAY_SRV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_SHADER_RESOURCE_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D11_SRV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_SHADER_RESOURCE_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_SHADER_RESOURCE_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D11_BUFFER_SRV,
+    pub Texture1D: D3D11_TEX1D_SRV,
+    pub Texture1DArray: D3D11_TEX1D_ARRAY_SRV,
+    pub Texture2D: D3D11_TEX2D_SRV,
+    pub Texture2DArray: D3D11_TEX2D_ARRAY_SRV,
+    pub Texture2DMS: D3D11_TEX2DMS_SRV,
+    pub Texture2DMSArray: D3D11_TEX2DMS_ARRAY_SRV,
+    pub Texture3D: D3D11_TEX3D_SRV,
+    pub TextureCube: D3D11_TEXCUBE_SRV,
+    pub TextureCubeArray: D3D11_TEXCUBE_ARRAY_SRV,
+    pub BufferEx: D3D11_BUFFEREX_SRV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ShaderResourceViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ShaderResourceView) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ShaderResourceView) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11ShaderResourceView, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ShaderResourceView,
+            pDesc: *mut D3D11_SHADER_RESOURCE_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ShaderResourceView {
+    pub lpVtbl: *mut ID3D11ShaderResourceViewVtbl,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_BUFFER_RTV {
+    pub __bindgen_anon_1: D3D11_BUFFER_RTV__bindgen_ty_1,
+    pub __bindgen_anon_2: D3D11_BUFFER_RTV__bindgen_ty_2,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_BUFFER_RTV__bindgen_ty_1 {
+    pub FirstElement: UINT,
+    pub ElementOffset: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_BUFFER_RTV__bindgen_ty_2 {
+    pub NumElements: UINT,
+    pub ElementWidth: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_RTV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_ARRAY_RTV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_RTV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_RTV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_ARRAY_RTV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_ARRAY_RTV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX3D_RTV {
+    pub MipSlice: UINT,
+    pub FirstWSlice: UINT,
+    pub WSize: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_RENDER_TARGET_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D11_RTV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_RENDER_TARGET_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_RENDER_TARGET_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D11_BUFFER_RTV,
+    pub Texture1D: D3D11_TEX1D_RTV,
+    pub Texture1DArray: D3D11_TEX1D_ARRAY_RTV,
+    pub Texture2D: D3D11_TEX2D_RTV,
+    pub Texture2DArray: D3D11_TEX2D_ARRAY_RTV,
+    pub Texture2DMS: D3D11_TEX2DMS_RTV,
+    pub Texture2DMSArray: D3D11_TEX2DMS_ARRAY_RTV,
+    pub Texture3D: D3D11_TEX3D_RTV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11RenderTargetViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11RenderTargetView) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11RenderTargetView) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11RenderTargetView, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11RenderTargetView,
+            pDesc: *mut D3D11_RENDER_TARGET_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11RenderTargetView {
+    pub lpVtbl: *mut ID3D11RenderTargetViewVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_DSV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_ARRAY_DSV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_DSV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_ARRAY_DSV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_DSV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2DMS_ARRAY_DSV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_DEPTH_STENCIL_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D11_DSV_DIMENSION,
+    pub Flags: UINT,
+    pub __bindgen_anon_1: D3D11_DEPTH_STENCIL_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_DEPTH_STENCIL_VIEW_DESC__bindgen_ty_1 {
+    pub Texture1D: D3D11_TEX1D_DSV,
+    pub Texture1DArray: D3D11_TEX1D_ARRAY_DSV,
+    pub Texture2D: D3D11_TEX2D_DSV,
+    pub Texture2DArray: D3D11_TEX2D_ARRAY_DSV,
+    pub Texture2DMS: D3D11_TEX2DMS_DSV,
+    pub Texture2DMSArray: D3D11_TEX2DMS_ARRAY_DSV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DepthStencilViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DepthStencilView) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DepthStencilView) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DepthStencilView, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DepthStencilView,
+            pDesc: *mut D3D11_DEPTH_STENCIL_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DepthStencilView {
+    pub lpVtbl: *mut ID3D11DepthStencilViewVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_BUFFER_UAV {
+    pub FirstElement: UINT,
+    pub NumElements: UINT,
+    pub Flags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_UAV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX1D_ARRAY_UAV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_UAV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_ARRAY_UAV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX3D_UAV {
+    pub MipSlice: UINT,
+    pub FirstWSlice: UINT,
+    pub WSize: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_UNORDERED_ACCESS_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D11_UAV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_UNORDERED_ACCESS_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_UNORDERED_ACCESS_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D11_BUFFER_UAV,
+    pub Texture1D: D3D11_TEX1D_UAV,
+    pub Texture1DArray: D3D11_TEX1D_ARRAY_UAV,
+    pub Texture2D: D3D11_TEX2D_UAV,
+    pub Texture2DArray: D3D11_TEX2D_ARRAY_UAV,
+    pub Texture3D: D3D11_TEX3D_UAV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11UnorderedAccessViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11UnorderedAccessView) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11UnorderedAccessView) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11UnorderedAccessView,
+            pDesc: *mut D3D11_UNORDERED_ACCESS_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11UnorderedAccessView {
+    pub lpVtbl: *mut ID3D11UnorderedAccessViewVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VertexShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VertexShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VertexShader) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VertexShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VertexShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VertexShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VertexShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VertexShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VertexShader {
+    pub lpVtbl: *mut ID3D11VertexShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11HullShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11HullShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11HullShader) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11HullShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11HullShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11HullShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11HullShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11HullShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11HullShader {
+    pub lpVtbl: *mut ID3D11HullShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DomainShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DomainShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DomainShader) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DomainShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DomainShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DomainShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DomainShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DomainShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DomainShader {
+    pub lpVtbl: *mut ID3D11DomainShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11GeometryShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11GeometryShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11GeometryShader) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11GeometryShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11GeometryShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11GeometryShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11GeometryShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11GeometryShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11GeometryShader {
+    pub lpVtbl: *mut ID3D11GeometryShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11PixelShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11PixelShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11PixelShader) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11PixelShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11PixelShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11PixelShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11PixelShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11PixelShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11PixelShader {
+    pub lpVtbl: *mut ID3D11PixelShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ComputeShaderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ComputeShader,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ComputeShader) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ComputeShader) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11ComputeShader, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ComputeShader,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ComputeShader,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ComputeShader,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ComputeShader {
+    pub lpVtbl: *mut ID3D11ComputeShaderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11InputLayoutVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11InputLayout,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11InputLayout) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11InputLayout) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11InputLayout, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11InputLayout,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11InputLayout,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11InputLayout,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11InputLayout {
+    pub lpVtbl: *mut ID3D11InputLayoutVtbl,
+}
+pub const D3D11_FILTER_D3D11_FILTER_MIN_MAG_MIP_POINT: D3D11_FILTER = 0;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 1;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 4;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR: D3D11_FILTER = 5;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT: D3D11_FILTER = 16;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 17;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 20;
+pub const D3D11_FILTER_D3D11_FILTER_MIN_MAG_MIP_LINEAR: D3D11_FILTER = 21;
+pub const D3D11_FILTER_D3D11_FILTER_ANISOTROPIC: D3D11_FILTER = 85;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT: D3D11_FILTER = 128;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 129;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 132;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR: D3D11_FILTER = 133;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT: D3D11_FILTER = 144;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 145;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 148;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR: D3D11_FILTER = 149;
+pub const D3D11_FILTER_D3D11_FILTER_COMPARISON_ANISOTROPIC: D3D11_FILTER = 213;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_MAG_MIP_POINT: D3D11_FILTER = 256;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 257;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 260;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR: D3D11_FILTER = 261;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT: D3D11_FILTER = 272;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 273;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 276;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR: D3D11_FILTER = 277;
+pub const D3D11_FILTER_D3D11_FILTER_MINIMUM_ANISOTROPIC: D3D11_FILTER = 341;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_MAG_MIP_POINT: D3D11_FILTER = 384;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 385;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 388;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR: D3D11_FILTER = 389;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT: D3D11_FILTER = 400;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D11_FILTER = 401;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT: D3D11_FILTER = 404;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR: D3D11_FILTER = 405;
+pub const D3D11_FILTER_D3D11_FILTER_MAXIMUM_ANISOTROPIC: D3D11_FILTER = 469;
+pub type D3D11_FILTER = ::std::os::raw::c_int;
+pub const D3D11_TEXTURE_ADDRESS_MODE_D3D11_TEXTURE_ADDRESS_WRAP: D3D11_TEXTURE_ADDRESS_MODE = 1;
+pub const D3D11_TEXTURE_ADDRESS_MODE_D3D11_TEXTURE_ADDRESS_MIRROR: D3D11_TEXTURE_ADDRESS_MODE = 2;
+pub const D3D11_TEXTURE_ADDRESS_MODE_D3D11_TEXTURE_ADDRESS_CLAMP: D3D11_TEXTURE_ADDRESS_MODE = 3;
+pub const D3D11_TEXTURE_ADDRESS_MODE_D3D11_TEXTURE_ADDRESS_BORDER: D3D11_TEXTURE_ADDRESS_MODE = 4;
+pub const D3D11_TEXTURE_ADDRESS_MODE_D3D11_TEXTURE_ADDRESS_MIRROR_ONCE: D3D11_TEXTURE_ADDRESS_MODE =
+    5;
+pub type D3D11_TEXTURE_ADDRESS_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_SAMPLER_DESC {
+    pub Filter: D3D11_FILTER,
+    pub AddressU: D3D11_TEXTURE_ADDRESS_MODE,
+    pub AddressV: D3D11_TEXTURE_ADDRESS_MODE,
+    pub AddressW: D3D11_TEXTURE_ADDRESS_MODE,
+    pub MipLODBias: FLOAT,
+    pub MaxAnisotropy: UINT,
+    pub ComparisonFunc: D3D11_COMPARISON_FUNC,
+    pub BorderColor: [FLOAT; 4usize],
+    pub MinLOD: FLOAT,
+    pub MaxLOD: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11SamplerStateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11SamplerState,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11SamplerState) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11SamplerState) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11SamplerState, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11SamplerState,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11SamplerState,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11SamplerState,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11SamplerState, pDesc: *mut D3D11_SAMPLER_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11SamplerState {
+    pub lpVtbl: *mut ID3D11SamplerStateVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11AsynchronousVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Asynchronous,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Asynchronous) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Asynchronous) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Asynchronous, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Asynchronous,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Asynchronous,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Asynchronous,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDataSize:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Asynchronous) -> UINT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Asynchronous {
+    pub lpVtbl: *mut ID3D11AsynchronousVtbl,
+}
+pub const D3D11_QUERY_D3D11_QUERY_EVENT: D3D11_QUERY = 0;
+pub const D3D11_QUERY_D3D11_QUERY_OCCLUSION: D3D11_QUERY = 1;
+pub const D3D11_QUERY_D3D11_QUERY_TIMESTAMP: D3D11_QUERY = 2;
+pub const D3D11_QUERY_D3D11_QUERY_TIMESTAMP_DISJOINT: D3D11_QUERY = 3;
+pub const D3D11_QUERY_D3D11_QUERY_PIPELINE_STATISTICS: D3D11_QUERY = 4;
+pub const D3D11_QUERY_D3D11_QUERY_OCCLUSION_PREDICATE: D3D11_QUERY = 5;
+pub const D3D11_QUERY_D3D11_QUERY_SO_STATISTICS: D3D11_QUERY = 6;
+pub const D3D11_QUERY_D3D11_QUERY_SO_OVERFLOW_PREDICATE: D3D11_QUERY = 7;
+pub const D3D11_QUERY_D3D11_QUERY_SO_STATISTICS_STREAM0: D3D11_QUERY = 8;
+pub const D3D11_QUERY_D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0: D3D11_QUERY = 9;
+pub const D3D11_QUERY_D3D11_QUERY_SO_STATISTICS_STREAM1: D3D11_QUERY = 10;
+pub const D3D11_QUERY_D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1: D3D11_QUERY = 11;
+pub const D3D11_QUERY_D3D11_QUERY_SO_STATISTICS_STREAM2: D3D11_QUERY = 12;
+pub const D3D11_QUERY_D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2: D3D11_QUERY = 13;
+pub const D3D11_QUERY_D3D11_QUERY_SO_STATISTICS_STREAM3: D3D11_QUERY = 14;
+pub const D3D11_QUERY_D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3: D3D11_QUERY = 15;
+pub type D3D11_QUERY = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_QUERY_DESC {
+    pub Query: D3D11_QUERY,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11QueryVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Query,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Query) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Query) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Query, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Query,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Query,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Query,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDataSize: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Query) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Query, pDesc: *mut D3D11_QUERY_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Query {
+    pub lpVtbl: *mut ID3D11QueryVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11PredicateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Predicate,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Predicate) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Predicate) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Predicate, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Predicate,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Predicate,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Predicate,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDataSize:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Predicate) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Predicate, pDesc: *mut D3D11_QUERY_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Predicate {
+    pub lpVtbl: *mut ID3D11PredicateVtbl,
+}
+pub const D3D11_COUNTER_D3D11_COUNTER_DEVICE_DEPENDENT_0: D3D11_COUNTER = 1073741824;
+pub type D3D11_COUNTER = ::std::os::raw::c_int;
+pub const D3D11_COUNTER_TYPE_D3D11_COUNTER_TYPE_FLOAT32: D3D11_COUNTER_TYPE = 0;
+pub const D3D11_COUNTER_TYPE_D3D11_COUNTER_TYPE_UINT16: D3D11_COUNTER_TYPE = 1;
+pub const D3D11_COUNTER_TYPE_D3D11_COUNTER_TYPE_UINT32: D3D11_COUNTER_TYPE = 2;
+pub const D3D11_COUNTER_TYPE_D3D11_COUNTER_TYPE_UINT64: D3D11_COUNTER_TYPE = 3;
+pub type D3D11_COUNTER_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_COUNTER_DESC {
+    pub Counter: D3D11_COUNTER,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_COUNTER_INFO {
+    pub LastDeviceDependentCounter: D3D11_COUNTER,
+    pub NumSimultaneousCounters: UINT,
+    pub NumDetectableParallelUnits: UINT8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11CounterVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Counter,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Counter) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Counter) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Counter, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Counter,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Counter,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Counter,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDataSize: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Counter) -> UINT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Counter, pDesc: *mut D3D11_COUNTER_DESC),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Counter {
+    pub lpVtbl: *mut ID3D11CounterVtbl,
+}
+pub const D3D11_DEVICE_CONTEXT_TYPE_D3D11_DEVICE_CONTEXT_IMMEDIATE: D3D11_DEVICE_CONTEXT_TYPE = 0;
+pub const D3D11_DEVICE_CONTEXT_TYPE_D3D11_DEVICE_CONTEXT_DEFERRED: D3D11_DEVICE_CONTEXT_TYPE = 1;
+pub type D3D11_DEVICE_CONTEXT_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_CLASS_INSTANCE_DESC {
+    pub InstanceId: UINT,
+    pub InstanceIndex: UINT,
+    pub TypeId: UINT,
+    pub ConstantBuffer: UINT,
+    pub BaseConstantBufferOffset: UINT,
+    pub BaseTexture: UINT,
+    pub BaseSampler: UINT,
+    pub Created: BOOL,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ClassInstanceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ClassInstance) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ClassInstance) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11ClassInstance, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetClassLinkage: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            ppLinkage: *mut *mut ID3D11ClassLinkage,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11ClassInstance, pDesc: *mut D3D11_CLASS_INSTANCE_DESC),
+    >,
+    pub GetInstanceName: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            pInstanceName: LPSTR,
+            pBufferLength: *mut SIZE_T,
+        ),
+    >,
+    pub GetTypeName: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassInstance,
+            pTypeName: LPSTR,
+            pBufferLength: *mut SIZE_T,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ClassInstance {
+    pub lpVtbl: *mut ID3D11ClassInstanceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ClassLinkageVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ClassLinkage) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11ClassLinkage) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11ClassLinkage, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetClassInstance: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            pClassInstanceName: LPCSTR,
+            InstanceIndex: UINT,
+            ppInstance: *mut *mut ID3D11ClassInstance,
+        ) -> HRESULT,
+    >,
+    pub CreateClassInstance: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11ClassLinkage,
+            pClassTypeName: LPCSTR,
+            ConstantBufferOffset: UINT,
+            ConstantVectorOffset: UINT,
+            TextureOffset: UINT,
+            SamplerOffset: UINT,
+            ppInstance: *mut *mut ID3D11ClassInstance,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11ClassLinkage {
+    pub lpVtbl: *mut ID3D11ClassLinkageVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11CommandListVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CommandList,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11CommandList) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11CommandList) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11CommandList, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CommandList,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CommandList,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CommandList,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetContextFlags:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11CommandList) -> UINT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11CommandList {
+    pub lpVtbl: *mut ID3D11CommandListVtbl,
+}
+pub const D3D11_FEATURE_D3D11_FEATURE_THREADING: D3D11_FEATURE = 0;
+pub const D3D11_FEATURE_D3D11_FEATURE_DOUBLES: D3D11_FEATURE = 1;
+pub const D3D11_FEATURE_D3D11_FEATURE_FORMAT_SUPPORT: D3D11_FEATURE = 2;
+pub const D3D11_FEATURE_D3D11_FEATURE_FORMAT_SUPPORT2: D3D11_FEATURE = 3;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D10_X_HARDWARE_OPTIONS: D3D11_FEATURE = 4;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS: D3D11_FEATURE = 5;
+pub const D3D11_FEATURE_D3D11_FEATURE_ARCHITECTURE_INFO: D3D11_FEATURE = 6;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D9_OPTIONS: D3D11_FEATURE = 7;
+pub const D3D11_FEATURE_D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT: D3D11_FEATURE = 8;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D9_SHADOW_SUPPORT: D3D11_FEATURE = 9;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS1: D3D11_FEATURE = 10;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D9_SIMPLE_INSTANCING_SUPPORT: D3D11_FEATURE = 11;
+pub const D3D11_FEATURE_D3D11_FEATURE_MARKER_SUPPORT: D3D11_FEATURE = 12;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D9_OPTIONS1: D3D11_FEATURE = 13;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS2: D3D11_FEATURE = 14;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS3: D3D11_FEATURE = 15;
+pub const D3D11_FEATURE_D3D11_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: D3D11_FEATURE = 16;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS4: D3D11_FEATURE = 17;
+pub const D3D11_FEATURE_D3D11_FEATURE_SHADER_CACHE: D3D11_FEATURE = 18;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS5: D3D11_FEATURE = 19;
+pub const D3D11_FEATURE_D3D11_FEATURE_DISPLAYABLE: D3D11_FEATURE = 20;
+pub const D3D11_FEATURE_D3D11_FEATURE_D3D11_OPTIONS6: D3D11_FEATURE = 21;
+pub type D3D11_FEATURE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DeviceContextVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub VSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub PSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub PSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pPixelShader: *mut ID3D11PixelShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub PSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub VSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pVertexShader: *mut ID3D11VertexShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub DrawIndexed: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            IndexCount: UINT,
+            StartIndexLocation: UINT,
+            BaseVertexLocation: INT,
+        ),
+    >,
+    pub Draw: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            VertexCount: UINT,
+            StartVertexLocation: UINT,
+        ),
+    >,
+    pub Map: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pResource: *mut ID3D11Resource,
+            Subresource: UINT,
+            MapType: D3D11_MAP,
+            MapFlags: UINT,
+            pMappedResource: *mut D3D11_MAPPED_SUBRESOURCE,
+        ) -> HRESULT,
+    >,
+    pub Unmap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pResource: *mut ID3D11Resource,
+            Subresource: UINT,
+        ),
+    >,
+    pub PSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub IASetInputLayout: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext, pInputLayout: *mut ID3D11InputLayout),
+    >,
+    pub IASetVertexBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppVertexBuffers: *const *mut ID3D11Buffer,
+            pStrides: *const UINT,
+            pOffsets: *const UINT,
+        ),
+    >,
+    pub IASetIndexBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pIndexBuffer: *mut ID3D11Buffer,
+            Format: DXGI_FORMAT,
+            Offset: UINT,
+        ),
+    >,
+    pub DrawIndexedInstanced: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            IndexCountPerInstance: UINT,
+            InstanceCount: UINT,
+            StartIndexLocation: UINT,
+            BaseVertexLocation: INT,
+            StartInstanceLocation: UINT,
+        ),
+    >,
+    pub DrawInstanced: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            VertexCountPerInstance: UINT,
+            InstanceCount: UINT,
+            StartVertexLocation: UINT,
+            StartInstanceLocation: UINT,
+        ),
+    >,
+    pub GSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub GSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pShader: *mut ID3D11GeometryShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub IASetPrimitiveTopology: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext, Topology: D3D11_PRIMITIVE_TOPOLOGY),
+    >,
+    pub VSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub VSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub Begin: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext, pAsync: *mut ID3D11Asynchronous),
+    >,
+    pub End: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext, pAsync: *mut ID3D11Asynchronous),
+    >,
+    pub GetData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pAsync: *mut ID3D11Asynchronous,
+            pData: *mut ::std::os::raw::c_void,
+            DataSize: UINT,
+            GetDataFlags: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetPredication: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pPredicate: *mut ID3D11Predicate,
+            PredicateValue: BOOL,
+        ),
+    >,
+    pub GSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub GSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub OMSetRenderTargets: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumViews: UINT,
+            ppRenderTargetViews: *const *mut ID3D11RenderTargetView,
+            pDepthStencilView: *mut ID3D11DepthStencilView,
+        ),
+    >,
+    pub OMSetRenderTargetsAndUnorderedAccessViews: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumRTVs: UINT,
+            ppRenderTargetViews: *const *mut ID3D11RenderTargetView,
+            pDepthStencilView: *mut ID3D11DepthStencilView,
+            UAVStartSlot: UINT,
+            NumUAVs: UINT,
+            ppUnorderedAccessViews: *const *mut ID3D11UnorderedAccessView,
+            pUAVInitialCounts: *const UINT,
+        ),
+    >,
+    pub OMSetBlendState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pBlendState: *mut ID3D11BlendState,
+            BlendFactor: *const FLOAT,
+            SampleMask: UINT,
+        ),
+    >,
+    pub OMSetDepthStencilState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDepthStencilState: *mut ID3D11DepthStencilState,
+            StencilRef: UINT,
+        ),
+    >,
+    pub SOSetTargets: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumBuffers: UINT,
+            ppSOTargets: *const *mut ID3D11Buffer,
+            pOffsets: *const UINT,
+        ),
+    >,
+    pub DrawAuto: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext)>,
+    pub DrawIndexedInstancedIndirect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pBufferForArgs: *mut ID3D11Buffer,
+            AlignedByteOffsetForArgs: UINT,
+        ),
+    >,
+    pub DrawInstancedIndirect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pBufferForArgs: *mut ID3D11Buffer,
+            AlignedByteOffsetForArgs: UINT,
+        ),
+    >,
+    pub Dispatch: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ThreadGroupCountX: UINT,
+            ThreadGroupCountY: UINT,
+            ThreadGroupCountZ: UINT,
+        ),
+    >,
+    pub DispatchIndirect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pBufferForArgs: *mut ID3D11Buffer,
+            AlignedByteOffsetForArgs: UINT,
+        ),
+    >,
+    pub RSSetState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pRasterizerState: *mut ID3D11RasterizerState,
+        ),
+    >,
+    pub RSSetViewports: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumViewports: UINT,
+            pViewports: *const D3D11_VIEWPORT,
+        ),
+    >,
+    pub RSSetScissorRects: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumRects: UINT,
+            pRects: *const D3D11_RECT,
+        ),
+    >,
+    pub CopySubresourceRegion: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDstResource: *mut ID3D11Resource,
+            DstSubresource: UINT,
+            DstX: UINT,
+            DstY: UINT,
+            DstZ: UINT,
+            pSrcResource: *mut ID3D11Resource,
+            SrcSubresource: UINT,
+            pSrcBox: *const D3D11_BOX,
+        ),
+    >,
+    pub CopyResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDstResource: *mut ID3D11Resource,
+            pSrcResource: *mut ID3D11Resource,
+        ),
+    >,
+    pub UpdateSubresource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDstResource: *mut ID3D11Resource,
+            DstSubresource: UINT,
+            pDstBox: *const D3D11_BOX,
+            pSrcData: *const ::std::os::raw::c_void,
+            SrcRowPitch: UINT,
+            SrcDepthPitch: UINT,
+        ),
+    >,
+    pub CopyStructureCount: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDstBuffer: *mut ID3D11Buffer,
+            DstAlignedByteOffset: UINT,
+            pSrcView: *mut ID3D11UnorderedAccessView,
+        ),
+    >,
+    pub ClearRenderTargetView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pRenderTargetView: *mut ID3D11RenderTargetView,
+            ColorRGBA: *const FLOAT,
+        ),
+    >,
+    pub ClearUnorderedAccessViewUint: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pUnorderedAccessView: *mut ID3D11UnorderedAccessView,
+            Values: *const UINT,
+        ),
+    >,
+    pub ClearUnorderedAccessViewFloat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pUnorderedAccessView: *mut ID3D11UnorderedAccessView,
+            Values: *const FLOAT,
+        ),
+    >,
+    pub ClearDepthStencilView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDepthStencilView: *mut ID3D11DepthStencilView,
+            ClearFlags: UINT,
+            Depth: FLOAT,
+            Stencil: UINT8,
+        ),
+    >,
+    pub GenerateMips: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pShaderResourceView: *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub SetResourceMinLOD: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pResource: *mut ID3D11Resource,
+            MinLOD: FLOAT,
+        ),
+    >,
+    pub GetResourceMinLOD: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pResource: *mut ID3D11Resource,
+        ) -> FLOAT,
+    >,
+    pub ResolveSubresource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDstResource: *mut ID3D11Resource,
+            DstSubresource: UINT,
+            pSrcResource: *mut ID3D11Resource,
+            SrcSubresource: UINT,
+            Format: DXGI_FORMAT,
+        ),
+    >,
+    pub ExecuteCommandList: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pCommandList: *mut ID3D11CommandList,
+            RestoreContextState: BOOL,
+        ),
+    >,
+    pub HSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub HSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pHullShader: *mut ID3D11HullShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub HSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub HSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub DSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub DSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pDomainShader: *mut ID3D11DomainShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub DSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub DSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub CSSetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *const *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub CSSetUnorderedAccessViews: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumUAVs: UINT,
+            ppUnorderedAccessViews: *const *mut ID3D11UnorderedAccessView,
+            pUAVInitialCounts: *const UINT,
+        ),
+    >,
+    pub CSSetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pComputeShader: *mut ID3D11ComputeShader,
+            ppClassInstances: *const *mut ID3D11ClassInstance,
+            NumClassInstances: UINT,
+        ),
+    >,
+    pub CSSetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *const *mut ID3D11SamplerState,
+        ),
+    >,
+    pub CSSetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *const *mut ID3D11Buffer,
+        ),
+    >,
+    pub VSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub PSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub PSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppPixelShader: *mut *mut ID3D11PixelShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub PSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub VSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppVertexShader: *mut *mut ID3D11VertexShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub PSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub IAGetInputLayout: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppInputLayout: *mut *mut ID3D11InputLayout,
+        ),
+    >,
+    pub IAGetVertexBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppVertexBuffers: *mut *mut ID3D11Buffer,
+            pStrides: *mut UINT,
+            pOffsets: *mut UINT,
+        ),
+    >,
+    pub IAGetIndexBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pIndexBuffer: *mut *mut ID3D11Buffer,
+            Format: *mut DXGI_FORMAT,
+            Offset: *mut UINT,
+        ),
+    >,
+    pub GSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub GSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppGeometryShader: *mut *mut ID3D11GeometryShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub IAGetPrimitiveTopology: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pTopology: *mut D3D11_PRIMITIVE_TOPOLOGY,
+        ),
+    >,
+    pub VSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub VSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub GetPredication: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppPredicate: *mut *mut ID3D11Predicate,
+            pPredicateValue: *mut BOOL,
+        ),
+    >,
+    pub GSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub GSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub OMGetRenderTargets: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumViews: UINT,
+            ppRenderTargetViews: *mut *mut ID3D11RenderTargetView,
+            ppDepthStencilView: *mut *mut ID3D11DepthStencilView,
+        ),
+    >,
+    pub OMGetRenderTargetsAndUnorderedAccessViews: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumRTVs: UINT,
+            ppRenderTargetViews: *mut *mut ID3D11RenderTargetView,
+            ppDepthStencilView: *mut *mut ID3D11DepthStencilView,
+            UAVStartSlot: UINT,
+            NumUAVs: UINT,
+            ppUnorderedAccessViews: *mut *mut ID3D11UnorderedAccessView,
+        ),
+    >,
+    pub OMGetBlendState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppBlendState: *mut *mut ID3D11BlendState,
+            BlendFactor: *mut FLOAT,
+            pSampleMask: *mut UINT,
+        ),
+    >,
+    pub OMGetDepthStencilState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppDepthStencilState: *mut *mut ID3D11DepthStencilState,
+            pStencilRef: *mut UINT,
+        ),
+    >,
+    pub SOGetTargets: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            NumBuffers: UINT,
+            ppSOTargets: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub RSGetState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppRasterizerState: *mut *mut ID3D11RasterizerState,
+        ),
+    >,
+    pub RSGetViewports: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pNumViewports: *mut UINT,
+            pViewports: *mut D3D11_VIEWPORT,
+        ),
+    >,
+    pub RSGetScissorRects: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            pNumRects: *mut UINT,
+            pRects: *mut D3D11_RECT,
+        ),
+    >,
+    pub HSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub HSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppHullShader: *mut *mut ID3D11HullShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub HSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub HSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub DSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub DSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppDomainShader: *mut *mut ID3D11DomainShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub DSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub DSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub CSGetShaderResources: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumViews: UINT,
+            ppShaderResourceViews: *mut *mut ID3D11ShaderResourceView,
+        ),
+    >,
+    pub CSGetUnorderedAccessViews: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumUAVs: UINT,
+            ppUnorderedAccessViews: *mut *mut ID3D11UnorderedAccessView,
+        ),
+    >,
+    pub CSGetShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            ppComputeShader: *mut *mut ID3D11ComputeShader,
+            ppClassInstances: *mut *mut ID3D11ClassInstance,
+            pNumClassInstances: *mut UINT,
+        ),
+    >,
+    pub CSGetSamplers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumSamplers: UINT,
+            ppSamplers: *mut *mut ID3D11SamplerState,
+        ),
+    >,
+    pub CSGetConstantBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            StartSlot: UINT,
+            NumBuffers: UINT,
+            ppConstantBuffers: *mut *mut ID3D11Buffer,
+        ),
+    >,
+    pub ClearState: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext)>,
+    pub Flush: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11DeviceContext) -> D3D11_DEVICE_CONTEXT_TYPE,
+    >,
+    pub GetContextFlags:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11DeviceContext) -> UINT>,
+    pub FinishCommandList: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11DeviceContext,
+            RestoreDeferredContextState: BOOL,
+            ppCommandList: *mut *mut ID3D11CommandList,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DeviceContext {
+    pub lpVtbl: *mut ID3D11DeviceContextVtbl,
+}
+pub type APP_DEPRECATED_HRESULT = HRESULT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_DECODER_DESC {
+    pub Guid: GUID,
+    pub SampleWidth: UINT,
+    pub SampleHeight: UINT,
+    pub OutputFormat: DXGI_FORMAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_DECODER_CONFIG {
+    pub guidConfigBitstreamEncryption: GUID,
+    pub guidConfigMBcontrolEncryption: GUID,
+    pub guidConfigResidDiffEncryption: GUID,
+    pub ConfigBitstreamRaw: UINT,
+    pub ConfigMBcontrolRasterOrder: UINT,
+    pub ConfigResidDiffHost: UINT,
+    pub ConfigSpatialResid8: UINT,
+    pub ConfigResid8Subtraction: UINT,
+    pub ConfigSpatialHost8or9Clipping: UINT,
+    pub ConfigSpatialResidInterleaved: UINT,
+    pub ConfigIntraResidUnsigned: UINT,
+    pub ConfigResidDiffAccelerator: UINT,
+    pub ConfigHostInverseScan: UINT,
+    pub ConfigSpecificIDCT: UINT,
+    pub Config4GroupedCoefs: UINT,
+    pub ConfigMinRenderTargetBuffCount: USHORT,
+    pub ConfigDecoderSpecific: USHORT,
+}
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 0;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_MACROBLOCK_CONTROL:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 1;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_RESIDUAL_DIFFERENCE:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 2;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_DEBLOCKING_CONTROL:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 3;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_INVERSE_QUANTIZATION_MATRIX:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 4;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_SLICE_CONTROL:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 5;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_BITSTREAM:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 6;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_MOTION_VECTOR:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 7;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_FILM_GRAIN:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 8;
+pub const D3D11_VIDEO_DECODER_BUFFER_TYPE_D3D11_VIDEO_DECODER_BUFFER_HUFFMAN_TABLE:
+    D3D11_VIDEO_DECODER_BUFFER_TYPE = 9;
+pub type D3D11_VIDEO_DECODER_BUFFER_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_ENCRYPTED_BLOCK_INFO {
+    pub NumEncryptedBytesAtBeginning: UINT,
+    pub NumBytesInSkipPattern: UINT,
+    pub NumBytesInEncryptPattern: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_DECODER_BUFFER_DESC {
+    pub BufferType: D3D11_VIDEO_DECODER_BUFFER_TYPE,
+    pub BufferIndex: UINT,
+    pub DataOffset: UINT,
+    pub DataSize: UINT,
+    pub FirstMBaddress: UINT,
+    pub NumMBsInBuffer: UINT,
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Stride: UINT,
+    pub ReservedBits: UINT,
+    pub pIV: *mut ::std::os::raw::c_void,
+    pub IVSize: UINT,
+    pub PartialEncryption: BOOL,
+    pub EncryptedBlockInfo: D3D11_ENCRYPTED_BLOCK_INFO,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_DECODER_EXTENSION {
+    pub Function: UINT,
+    pub pPrivateInputData: *mut ::std::os::raw::c_void,
+    pub PrivateInputDataSize: UINT,
+    pub pPrivateOutputData: *mut ::std::os::raw::c_void,
+    pub PrivateOutputDataSize: UINT,
+    pub ResourceCount: UINT,
+    pub ppResourceList: *mut *mut ID3D11Resource,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDecoderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoder,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoDecoder) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoDecoder) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoDecoder, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoder,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoder,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoder,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetCreationParameters: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoder,
+            pVideoDesc: *mut D3D11_VIDEO_DECODER_DESC,
+            pConfig: *mut D3D11_VIDEO_DECODER_CONFIG,
+        ) -> HRESULT,
+    >,
+    pub GetDriverHandle: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoDecoder, pDriverHandle: *mut HANDLE) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDecoder {
+    pub lpVtbl: *mut ID3D11VideoDecoderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_CAPS {
+    pub DeviceCaps: UINT,
+    pub FeatureCaps: UINT,
+    pub FilterCaps: UINT,
+    pub InputFormatCaps: UINT,
+    pub AutoStreamCaps: UINT,
+    pub StereoCaps: UINT,
+    pub RateConversionCapsCount: UINT,
+    pub MaxInputStreams: UINT,
+    pub MaxStreamStates: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS {
+    pub PastFrames: UINT,
+    pub FutureFrames: UINT,
+    pub ProcessorCaps: UINT,
+    pub ITelecineCaps: UINT,
+    pub CustomRateCount: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_CONTENT_PROTECTION_CAPS {
+    pub Caps: UINT,
+    pub KeyExchangeTypeCount: UINT,
+    pub BlockAlignmentSize: UINT,
+    pub ProtectedMemorySize: ULONGLONG,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_CUSTOM_RATE {
+    pub CustomRate: DXGI_RATIONAL,
+    pub OutputFrames: UINT,
+    pub InputInterlaced: BOOL,
+    pub InputFramesOrFields: UINT,
+}
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_BRIGHTNESS:
+    D3D11_VIDEO_PROCESSOR_FILTER = 0;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_CONTRAST:
+    D3D11_VIDEO_PROCESSOR_FILTER = 1;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_HUE:
+    D3D11_VIDEO_PROCESSOR_FILTER = 2;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_SATURATION:
+    D3D11_VIDEO_PROCESSOR_FILTER = 3;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_NOISE_REDUCTION:
+    D3D11_VIDEO_PROCESSOR_FILTER = 4;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_EDGE_ENHANCEMENT:
+    D3D11_VIDEO_PROCESSOR_FILTER = 5;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_ANAMORPHIC_SCALING:
+    D3D11_VIDEO_PROCESSOR_FILTER = 6;
+pub const D3D11_VIDEO_PROCESSOR_FILTER_D3D11_VIDEO_PROCESSOR_FILTER_STEREO_ADJUSTMENT:
+    D3D11_VIDEO_PROCESSOR_FILTER = 7;
+pub type D3D11_VIDEO_PROCESSOR_FILTER = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_FILTER_RANGE {
+    pub Minimum: ::std::os::raw::c_int,
+    pub Maximum: ::std::os::raw::c_int,
+    pub Default: ::std::os::raw::c_int,
+    pub Multiplier: f32,
+}
+pub const D3D11_VIDEO_FRAME_FORMAT_D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE: D3D11_VIDEO_FRAME_FORMAT =
+    0;
+pub const D3D11_VIDEO_FRAME_FORMAT_D3D11_VIDEO_FRAME_FORMAT_INTERLACED_TOP_FIELD_FIRST:
+    D3D11_VIDEO_FRAME_FORMAT = 1;
+pub const D3D11_VIDEO_FRAME_FORMAT_D3D11_VIDEO_FRAME_FORMAT_INTERLACED_BOTTOM_FIELD_FIRST:
+    D3D11_VIDEO_FRAME_FORMAT = 2;
+pub type D3D11_VIDEO_FRAME_FORMAT = ::std::os::raw::c_int;
+pub const D3D11_VIDEO_USAGE_D3D11_VIDEO_USAGE_PLAYBACK_NORMAL: D3D11_VIDEO_USAGE = 0;
+pub const D3D11_VIDEO_USAGE_D3D11_VIDEO_USAGE_OPTIMAL_SPEED: D3D11_VIDEO_USAGE = 1;
+pub const D3D11_VIDEO_USAGE_D3D11_VIDEO_USAGE_OPTIMAL_QUALITY: D3D11_VIDEO_USAGE = 2;
+pub type D3D11_VIDEO_USAGE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_CONTENT_DESC {
+    pub InputFrameFormat: D3D11_VIDEO_FRAME_FORMAT,
+    pub InputFrameRate: DXGI_RATIONAL,
+    pub InputWidth: UINT,
+    pub InputHeight: UINT,
+    pub OutputFrameRate: DXGI_RATIONAL,
+    pub OutputWidth: UINT,
+    pub OutputHeight: UINT,
+    pub Usage: D3D11_VIDEO_USAGE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorEnumeratorVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorEnumerator) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorEnumerator) -> ULONG,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetVideoProcessorContentDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            pContentDesc: *mut D3D11_VIDEO_PROCESSOR_CONTENT_DESC,
+        ) -> HRESULT,
+    >,
+    pub CheckVideoProcessorFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            Format: DXGI_FORMAT,
+            pFlags: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub GetVideoProcessorCaps: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            pCaps: *mut D3D11_VIDEO_PROCESSOR_CAPS,
+        ) -> HRESULT,
+    >,
+    pub GetVideoProcessorRateConversionCaps: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            TypeIndex: UINT,
+            pCaps: *mut D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS,
+        ) -> HRESULT,
+    >,
+    pub GetVideoProcessorCustomRate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            TypeIndex: UINT,
+            CustomRateIndex: UINT,
+            pRate: *mut D3D11_VIDEO_PROCESSOR_CUSTOM_RATE,
+        ) -> HRESULT,
+    >,
+    pub GetVideoProcessorFilterRange: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorEnumerator,
+            Filter: D3D11_VIDEO_PROCESSOR_FILTER,
+            pRange: *mut D3D11_VIDEO_PROCESSOR_FILTER_RANGE,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorEnumerator {
+    pub lpVtbl: *mut ID3D11VideoProcessorEnumeratorVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_COLOR_RGBA {
+    pub R: f32,
+    pub G: f32,
+    pub B: f32,
+    pub A: f32,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_COLOR_YCbCrA {
+    pub Y: f32,
+    pub Cb: f32,
+    pub Cr: f32,
+    pub A: f32,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_VIDEO_COLOR {
+    pub __bindgen_anon_1: D3D11_VIDEO_COLOR__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_VIDEO_COLOR__bindgen_ty_1 {
+    pub YCbCr: D3D11_VIDEO_COLOR_YCbCrA,
+    pub RGBA: D3D11_VIDEO_COLOR_RGBA,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_COLOR_SPACE {
+    pub _bitfield_align_1: [u32; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
+}
+impl D3D11_VIDEO_PROCESSOR_COLOR_SPACE {
+    #[inline]
+    pub fn Usage(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_Usage(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn Usage_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                0usize,
+                1u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_Usage_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                0usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn RGB_Range(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_RGB_Range(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(1usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn RGB_Range_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                1usize,
+                1u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_RGB_Range_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                1usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn YCbCr_Matrix(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_YCbCr_Matrix(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(2usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn YCbCr_Matrix_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                2usize,
+                1u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_YCbCr_Matrix_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                2usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn YCbCr_xvYCC(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_YCbCr_xvYCC(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(3usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn YCbCr_xvYCC_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                3usize,
+                1u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_YCbCr_xvYCC_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                3usize,
+                1u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn Nominal_Range(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(4usize, 2u8) as u32) }
+    }
+    #[inline]
+    pub fn set_Nominal_Range(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(4usize, 2u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn Nominal_Range_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                4usize,
+                2u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_Nominal_Range_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                4usize,
+                2u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn Reserved(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(6usize, 26u8) as u32) }
+    }
+    #[inline]
+    pub fn set_Reserved(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(6usize, 26u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn Reserved_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                6usize,
+                26u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_Reserved_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                6usize,
+                26u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        Usage: UINT,
+        RGB_Range: UINT,
+        YCbCr_Matrix: UINT,
+        YCbCr_xvYCC: UINT,
+        Nominal_Range: UINT,
+        Reserved: UINT,
+    ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 1u8, {
+            let Usage: u32 = unsafe { ::std::mem::transmute(Usage) };
+            Usage as u64
+        });
+        __bindgen_bitfield_unit.set(1usize, 1u8, {
+            let RGB_Range: u32 = unsafe { ::std::mem::transmute(RGB_Range) };
+            RGB_Range as u64
+        });
+        __bindgen_bitfield_unit.set(2usize, 1u8, {
+            let YCbCr_Matrix: u32 = unsafe { ::std::mem::transmute(YCbCr_Matrix) };
+            YCbCr_Matrix as u64
+        });
+        __bindgen_bitfield_unit.set(3usize, 1u8, {
+            let YCbCr_xvYCC: u32 = unsafe { ::std::mem::transmute(YCbCr_xvYCC) };
+            YCbCr_xvYCC as u64
+        });
+        __bindgen_bitfield_unit.set(4usize, 2u8, {
+            let Nominal_Range: u32 = unsafe { ::std::mem::transmute(Nominal_Range) };
+            Nominal_Range as u64
+        });
+        __bindgen_bitfield_unit.set(6usize, 26u8, {
+            let Reserved: u32 = unsafe { ::std::mem::transmute(Reserved) };
+            Reserved as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+pub const D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_OPAQUE:
+    D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE = 0;
+pub const D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_BACKGROUND:
+    D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE = 1;
+pub const D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_DESTINATION: D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE = 2;
+pub const D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE_SOURCE_STREAM: D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE = 3;
+pub type D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE = ::std::os::raw::c_int;
+pub const D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_NORMAL:
+    D3D11_VIDEO_PROCESSOR_OUTPUT_RATE = 0;
+pub const D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_HALF:
+    D3D11_VIDEO_PROCESSOR_OUTPUT_RATE = 1;
+pub const D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_D3D11_VIDEO_PROCESSOR_OUTPUT_RATE_CUSTOM:
+    D3D11_VIDEO_PROCESSOR_OUTPUT_RATE = 2;
+pub type D3D11_VIDEO_PROCESSOR_OUTPUT_RATE = ::std::os::raw::c_int;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_MONO:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 0;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_HORIZONTAL:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 1;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_VERTICAL:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 2;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_SEPARATE:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 3;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_MONO_OFFSET:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 4;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_ROW_INTERLEAVED: D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 5;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_COLUMN_INTERLEAVED: D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 6;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_D3D11_VIDEO_PROCESSOR_STEREO_FORMAT_CHECKERBOARD:
+    D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = 7;
+pub type D3D11_VIDEO_PROCESSOR_STEREO_FORMAT = ::std::os::raw::c_int;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE_D3D11_VIDEO_PROCESSOR_STEREO_FLIP_NONE:
+    D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE = 0;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE_D3D11_VIDEO_PROCESSOR_STEREO_FLIP_FRAME0:
+    D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE = 1;
+pub const D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE_D3D11_VIDEO_PROCESSOR_STEREO_FLIP_FRAME1:
+    D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE = 2;
+pub type D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE = ::std::os::raw::c_int;
+pub const D3D11_VIDEO_PROCESSOR_ROTATION_D3D11_VIDEO_PROCESSOR_ROTATION_IDENTITY:
+    D3D11_VIDEO_PROCESSOR_ROTATION = 0;
+pub const D3D11_VIDEO_PROCESSOR_ROTATION_D3D11_VIDEO_PROCESSOR_ROTATION_90:
+    D3D11_VIDEO_PROCESSOR_ROTATION = 1;
+pub const D3D11_VIDEO_PROCESSOR_ROTATION_D3D11_VIDEO_PROCESSOR_ROTATION_180:
+    D3D11_VIDEO_PROCESSOR_ROTATION = 2;
+pub const D3D11_VIDEO_PROCESSOR_ROTATION_D3D11_VIDEO_PROCESSOR_ROTATION_270:
+    D3D11_VIDEO_PROCESSOR_ROTATION = 3;
+pub type D3D11_VIDEO_PROCESSOR_ROTATION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_STREAM {
+    pub Enable: BOOL,
+    pub OutputIndex: UINT,
+    pub InputFrameOrField: UINT,
+    pub PastFrames: UINT,
+    pub FutureFrames: UINT,
+    pub ppPastSurfaces: *mut *mut ID3D11VideoProcessorInputView,
+    pub pInputSurface: *mut ID3D11VideoProcessorInputView,
+    pub ppFutureSurfaces: *mut *mut ID3D11VideoProcessorInputView,
+    pub ppPastSurfacesRight: *mut *mut ID3D11VideoProcessorInputView,
+    pub pInputSurfaceRight: *mut ID3D11VideoProcessorInputView,
+    pub ppFutureSurfacesRight: *mut *mut ID3D11VideoProcessorInputView,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoProcessor) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoProcessor) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessor, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetContentDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            pDesc: *mut D3D11_VIDEO_PROCESSOR_CONTENT_DESC,
+        ),
+    >,
+    pub GetRateConversionCaps: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessor,
+            pCaps: *mut D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessor {
+    pub lpVtbl: *mut ID3D11VideoProcessorVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_OMAC {
+    pub Omac: [BYTE; 16usize],
+}
+pub const D3D11_AUTHENTICATED_CHANNEL_TYPE_D3D11_AUTHENTICATED_CHANNEL_D3D11:
+    D3D11_AUTHENTICATED_CHANNEL_TYPE = 1;
+pub const D3D11_AUTHENTICATED_CHANNEL_TYPE_D3D11_AUTHENTICATED_CHANNEL_DRIVER_SOFTWARE:
+    D3D11_AUTHENTICATED_CHANNEL_TYPE = 2;
+pub const D3D11_AUTHENTICATED_CHANNEL_TYPE_D3D11_AUTHENTICATED_CHANNEL_DRIVER_HARDWARE:
+    D3D11_AUTHENTICATED_CHANNEL_TYPE = 3;
+pub type D3D11_AUTHENTICATED_CHANNEL_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11AuthenticatedChannelVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11AuthenticatedChannel) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11AuthenticatedChannel) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetCertificateSize: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            pCertificateSize: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub GetCertificate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11AuthenticatedChannel,
+            CertificateSize: UINT,
+            pCertificate: *mut BYTE,
+        ) -> HRESULT,
+    >,
+    pub GetChannelHandle: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11AuthenticatedChannel, pChannelHandle: *mut HANDLE),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11AuthenticatedChannel {
+    pub lpVtbl: *mut ID3D11AuthenticatedChannelVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_AUTHENTICATED_CONFIGURE_OUTPUT {
+    pub omac: D3D11_OMAC,
+    pub ConfigureType: GUID,
+    pub hChannel: HANDLE,
+    pub SequenceNumber: UINT,
+    pub ReturnCode: HRESULT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11CryptoSessionVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11CryptoSession) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11CryptoSession) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11CryptoSession, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetCryptoType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11CryptoSession, pCryptoType: *mut GUID),
+    >,
+    pub GetDecoderProfile: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11CryptoSession, pDecoderProfile: *mut GUID),
+    >,
+    pub GetCertificateSize: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            pCertificateSize: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub GetCertificate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11CryptoSession,
+            CertificateSize: UINT,
+            pCertificate: *mut BYTE,
+        ) -> HRESULT,
+    >,
+    pub GetCryptoSessionHandle: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11CryptoSession, pCryptoSessionHandle: *mut HANDLE),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11CryptoSession {
+    pub lpVtbl: *mut ID3D11CryptoSessionVtbl,
+}
+pub const D3D11_VDOV_DIMENSION_D3D11_VDOV_DIMENSION_UNKNOWN: D3D11_VDOV_DIMENSION = 0;
+pub const D3D11_VDOV_DIMENSION_D3D11_VDOV_DIMENSION_TEXTURE2D: D3D11_VDOV_DIMENSION = 1;
+pub type D3D11_VDOV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_VDOV {
+    pub ArraySlice: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC {
+    pub DecodeProfile: GUID,
+    pub ViewDimension: D3D11_VDOV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC__bindgen_ty_1 {
+    pub Texture2D: D3D11_TEX2D_VDOV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDecoderOutputViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoDecoderOutputView) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoDecoderOutputView) -> ULONG,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDecoderOutputView,
+            pDesc: *mut D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDecoderOutputView {
+    pub lpVtbl: *mut ID3D11VideoDecoderOutputViewVtbl,
+}
+pub const D3D11_VPIV_DIMENSION_D3D11_VPIV_DIMENSION_UNKNOWN: D3D11_VPIV_DIMENSION = 0;
+pub const D3D11_VPIV_DIMENSION_D3D11_VPIV_DIMENSION_TEXTURE2D: D3D11_VPIV_DIMENSION = 1;
+pub type D3D11_VPIV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_VPIV {
+    pub MipSlice: UINT,
+    pub ArraySlice: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC {
+    pub FourCC: UINT,
+    pub ViewDimension: D3D11_VPIV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC__bindgen_ty_1 {
+    pub Texture2D: D3D11_TEX2D_VPIV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorInputViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorInputView) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorInputView) -> ULONG,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorInputView,
+            pDesc: *mut D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorInputView {
+    pub lpVtbl: *mut ID3D11VideoProcessorInputViewVtbl,
+}
+pub const D3D11_VPOV_DIMENSION_D3D11_VPOV_DIMENSION_UNKNOWN: D3D11_VPOV_DIMENSION = 0;
+pub const D3D11_VPOV_DIMENSION_D3D11_VPOV_DIMENSION_TEXTURE2D: D3D11_VPOV_DIMENSION = 1;
+pub const D3D11_VPOV_DIMENSION_D3D11_VPOV_DIMENSION_TEXTURE2DARRAY: D3D11_VPOV_DIMENSION = 2;
+pub type D3D11_VPOV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_VPOV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D11_TEX2D_ARRAY_VPOV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC {
+    pub ViewDimension: D3D11_VPOV_DIMENSION,
+    pub __bindgen_anon_1: D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC__bindgen_ty_1 {
+    pub Texture2D: D3D11_TEX2D_VPOV,
+    pub Texture2DArray: D3D11_TEX2D_ARRAY_VPOV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorOutputViewVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorOutputView) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoProcessorOutputView) -> ULONG,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            ppDevice: *mut *mut ID3D11Device,
+        ),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            ppResource: *mut *mut ID3D11Resource,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoProcessorOutputView,
+            pDesc: *mut D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoProcessorOutputView {
+    pub lpVtbl: *mut ID3D11VideoProcessorOutputViewVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoContextVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoContext) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoContext) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11VideoContext, ppDevice: *mut *mut ID3D11Device),
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetDecoderBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+            Type: D3D11_VIDEO_DECODER_BUFFER_TYPE,
+            pBufferSize: *mut UINT,
+            ppBuffer: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub ReleaseDecoderBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+            Type: D3D11_VIDEO_DECODER_BUFFER_TYPE,
+        ) -> HRESULT,
+    >,
+    pub DecoderBeginFrame: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+            pView: *mut ID3D11VideoDecoderOutputView,
+            ContentKeySize: UINT,
+            pContentKey: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub DecoderEndFrame: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+        ) -> HRESULT,
+    >,
+    pub SubmitDecoderBuffers: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+            NumBuffers: UINT,
+            pBufferDesc: *const D3D11_VIDEO_DECODER_BUFFER_DESC,
+        ) -> HRESULT,
+    >,
+    pub DecoderExtension: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pDecoder: *mut ID3D11VideoDecoder,
+            pExtensionData: *const D3D11_VIDEO_DECODER_EXTENSION,
+        ) -> APP_DEPRECATED_HRESULT,
+    >,
+    pub VideoProcessorSetOutputTargetRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            Enable: BOOL,
+            pRect: *const RECT,
+        ),
+    >,
+    pub VideoProcessorSetOutputBackgroundColor: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            YCbCr: BOOL,
+            pColor: *const D3D11_VIDEO_COLOR,
+        ),
+    >,
+    pub VideoProcessorSetOutputColorSpace: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pColorSpace: *const D3D11_VIDEO_PROCESSOR_COLOR_SPACE,
+        ),
+    >,
+    pub VideoProcessorSetOutputAlphaFillMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            AlphaFillMode: D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE,
+            StreamIndex: UINT,
+        ),
+    >,
+    pub VideoProcessorSetOutputConstriction: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            Enable: BOOL,
+            Size: SIZE,
+        ),
+    >,
+    pub VideoProcessorSetOutputStereoMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            Enable: BOOL,
+        ),
+    >,
+    pub VideoProcessorSetOutputExtension: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pExtensionGuid: *const GUID,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> APP_DEPRECATED_HRESULT,
+    >,
+    pub VideoProcessorGetOutputTargetRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            Enabled: *mut BOOL,
+            pRect: *mut RECT,
+        ),
+    >,
+    pub VideoProcessorGetOutputBackgroundColor: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pYCbCr: *mut BOOL,
+            pColor: *mut D3D11_VIDEO_COLOR,
+        ),
+    >,
+    pub VideoProcessorGetOutputColorSpace: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pColorSpace: *mut D3D11_VIDEO_PROCESSOR_COLOR_SPACE,
+        ),
+    >,
+    pub VideoProcessorGetOutputAlphaFillMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pAlphaFillMode: *mut D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE,
+            pStreamIndex: *mut UINT,
+        ),
+    >,
+    pub VideoProcessorGetOutputConstriction: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pEnabled: *mut BOOL,
+            pSize: *mut SIZE,
+        ),
+    >,
+    pub VideoProcessorGetOutputStereoMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pEnabled: *mut BOOL,
+        ),
+    >,
+    pub VideoProcessorGetOutputExtension: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pExtensionGuid: *const GUID,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> APP_DEPRECATED_HRESULT,
+    >,
+    pub VideoProcessorSetStreamFrameFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            FrameFormat: D3D11_VIDEO_FRAME_FORMAT,
+        ),
+    >,
+    pub VideoProcessorSetStreamColorSpace: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pColorSpace: *const D3D11_VIDEO_PROCESSOR_COLOR_SPACE,
+        ),
+    >,
+    pub VideoProcessorSetStreamOutputRate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            OutputRate: D3D11_VIDEO_PROCESSOR_OUTPUT_RATE,
+            RepeatFrame: BOOL,
+            pCustomRate: *const DXGI_RATIONAL,
+        ),
+    >,
+    pub VideoProcessorSetStreamSourceRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            pRect: *const RECT,
+        ),
+    >,
+    pub VideoProcessorSetStreamDestRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            pRect: *const RECT,
+        ),
+    >,
+    pub VideoProcessorSetStreamAlpha: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            Alpha: FLOAT,
+        ),
+    >,
+    pub VideoProcessorSetStreamPalette: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Count: UINT,
+            pEntries: *const UINT,
+        ),
+    >,
+    pub VideoProcessorSetStreamPixelAspectRatio: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            pSourceAspectRatio: *const DXGI_RATIONAL,
+            pDestinationAspectRatio: *const DXGI_RATIONAL,
+        ),
+    >,
+    pub VideoProcessorSetStreamLumaKey: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            Lower: FLOAT,
+            Upper: FLOAT,
+        ),
+    >,
+    pub VideoProcessorSetStreamStereoFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            Format: D3D11_VIDEO_PROCESSOR_STEREO_FORMAT,
+            LeftViewFrame0: BOOL,
+            BaseViewFrame0: BOOL,
+            FlipMode: D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE,
+            MonoOffset: ::std::os::raw::c_int,
+        ),
+    >,
+    pub VideoProcessorSetStreamAutoProcessingMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+        ),
+    >,
+    pub VideoProcessorSetStreamFilter: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Filter: D3D11_VIDEO_PROCESSOR_FILTER,
+            Enable: BOOL,
+            Level: ::std::os::raw::c_int,
+        ),
+    >,
+    pub VideoProcessorSetStreamExtension: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pExtensionGuid: *const GUID,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> APP_DEPRECATED_HRESULT,
+    >,
+    pub VideoProcessorGetStreamFrameFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pFrameFormat: *mut D3D11_VIDEO_FRAME_FORMAT,
+        ),
+    >,
+    pub VideoProcessorGetStreamColorSpace: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pColorSpace: *mut D3D11_VIDEO_PROCESSOR_COLOR_SPACE,
+        ),
+    >,
+    pub VideoProcessorGetStreamOutputRate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pOutputRate: *mut D3D11_VIDEO_PROCESSOR_OUTPUT_RATE,
+            pRepeatFrame: *mut BOOL,
+            pCustomRate: *mut DXGI_RATIONAL,
+        ),
+    >,
+    pub VideoProcessorGetStreamSourceRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+            pRect: *mut RECT,
+        ),
+    >,
+    pub VideoProcessorGetStreamDestRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+            pRect: *mut RECT,
+        ),
+    >,
+    pub VideoProcessorGetStreamAlpha: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+            pAlpha: *mut FLOAT,
+        ),
+    >,
+    pub VideoProcessorGetStreamPalette: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Count: UINT,
+            pEntries: *mut UINT,
+        ),
+    >,
+    pub VideoProcessorGetStreamPixelAspectRatio: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+            pSourceAspectRatio: *mut DXGI_RATIONAL,
+            pDestinationAspectRatio: *mut DXGI_RATIONAL,
+        ),
+    >,
+    pub VideoProcessorGetStreamLumaKey: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+            pLower: *mut FLOAT,
+            pUpper: *mut FLOAT,
+        ),
+    >,
+    pub VideoProcessorGetStreamStereoFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnable: *mut BOOL,
+            pFormat: *mut D3D11_VIDEO_PROCESSOR_STEREO_FORMAT,
+            pLeftViewFrame0: *mut BOOL,
+            pBaseViewFrame0: *mut BOOL,
+            pFlipMode: *mut D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE,
+            MonoOffset: *mut ::std::os::raw::c_int,
+        ),
+    >,
+    pub VideoProcessorGetStreamAutoProcessingMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnabled: *mut BOOL,
+        ),
+    >,
+    pub VideoProcessorGetStreamFilter: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Filter: D3D11_VIDEO_PROCESSOR_FILTER,
+            pEnabled: *mut BOOL,
+            pLevel: *mut ::std::os::raw::c_int,
+        ),
+    >,
+    pub VideoProcessorGetStreamExtension: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pExtensionGuid: *const GUID,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> APP_DEPRECATED_HRESULT,
+    >,
+    pub VideoProcessorBlt: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            pView: *mut ID3D11VideoProcessorOutputView,
+            OutputFrame: UINT,
+            StreamCount: UINT,
+            pStreams: *const D3D11_VIDEO_PROCESSOR_STREAM,
+        ) -> HRESULT,
+    >,
+    pub NegotiateCryptoSessionKeyExchange: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub EncryptionBlt: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+            pSrcSurface: *mut ID3D11Texture2D,
+            pDstSurface: *mut ID3D11Texture2D,
+            IVSize: UINT,
+            pIV: *mut ::std::os::raw::c_void,
+        ),
+    >,
+    pub DecryptionBlt: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+            pSrcSurface: *mut ID3D11Texture2D,
+            pDstSurface: *mut ID3D11Texture2D,
+            pEncryptedBlockInfo: *mut D3D11_ENCRYPTED_BLOCK_INFO,
+            ContentKeySize: UINT,
+            pContentKey: *const ::std::os::raw::c_void,
+            IVSize: UINT,
+            pIV: *mut ::std::os::raw::c_void,
+        ),
+    >,
+    pub StartSessionKeyRefresh: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+            RandomNumberSize: UINT,
+            pRandomNumber: *mut ::std::os::raw::c_void,
+        ),
+    >,
+    pub FinishSessionKeyRefresh: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+        ),
+    >,
+    pub GetEncryptionBltKey: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pCryptoSession: *mut ID3D11CryptoSession,
+            KeySize: UINT,
+            pReadbackKey: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub NegotiateAuthenticatedChannelKeyExchange: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pChannel: *mut ID3D11AuthenticatedChannel,
+            DataSize: UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub QueryAuthenticatedChannel: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pChannel: *mut ID3D11AuthenticatedChannel,
+            InputSize: UINT,
+            pInput: *const ::std::os::raw::c_void,
+            OutputSize: UINT,
+            pOutput: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub ConfigureAuthenticatedChannel: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pChannel: *mut ID3D11AuthenticatedChannel,
+            InputSize: UINT,
+            pInput: *const ::std::os::raw::c_void,
+            pOutput: *mut D3D11_AUTHENTICATED_CONFIGURE_OUTPUT,
+        ) -> HRESULT,
+    >,
+    pub VideoProcessorSetStreamRotation: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            Enable: BOOL,
+            Rotation: D3D11_VIDEO_PROCESSOR_ROTATION,
+        ),
+    >,
+    pub VideoProcessorGetStreamRotation: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoContext,
+            pVideoProcessor: *mut ID3D11VideoProcessor,
+            StreamIndex: UINT,
+            pEnable: *mut BOOL,
+            pRotation: *mut D3D11_VIDEO_PROCESSOR_ROTATION,
+        ),
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoContext {
+    pub lpVtbl: *mut ID3D11VideoContextVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDeviceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoDevice) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoDevice) -> ULONG>,
+    pub CreateVideoDecoder: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pVideoDesc: *const D3D11_VIDEO_DECODER_DESC,
+            pConfig: *const D3D11_VIDEO_DECODER_CONFIG,
+            ppDecoder: *mut *mut ID3D11VideoDecoder,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoProcessor: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pEnum: *mut ID3D11VideoProcessorEnumerator,
+            RateConversionIndex: UINT,
+            ppVideoProcessor: *mut *mut ID3D11VideoProcessor,
+        ) -> HRESULT,
+    >,
+    pub CreateAuthenticatedChannel: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            ChannelType: D3D11_AUTHENTICATED_CHANNEL_TYPE,
+            ppAuthenticatedChannel: *mut *mut ID3D11AuthenticatedChannel,
+        ) -> HRESULT,
+    >,
+    pub CreateCryptoSession: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pCryptoType: *const GUID,
+            pDecoderProfile: *const GUID,
+            pKeyExchangeType: *const GUID,
+            ppCryptoSession: *mut *mut ID3D11CryptoSession,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoDecoderOutputView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pResource: *mut ID3D11Resource,
+            pDesc: *const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC,
+            ppVDOVView: *mut *mut ID3D11VideoDecoderOutputView,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoProcessorInputView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pResource: *mut ID3D11Resource,
+            pEnum: *mut ID3D11VideoProcessorEnumerator,
+            pDesc: *const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC,
+            ppVPIView: *mut *mut ID3D11VideoProcessorInputView,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoProcessorOutputView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pResource: *mut ID3D11Resource,
+            pEnum: *mut ID3D11VideoProcessorEnumerator,
+            pDesc: *const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC,
+            ppVPOView: *mut *mut ID3D11VideoProcessorOutputView,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoProcessorEnumerator: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pDesc: *const D3D11_VIDEO_PROCESSOR_CONTENT_DESC,
+            ppEnum: *mut *mut ID3D11VideoProcessorEnumerator,
+        ) -> HRESULT,
+    >,
+    pub GetVideoDecoderProfileCount:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11VideoDevice) -> UINT>,
+    pub GetVideoDecoderProfile: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            Index: UINT,
+            pDecoderProfile: *mut GUID,
+        ) -> HRESULT,
+    >,
+    pub CheckVideoDecoderFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pDecoderProfile: *const GUID,
+            Format: DXGI_FORMAT,
+            pSupported: *mut BOOL,
+        ) -> HRESULT,
+    >,
+    pub GetVideoDecoderConfigCount: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pDesc: *const D3D11_VIDEO_DECODER_DESC,
+            pCount: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub GetVideoDecoderConfig: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pDesc: *const D3D11_VIDEO_DECODER_DESC,
+            Index: UINT,
+            pConfig: *mut D3D11_VIDEO_DECODER_CONFIG,
+        ) -> HRESULT,
+    >,
+    pub GetContentProtectionCaps: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pCryptoType: *const GUID,
+            pDecoderProfile: *const GUID,
+            pCaps: *mut D3D11_VIDEO_CONTENT_PROTECTION_CAPS,
+        ) -> HRESULT,
+    >,
+    pub CheckCryptoKeyExchange: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            pCryptoType: *const GUID,
+            pDecoderProfile: *const GUID,
+            Index: UINT,
+            pKeyExchangeType: *mut GUID,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11VideoDevice,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11VideoDevice {
+    pub lpVtbl: *mut ID3D11VideoDeviceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11DeviceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> ULONG>,
+    pub CreateBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDesc: *const D3D11_BUFFER_DESC,
+            pInitialData: *const D3D11_SUBRESOURCE_DATA,
+            ppBuffer: *mut *mut ID3D11Buffer,
+        ) -> HRESULT,
+    >,
+    pub CreateTexture1D: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDesc: *const D3D11_TEXTURE1D_DESC,
+            pInitialData: *const D3D11_SUBRESOURCE_DATA,
+            ppTexture1D: *mut *mut ID3D11Texture1D,
+        ) -> HRESULT,
+    >,
+    pub CreateTexture2D: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDesc: *const D3D11_TEXTURE2D_DESC,
+            pInitialData: *const D3D11_SUBRESOURCE_DATA,
+            ppTexture2D: *mut *mut ID3D11Texture2D,
+        ) -> HRESULT,
+    >,
+    pub CreateTexture3D: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDesc: *const D3D11_TEXTURE3D_DESC,
+            pInitialData: *const D3D11_SUBRESOURCE_DATA,
+            ppTexture3D: *mut *mut ID3D11Texture3D,
+        ) -> HRESULT,
+    >,
+    pub CreateShaderResourceView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pResource: *mut ID3D11Resource,
+            pDesc: *const D3D11_SHADER_RESOURCE_VIEW_DESC,
+            ppSRView: *mut *mut ID3D11ShaderResourceView,
+        ) -> HRESULT,
+    >,
+    pub CreateUnorderedAccessView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pResource: *mut ID3D11Resource,
+            pDesc: *const D3D11_UNORDERED_ACCESS_VIEW_DESC,
+            ppUAView: *mut *mut ID3D11UnorderedAccessView,
+        ) -> HRESULT,
+    >,
+    pub CreateRenderTargetView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pResource: *mut ID3D11Resource,
+            pDesc: *const D3D11_RENDER_TARGET_VIEW_DESC,
+            ppRTView: *mut *mut ID3D11RenderTargetView,
+        ) -> HRESULT,
+    >,
+    pub CreateDepthStencilView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pResource: *mut ID3D11Resource,
+            pDesc: *const D3D11_DEPTH_STENCIL_VIEW_DESC,
+            ppDepthStencilView: *mut *mut ID3D11DepthStencilView,
+        ) -> HRESULT,
+    >,
+    pub CreateInputLayout: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pInputElementDescs: *const D3D11_INPUT_ELEMENT_DESC,
+            NumElements: UINT,
+            pShaderBytecodeWithInputSignature: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            ppInputLayout: *mut *mut ID3D11InputLayout,
+        ) -> HRESULT,
+    >,
+    pub CreateVertexShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppVertexShader: *mut *mut ID3D11VertexShader,
+        ) -> HRESULT,
+    >,
+    pub CreateGeometryShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppGeometryShader: *mut *mut ID3D11GeometryShader,
+        ) -> HRESULT,
+    >,
+    pub CreateGeometryShaderWithStreamOutput: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pSODeclaration: *const D3D11_SO_DECLARATION_ENTRY,
+            NumEntries: UINT,
+            pBufferStrides: *const UINT,
+            NumStrides: UINT,
+            RasterizedStream: UINT,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppGeometryShader: *mut *mut ID3D11GeometryShader,
+        ) -> HRESULT,
+    >,
+    pub CreatePixelShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppPixelShader: *mut *mut ID3D11PixelShader,
+        ) -> HRESULT,
+    >,
+    pub CreateHullShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppHullShader: *mut *mut ID3D11HullShader,
+        ) -> HRESULT,
+    >,
+    pub CreateDomainShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppDomainShader: *mut *mut ID3D11DomainShader,
+        ) -> HRESULT,
+    >,
+    pub CreateComputeShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pShaderBytecode: *const ::std::os::raw::c_void,
+            BytecodeLength: SIZE_T,
+            pClassLinkage: *mut ID3D11ClassLinkage,
+            ppComputeShader: *mut *mut ID3D11ComputeShader,
+        ) -> HRESULT,
+    >,
+    pub CreateClassLinkage: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            ppLinkage: *mut *mut ID3D11ClassLinkage,
+        ) -> HRESULT,
+    >,
+    pub CreateBlendState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pBlendStateDesc: *const D3D11_BLEND_DESC,
+            ppBlendState: *mut *mut ID3D11BlendState,
+        ) -> HRESULT,
+    >,
+    pub CreateDepthStencilState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDepthStencilDesc: *const D3D11_DEPTH_STENCIL_DESC,
+            ppDepthStencilState: *mut *mut ID3D11DepthStencilState,
+        ) -> HRESULT,
+    >,
+    pub CreateRasterizerState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pRasterizerDesc: *const D3D11_RASTERIZER_DESC,
+            ppRasterizerState: *mut *mut ID3D11RasterizerState,
+        ) -> HRESULT,
+    >,
+    pub CreateSamplerState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pSamplerDesc: *const D3D11_SAMPLER_DESC,
+            ppSamplerState: *mut *mut ID3D11SamplerState,
+        ) -> HRESULT,
+    >,
+    pub CreateQuery: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pQueryDesc: *const D3D11_QUERY_DESC,
+            ppQuery: *mut *mut ID3D11Query,
+        ) -> HRESULT,
+    >,
+    pub CreatePredicate: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pPredicateDesc: *const D3D11_QUERY_DESC,
+            ppPredicate: *mut *mut ID3D11Predicate,
+        ) -> HRESULT,
+    >,
+    pub CreateCounter: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pCounterDesc: *const D3D11_COUNTER_DESC,
+            ppCounter: *mut *mut ID3D11Counter,
+        ) -> HRESULT,
+    >,
+    pub CreateDeferredContext: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            ContextFlags: UINT,
+            ppDeferredContext: *mut *mut ID3D11DeviceContext,
+        ) -> HRESULT,
+    >,
+    pub OpenSharedResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            hResource: HANDLE,
+            ReturnedInterface: *const IID,
+            ppResource: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CheckFormatSupport: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            Format: DXGI_FORMAT,
+            pFormatSupport: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub CheckMultisampleQualityLevels: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            Format: DXGI_FORMAT,
+            SampleCount: UINT,
+            pNumQualityLevels: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub CheckCounterInfo: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Device, pCounterInfo: *mut D3D11_COUNTER_INFO),
+    >,
+    pub CheckCounter: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            pDesc: *const D3D11_COUNTER_DESC,
+            pType: *mut D3D11_COUNTER_TYPE,
+            pActiveCounters: *mut UINT,
+            szName: LPSTR,
+            pNameLength: *mut UINT,
+            szUnits: LPSTR,
+            pUnitsLength: *mut UINT,
+            szDescription: LPSTR,
+            pDescriptionLength: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub CheckFeatureSupport: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            Feature: D3D11_FEATURE,
+            pFeatureSupportData: *mut ::std::os::raw::c_void,
+            FeatureSupportDataSize: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub GetFeatureLevel:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> D3D_FEATURE_LEVEL>,
+    pub GetCreationFlags:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> UINT>,
+    pub GetDeviceRemovedReason:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> HRESULT>,
+    pub GetImmediateContext: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D11Device,
+            ppImmediateContext: *mut *mut ID3D11DeviceContext,
+        ),
+    >,
+    pub SetExceptionMode: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D11Device, RaiseFlags: UINT) -> HRESULT,
+    >,
+    pub GetExceptionMode:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D11Device) -> UINT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D11Device {
+    pub lpVtbl: *mut ID3D11DeviceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D11VAContext {
+    pub decoder: *mut ID3D11VideoDecoder,
+    pub video_context: *mut ID3D11VideoContext,
+    pub cfg: *mut D3D11_VIDEO_DECODER_CONFIG,
+    pub surface_count: ::std::os::raw::c_uint,
+    pub surface: *mut *mut ID3D11VideoDecoderOutputView,
+    pub workaround: u64,
+    pub report_id: ::std::os::raw::c_uint,
+    pub context_mutex: HANDLE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D11VADeviceContext {
+    pub device: *mut ID3D11Device,
+    pub device_context: *mut ID3D11DeviceContext,
+    pub video_device: *mut ID3D11VideoDevice,
+    pub video_context: *mut ID3D11VideoContext,
+    pub lock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub unlock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub lock_ctx: *mut ::std::os::raw::c_void,
+    pub BindFlags: UINT,
+    pub MiscFlags: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D11FrameDescriptor {
+    pub texture: *mut ID3D11Texture2D,
+    pub index: isize,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D11VAFramesContext {
+    pub texture: *mut ID3D11Texture2D,
+    pub BindFlags: UINT,
+    pub MiscFlags: UINT,
+    pub texture_infos: *mut AVD3D11FrameDescriptor,
+}
+pub type D3D12_GPU_VIRTUAL_ADDRESS = UINT64;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_DIRECT: D3D12_COMMAND_LIST_TYPE = 0;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_BUNDLE: D3D12_COMMAND_LIST_TYPE = 1;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_COMPUTE: D3D12_COMMAND_LIST_TYPE = 2;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_COPY: D3D12_COMMAND_LIST_TYPE = 3;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE: D3D12_COMMAND_LIST_TYPE = 4;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_VIDEO_PROCESS: D3D12_COMMAND_LIST_TYPE =
+    5;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE: D3D12_COMMAND_LIST_TYPE = 6;
+pub const D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_NONE: D3D12_COMMAND_LIST_TYPE = -1;
+pub type D3D12_COMMAND_LIST_TYPE = ::std::os::raw::c_int;
+pub const D3D12_COMMAND_QUEUE_FLAGS_D3D12_COMMAND_QUEUE_FLAG_NONE: D3D12_COMMAND_QUEUE_FLAGS = 0;
+pub const D3D12_COMMAND_QUEUE_FLAGS_D3D12_COMMAND_QUEUE_FLAG_DISABLE_GPU_TIMEOUT:
+    D3D12_COMMAND_QUEUE_FLAGS = 1;
+pub type D3D12_COMMAND_QUEUE_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_COMMAND_QUEUE_DESC {
+    pub Type: D3D12_COMMAND_LIST_TYPE,
+    pub Priority: INT,
+    pub Flags: D3D12_COMMAND_QUEUE_FLAGS,
+    pub NodeMask: UINT,
+}
+pub const D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED:
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE = 0;
+pub const D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT:
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE = 1;
+pub const D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE:
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE = 2;
+pub const D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE:
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE = 3;
+pub const D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH:
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE = 4;
+pub type D3D12_PRIMITIVE_TOPOLOGY_TYPE = ::std::os::raw::c_int;
+pub const D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA:
+    D3D12_INPUT_CLASSIFICATION = 0;
+pub const D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA:
+    D3D12_INPUT_CLASSIFICATION = 1;
+pub type D3D12_INPUT_CLASSIFICATION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INPUT_ELEMENT_DESC {
+    pub SemanticName: LPCSTR,
+    pub SemanticIndex: UINT,
+    pub Format: DXGI_FORMAT,
+    pub InputSlot: UINT,
+    pub AlignedByteOffset: UINT,
+    pub InputSlotClass: D3D12_INPUT_CLASSIFICATION,
+    pub InstanceDataStepRate: UINT,
+}
+pub const D3D12_FILL_MODE_D3D12_FILL_MODE_WIREFRAME: D3D12_FILL_MODE = 2;
+pub const D3D12_FILL_MODE_D3D12_FILL_MODE_SOLID: D3D12_FILL_MODE = 3;
+pub type D3D12_FILL_MODE = ::std::os::raw::c_int;
+pub const D3D12_CULL_MODE_D3D12_CULL_MODE_NONE: D3D12_CULL_MODE = 1;
+pub const D3D12_CULL_MODE_D3D12_CULL_MODE_FRONT: D3D12_CULL_MODE = 2;
+pub const D3D12_CULL_MODE_D3D12_CULL_MODE_BACK: D3D12_CULL_MODE = 3;
+pub type D3D12_CULL_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_SO_DECLARATION_ENTRY {
+    pub Stream: UINT,
+    pub SemanticName: LPCSTR,
+    pub SemanticIndex: UINT,
+    pub StartComponent: BYTE,
+    pub ComponentCount: BYTE,
+    pub OutputSlot: BYTE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BOX {
+    pub left: UINT,
+    pub top: UINT,
+    pub front: UINT,
+    pub right: UINT,
+    pub bottom: UINT,
+    pub back: UINT,
+}
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_NONE: D3D12_COMPARISON_FUNC = 0;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_NEVER: D3D12_COMPARISON_FUNC = 1;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_LESS: D3D12_COMPARISON_FUNC = 2;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_EQUAL: D3D12_COMPARISON_FUNC = 3;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_LESS_EQUAL: D3D12_COMPARISON_FUNC = 4;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_GREATER: D3D12_COMPARISON_FUNC = 5;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_NOT_EQUAL: D3D12_COMPARISON_FUNC = 6;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_GREATER_EQUAL: D3D12_COMPARISON_FUNC = 7;
+pub const D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_ALWAYS: D3D12_COMPARISON_FUNC = 8;
+pub type D3D12_COMPARISON_FUNC = ::std::os::raw::c_int;
+pub const D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ZERO: D3D12_DEPTH_WRITE_MASK = 0;
+pub const D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ALL: D3D12_DEPTH_WRITE_MASK = 1;
+pub type D3D12_DEPTH_WRITE_MASK = ::std::os::raw::c_int;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_KEEP: D3D12_STENCIL_OP = 1;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_ZERO: D3D12_STENCIL_OP = 2;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_REPLACE: D3D12_STENCIL_OP = 3;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_INCR_SAT: D3D12_STENCIL_OP = 4;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR_SAT: D3D12_STENCIL_OP = 5;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_INVERT: D3D12_STENCIL_OP = 6;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_INCR: D3D12_STENCIL_OP = 7;
+pub const D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR: D3D12_STENCIL_OP = 8;
+pub type D3D12_STENCIL_OP = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_DEPTH_STENCILOP_DESC {
+    pub StencilFailOp: D3D12_STENCIL_OP,
+    pub StencilDepthFailOp: D3D12_STENCIL_OP,
+    pub StencilPassOp: D3D12_STENCIL_OP,
+    pub StencilFunc: D3D12_COMPARISON_FUNC,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_DEPTH_STENCIL_DESC {
+    pub DepthEnable: BOOL,
+    pub DepthWriteMask: D3D12_DEPTH_WRITE_MASK,
+    pub DepthFunc: D3D12_COMPARISON_FUNC,
+    pub StencilEnable: BOOL,
+    pub StencilReadMask: UINT8,
+    pub StencilWriteMask: UINT8,
+    pub FrontFace: D3D12_DEPTH_STENCILOP_DESC,
+    pub BackFace: D3D12_DEPTH_STENCILOP_DESC,
+}
+pub const D3D12_BLEND_D3D12_BLEND_ZERO: D3D12_BLEND = 1;
+pub const D3D12_BLEND_D3D12_BLEND_ONE: D3D12_BLEND = 2;
+pub const D3D12_BLEND_D3D12_BLEND_SRC_COLOR: D3D12_BLEND = 3;
+pub const D3D12_BLEND_D3D12_BLEND_INV_SRC_COLOR: D3D12_BLEND = 4;
+pub const D3D12_BLEND_D3D12_BLEND_SRC_ALPHA: D3D12_BLEND = 5;
+pub const D3D12_BLEND_D3D12_BLEND_INV_SRC_ALPHA: D3D12_BLEND = 6;
+pub const D3D12_BLEND_D3D12_BLEND_DEST_ALPHA: D3D12_BLEND = 7;
+pub const D3D12_BLEND_D3D12_BLEND_INV_DEST_ALPHA: D3D12_BLEND = 8;
+pub const D3D12_BLEND_D3D12_BLEND_DEST_COLOR: D3D12_BLEND = 9;
+pub const D3D12_BLEND_D3D12_BLEND_INV_DEST_COLOR: D3D12_BLEND = 10;
+pub const D3D12_BLEND_D3D12_BLEND_SRC_ALPHA_SAT: D3D12_BLEND = 11;
+pub const D3D12_BLEND_D3D12_BLEND_BLEND_FACTOR: D3D12_BLEND = 14;
+pub const D3D12_BLEND_D3D12_BLEND_INV_BLEND_FACTOR: D3D12_BLEND = 15;
+pub const D3D12_BLEND_D3D12_BLEND_SRC1_COLOR: D3D12_BLEND = 16;
+pub const D3D12_BLEND_D3D12_BLEND_INV_SRC1_COLOR: D3D12_BLEND = 17;
+pub const D3D12_BLEND_D3D12_BLEND_SRC1_ALPHA: D3D12_BLEND = 18;
+pub const D3D12_BLEND_D3D12_BLEND_INV_SRC1_ALPHA: D3D12_BLEND = 19;
+pub const D3D12_BLEND_D3D12_BLEND_ALPHA_FACTOR: D3D12_BLEND = 20;
+pub const D3D12_BLEND_D3D12_BLEND_INV_ALPHA_FACTOR: D3D12_BLEND = 21;
+pub type D3D12_BLEND = ::std::os::raw::c_int;
+pub const D3D12_BLEND_OP_D3D12_BLEND_OP_ADD: D3D12_BLEND_OP = 1;
+pub const D3D12_BLEND_OP_D3D12_BLEND_OP_SUBTRACT: D3D12_BLEND_OP = 2;
+pub const D3D12_BLEND_OP_D3D12_BLEND_OP_REV_SUBTRACT: D3D12_BLEND_OP = 3;
+pub const D3D12_BLEND_OP_D3D12_BLEND_OP_MIN: D3D12_BLEND_OP = 4;
+pub const D3D12_BLEND_OP_D3D12_BLEND_OP_MAX: D3D12_BLEND_OP = 5;
+pub type D3D12_BLEND_OP = ::std::os::raw::c_int;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_CLEAR: D3D12_LOGIC_OP = 0;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_SET: D3D12_LOGIC_OP = 1;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_COPY: D3D12_LOGIC_OP = 2;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_COPY_INVERTED: D3D12_LOGIC_OP = 3;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_NOOP: D3D12_LOGIC_OP = 4;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_INVERT: D3D12_LOGIC_OP = 5;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND: D3D12_LOGIC_OP = 6;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_NAND: D3D12_LOGIC_OP = 7;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR: D3D12_LOGIC_OP = 8;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_NOR: D3D12_LOGIC_OP = 9;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_XOR: D3D12_LOGIC_OP = 10;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_EQUIV: D3D12_LOGIC_OP = 11;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND_REVERSE: D3D12_LOGIC_OP = 12;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_AND_INVERTED: D3D12_LOGIC_OP = 13;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR_REVERSE: D3D12_LOGIC_OP = 14;
+pub const D3D12_LOGIC_OP_D3D12_LOGIC_OP_OR_INVERTED: D3D12_LOGIC_OP = 15;
+pub type D3D12_LOGIC_OP = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RENDER_TARGET_BLEND_DESC {
+    pub BlendEnable: BOOL,
+    pub LogicOpEnable: BOOL,
+    pub SrcBlend: D3D12_BLEND,
+    pub DestBlend: D3D12_BLEND,
+    pub BlendOp: D3D12_BLEND_OP,
+    pub SrcBlendAlpha: D3D12_BLEND,
+    pub DestBlendAlpha: D3D12_BLEND,
+    pub BlendOpAlpha: D3D12_BLEND_OP,
+    pub LogicOp: D3D12_LOGIC_OP,
+    pub RenderTargetWriteMask: UINT8,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BLEND_DESC {
+    pub AlphaToCoverageEnable: BOOL,
+    pub IndependentBlendEnable: BOOL,
+    pub RenderTarget: [D3D12_RENDER_TARGET_BLEND_DESC; 8usize],
+}
+pub const D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF:
+    D3D12_CONSERVATIVE_RASTERIZATION_MODE = 0;
+pub const D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON:
+    D3D12_CONSERVATIVE_RASTERIZATION_MODE = 1;
+pub type D3D12_CONSERVATIVE_RASTERIZATION_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RASTERIZER_DESC {
+    pub FillMode: D3D12_FILL_MODE,
+    pub CullMode: D3D12_CULL_MODE,
+    pub FrontCounterClockwise: BOOL,
+    pub DepthBias: INT,
+    pub DepthBiasClamp: FLOAT,
+    pub SlopeScaledDepthBias: FLOAT,
+    pub DepthClipEnable: BOOL,
+    pub MultisampleEnable: BOOL,
+    pub AntialiasedLineEnable: BOOL,
+    pub ForcedSampleCount: UINT,
+    pub ConservativeRaster: D3D12_CONSERVATIVE_RASTERIZATION_MODE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12DeviceChildVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12DeviceChild,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12DeviceChild) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12DeviceChild) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12DeviceChild,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12DeviceChild,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12DeviceChild,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12DeviceChild, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12DeviceChild,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12DeviceChild {
+    pub lpVtbl: *mut ID3D12DeviceChildVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12RootSignatureVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12RootSignature,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12RootSignature) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12RootSignature) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12RootSignature,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12RootSignature,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12RootSignature,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12RootSignature, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12RootSignature,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12RootSignature {
+    pub lpVtbl: *mut ID3D12RootSignatureVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_SHADER_BYTECODE {
+    pub pShaderBytecode: *const ::std::os::raw::c_void,
+    pub BytecodeLength: SIZE_T,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_STREAM_OUTPUT_DESC {
+    pub pSODeclaration: *const D3D12_SO_DECLARATION_ENTRY,
+    pub NumEntries: UINT,
+    pub pBufferStrides: *const UINT,
+    pub NumStrides: UINT,
+    pub RasterizedStream: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INPUT_LAYOUT_DESC {
+    pub pInputElementDescs: *const D3D12_INPUT_ELEMENT_DESC,
+    pub NumElements: UINT,
+}
+pub const D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED:
+    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE = 0;
+pub const D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF:
+    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE = 1;
+pub const D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF:
+    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE = 2;
+pub type D3D12_INDEX_BUFFER_STRIP_CUT_VALUE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_CACHED_PIPELINE_STATE {
+    pub pCachedBlob: *const ::std::os::raw::c_void,
+    pub CachedBlobSizeInBytes: SIZE_T,
+}
+pub const D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_NONE: D3D12_PIPELINE_STATE_FLAGS = 0;
+pub const D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_TOOL_DEBUG:
+    D3D12_PIPELINE_STATE_FLAGS = 1;
+pub const D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS:
+    D3D12_PIPELINE_STATE_FLAGS = 4;
+pub const D3D12_PIPELINE_STATE_FLAGS_D3D12_PIPELINE_STATE_FLAG_DYNAMIC_INDEX_BUFFER_STRIP_CUT:
+    D3D12_PIPELINE_STATE_FLAGS = 8;
+pub type D3D12_PIPELINE_STATE_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_GRAPHICS_PIPELINE_STATE_DESC {
+    pub pRootSignature: *mut ID3D12RootSignature,
+    pub VS: D3D12_SHADER_BYTECODE,
+    pub PS: D3D12_SHADER_BYTECODE,
+    pub DS: D3D12_SHADER_BYTECODE,
+    pub HS: D3D12_SHADER_BYTECODE,
+    pub GS: D3D12_SHADER_BYTECODE,
+    pub StreamOutput: D3D12_STREAM_OUTPUT_DESC,
+    pub BlendState: D3D12_BLEND_DESC,
+    pub SampleMask: UINT,
+    pub RasterizerState: D3D12_RASTERIZER_DESC,
+    pub DepthStencilState: D3D12_DEPTH_STENCIL_DESC,
+    pub InputLayout: D3D12_INPUT_LAYOUT_DESC,
+    pub IBStripCutValue: D3D12_INDEX_BUFFER_STRIP_CUT_VALUE,
+    pub PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE,
+    pub NumRenderTargets: UINT,
+    pub RTVFormats: [DXGI_FORMAT; 8usize],
+    pub DSVFormat: DXGI_FORMAT,
+    pub SampleDesc: DXGI_SAMPLE_DESC,
+    pub NodeMask: UINT,
+    pub CachedPSO: D3D12_CACHED_PIPELINE_STATE,
+    pub Flags: D3D12_PIPELINE_STATE_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_COMPUTE_PIPELINE_STATE_DESC {
+    pub pRootSignature: *mut ID3D12RootSignature,
+    pub CS: D3D12_SHADER_BYTECODE,
+    pub NodeMask: UINT,
+    pub CachedPSO: D3D12_CACHED_PIPELINE_STATE,
+    pub Flags: D3D12_PIPELINE_STATE_FLAGS,
+}
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS: D3D12_FEATURE = 0;
+pub const D3D12_FEATURE_D3D12_FEATURE_ARCHITECTURE: D3D12_FEATURE = 1;
+pub const D3D12_FEATURE_D3D12_FEATURE_FEATURE_LEVELS: D3D12_FEATURE = 2;
+pub const D3D12_FEATURE_D3D12_FEATURE_FORMAT_SUPPORT: D3D12_FEATURE = 3;
+pub const D3D12_FEATURE_D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS: D3D12_FEATURE = 4;
+pub const D3D12_FEATURE_D3D12_FEATURE_FORMAT_INFO: D3D12_FEATURE = 5;
+pub const D3D12_FEATURE_D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: D3D12_FEATURE = 6;
+pub const D3D12_FEATURE_D3D12_FEATURE_SHADER_MODEL: D3D12_FEATURE = 7;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS1: D3D12_FEATURE = 8;
+pub const D3D12_FEATURE_D3D12_FEATURE_PROTECTED_RESOURCE_SESSION_SUPPORT: D3D12_FEATURE = 10;
+pub const D3D12_FEATURE_D3D12_FEATURE_ROOT_SIGNATURE: D3D12_FEATURE = 12;
+pub const D3D12_FEATURE_D3D12_FEATURE_ARCHITECTURE1: D3D12_FEATURE = 16;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS2: D3D12_FEATURE = 18;
+pub const D3D12_FEATURE_D3D12_FEATURE_SHADER_CACHE: D3D12_FEATURE = 19;
+pub const D3D12_FEATURE_D3D12_FEATURE_COMMAND_QUEUE_PRIORITY: D3D12_FEATURE = 20;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS3: D3D12_FEATURE = 21;
+pub const D3D12_FEATURE_D3D12_FEATURE_EXISTING_HEAPS: D3D12_FEATURE = 22;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS4: D3D12_FEATURE = 23;
+pub const D3D12_FEATURE_D3D12_FEATURE_SERIALIZATION: D3D12_FEATURE = 24;
+pub const D3D12_FEATURE_D3D12_FEATURE_CROSS_NODE: D3D12_FEATURE = 25;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS5: D3D12_FEATURE = 27;
+pub const D3D12_FEATURE_D3D12_FEATURE_DISPLAYABLE: D3D12_FEATURE = 28;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS6: D3D12_FEATURE = 30;
+pub const D3D12_FEATURE_D3D12_FEATURE_QUERY_META_COMMAND: D3D12_FEATURE = 31;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS7: D3D12_FEATURE = 32;
+pub const D3D12_FEATURE_D3D12_FEATURE_PROTECTED_RESOURCE_SESSION_TYPE_COUNT: D3D12_FEATURE = 33;
+pub const D3D12_FEATURE_D3D12_FEATURE_PROTECTED_RESOURCE_SESSION_TYPES: D3D12_FEATURE = 34;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS8: D3D12_FEATURE = 36;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS9: D3D12_FEATURE = 37;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS10: D3D12_FEATURE = 39;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS11: D3D12_FEATURE = 40;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS12: D3D12_FEATURE = 41;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS13: D3D12_FEATURE = 42;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS14: D3D12_FEATURE = 43;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS15: D3D12_FEATURE = 44;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS16: D3D12_FEATURE = 45;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS17: D3D12_FEATURE = 46;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS18: D3D12_FEATURE = 47;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS19: D3D12_FEATURE = 48;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS20: D3D12_FEATURE = 49;
+pub const D3D12_FEATURE_D3D12_FEATURE_PREDICATION: D3D12_FEATURE = 50;
+pub const D3D12_FEATURE_D3D12_FEATURE_PLACED_RESOURCE_SUPPORT_INFO: D3D12_FEATURE = 51;
+pub const D3D12_FEATURE_D3D12_FEATURE_HARDWARE_COPY: D3D12_FEATURE = 52;
+pub const D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS21: D3D12_FEATURE = 53;
+pub const D3D12_FEATURE_D3D12_FEATURE_APPLICATION_SPECIFIC_DRIVER_STATE: D3D12_FEATURE = 56;
+pub const D3D12_FEATURE_D3D12_FEATURE_BYTECODE_BYPASS_HASH_SUPPORTED: D3D12_FEATURE = 57;
+pub const D3D12_FEATURE_D3D12_FEATURE_SHADER_CACHE_ABI_SUPPORT: D3D12_FEATURE = 61;
+pub type D3D12_FEATURE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RESOURCE_ALLOCATION_INFO {
+    pub SizeInBytes: UINT64,
+    pub Alignment: UINT64,
+}
+pub const D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_DEFAULT: D3D12_HEAP_TYPE = 1;
+pub const D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_UPLOAD: D3D12_HEAP_TYPE = 2;
+pub const D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_READBACK: D3D12_HEAP_TYPE = 3;
+pub const D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_CUSTOM: D3D12_HEAP_TYPE = 4;
+pub const D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_GPU_UPLOAD: D3D12_HEAP_TYPE = 5;
+pub type D3D12_HEAP_TYPE = ::std::os::raw::c_int;
+pub const D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_UNKNOWN: D3D12_CPU_PAGE_PROPERTY = 0;
+pub const D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE: D3D12_CPU_PAGE_PROPERTY =
+    1;
+pub const D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE: D3D12_CPU_PAGE_PROPERTY =
+    2;
+pub const D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_WRITE_BACK: D3D12_CPU_PAGE_PROPERTY = 3;
+pub type D3D12_CPU_PAGE_PROPERTY = ::std::os::raw::c_int;
+pub const D3D12_MEMORY_POOL_D3D12_MEMORY_POOL_UNKNOWN: D3D12_MEMORY_POOL = 0;
+pub const D3D12_MEMORY_POOL_D3D12_MEMORY_POOL_L0: D3D12_MEMORY_POOL = 1;
+pub const D3D12_MEMORY_POOL_D3D12_MEMORY_POOL_L1: D3D12_MEMORY_POOL = 2;
+pub type D3D12_MEMORY_POOL = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_HEAP_PROPERTIES {
+    pub Type: D3D12_HEAP_TYPE,
+    pub CPUPageProperty: D3D12_CPU_PAGE_PROPERTY,
+    pub MemoryPoolPreference: D3D12_MEMORY_POOL,
+    pub CreationNodeMask: UINT,
+    pub VisibleNodeMask: UINT,
+}
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_NONE: D3D12_HEAP_FLAGS = 0;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_SHARED: D3D12_HEAP_FLAGS = 1;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_DENY_BUFFERS: D3D12_HEAP_FLAGS = 4;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_DISPLAY: D3D12_HEAP_FLAGS = 8;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER: D3D12_HEAP_FLAGS = 32;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES: D3D12_HEAP_FLAGS = 64;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES: D3D12_HEAP_FLAGS = 128;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_HARDWARE_PROTECTED: D3D12_HEAP_FLAGS = 256;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_WRITE_WATCH: D3D12_HEAP_FLAGS = 512;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS: D3D12_HEAP_FLAGS = 1024;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT: D3D12_HEAP_FLAGS = 2048;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_CREATE_NOT_ZEROED: D3D12_HEAP_FLAGS = 4096;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_TOOLS_USE_MANUAL_WRITE_TRACKING: D3D12_HEAP_FLAGS = 8192;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES: D3D12_HEAP_FLAGS = 0;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS: D3D12_HEAP_FLAGS = 192;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES: D3D12_HEAP_FLAGS = 68;
+pub const D3D12_HEAP_FLAGS_D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES: D3D12_HEAP_FLAGS = 132;
+pub type D3D12_HEAP_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_HEAP_DESC {
+    pub SizeInBytes: UINT64,
+    pub Properties: D3D12_HEAP_PROPERTIES,
+    pub Alignment: UINT64,
+    pub Flags: D3D12_HEAP_FLAGS,
+}
+pub const D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_UNKNOWN: D3D12_RESOURCE_DIMENSION = 0;
+pub const D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_BUFFER: D3D12_RESOURCE_DIMENSION = 1;
+pub const D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_TEXTURE1D: D3D12_RESOURCE_DIMENSION = 2;
+pub const D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_TEXTURE2D: D3D12_RESOURCE_DIMENSION = 3;
+pub const D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_TEXTURE3D: D3D12_RESOURCE_DIMENSION = 4;
+pub type D3D12_RESOURCE_DIMENSION = ::std::os::raw::c_int;
+pub const D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_UNKNOWN: D3D12_TEXTURE_LAYOUT = 0;
+pub const D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_ROW_MAJOR: D3D12_TEXTURE_LAYOUT = 1;
+pub const D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE: D3D12_TEXTURE_LAYOUT =
+    2;
+pub const D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_64KB_STANDARD_SWIZZLE: D3D12_TEXTURE_LAYOUT = 3;
+pub type D3D12_TEXTURE_LAYOUT = ::std::os::raw::c_int;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_NONE: D3D12_RESOURCE_FLAGS = 0;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET: D3D12_RESOURCE_FLAGS = 1;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL: D3D12_RESOURCE_FLAGS = 2;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS: D3D12_RESOURCE_FLAGS = 4;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE: D3D12_RESOURCE_FLAGS = 8;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER: D3D12_RESOURCE_FLAGS = 16;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS: D3D12_RESOURCE_FLAGS =
+    32;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY:
+    D3D12_RESOURCE_FLAGS = 64;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_VIDEO_ENCODE_REFERENCE_ONLY:
+    D3D12_RESOURCE_FLAGS = 128;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE:
+    D3D12_RESOURCE_FLAGS = 256;
+pub type D3D12_RESOURCE_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RESOURCE_DESC {
+    pub Dimension: D3D12_RESOURCE_DIMENSION,
+    pub Alignment: UINT64,
+    pub Width: UINT64,
+    pub Height: UINT,
+    pub DepthOrArraySize: UINT16,
+    pub MipLevels: UINT16,
+    pub Format: DXGI_FORMAT,
+    pub SampleDesc: DXGI_SAMPLE_DESC,
+    pub Layout: D3D12_TEXTURE_LAYOUT,
+    pub Flags: D3D12_RESOURCE_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_DEPTH_STENCIL_VALUE {
+    pub Depth: FLOAT,
+    pub Stencil: UINT8,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_CLEAR_VALUE {
+    pub Format: DXGI_FORMAT,
+    pub __bindgen_anon_1: D3D12_CLEAR_VALUE__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_CLEAR_VALUE__bindgen_ty_1 {
+    pub Color: [FLOAT; 4usize],
+    pub DepthStencil: D3D12_DEPTH_STENCIL_VALUE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RANGE {
+    pub Begin: SIZE_T,
+    pub End: SIZE_T,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_SUBRESOURCE_TILING {
+    pub WidthInTiles: UINT,
+    pub HeightInTiles: UINT16,
+    pub DepthInTiles: UINT16,
+    pub StartTileIndexInOverallResource: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TILE_SHAPE {
+    pub WidthInTexels: UINT,
+    pub HeightInTexels: UINT,
+    pub DepthInTexels: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_PACKED_MIP_INFO {
+    pub NumStandardMips: UINT8,
+    pub NumPackedMips: UINT8,
+    pub NumTilesForPackedMips: UINT,
+    pub StartTileIndexInOverallResource: UINT,
+}
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_COMMON: D3D12_RESOURCE_STATES = 0;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER:
+    D3D12_RESOURCE_STATES = 1;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_INDEX_BUFFER: D3D12_RESOURCE_STATES = 2;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RENDER_TARGET: D3D12_RESOURCE_STATES = 4;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_UNORDERED_ACCESS: D3D12_RESOURCE_STATES = 8;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_DEPTH_WRITE: D3D12_RESOURCE_STATES = 16;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_DEPTH_READ: D3D12_RESOURCE_STATES = 32;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE:
+    D3D12_RESOURCE_STATES = 64;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE: D3D12_RESOURCE_STATES =
+    128;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_STREAM_OUT: D3D12_RESOURCE_STATES = 256;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT: D3D12_RESOURCE_STATES = 512;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_COPY_DEST: D3D12_RESOURCE_STATES = 1024;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_COPY_SOURCE: D3D12_RESOURCE_STATES = 2048;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESOLVE_DEST: D3D12_RESOURCE_STATES = 4096;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESOLVE_SOURCE: D3D12_RESOURCE_STATES = 8192;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE:
+    D3D12_RESOURCE_STATES = 4194304;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE: D3D12_RESOURCE_STATES =
+    16777216;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESERVED_INTERNAL_8000: D3D12_RESOURCE_STATES =
+    32768;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESERVED_INTERNAL_4000: D3D12_RESOURCE_STATES =
+    16384;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESERVED_INTERNAL_100000:
+    D3D12_RESOURCE_STATES = 1048576;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESERVED_INTERNAL_40000000:
+    D3D12_RESOURCE_STATES = 1073741824;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_RESERVED_INTERNAL_80000000:
+    D3D12_RESOURCE_STATES = -2147483648;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_GENERIC_READ: D3D12_RESOURCE_STATES = 2755;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE: D3D12_RESOURCE_STATES =
+    192;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_PRESENT: D3D12_RESOURCE_STATES = 0;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_PREDICATION: D3D12_RESOURCE_STATES = 512;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_DECODE_READ: D3D12_RESOURCE_STATES =
+    65536;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE: D3D12_RESOURCE_STATES =
+    131072;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_PROCESS_READ: D3D12_RESOURCE_STATES =
+    262144;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_PROCESS_WRITE: D3D12_RESOURCE_STATES =
+    524288;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ: D3D12_RESOURCE_STATES =
+    2097152;
+pub const D3D12_RESOURCE_STATES_D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE: D3D12_RESOURCE_STATES =
+    8388608;
+pub type D3D12_RESOURCE_STATES = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_SUBRESOURCE_FOOTPRINT {
+    pub Format: DXGI_FORMAT,
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Depth: UINT,
+    pub RowPitch: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_PLACED_SUBRESOURCE_FOOTPRINT {
+    pub Offset: UINT64,
+    pub Footprint: D3D12_SUBRESOURCE_FOOTPRINT,
+}
+pub const D3D12_BUFFER_SRV_FLAGS_D3D12_BUFFER_SRV_FLAG_NONE: D3D12_BUFFER_SRV_FLAGS = 0;
+pub const D3D12_BUFFER_SRV_FLAGS_D3D12_BUFFER_SRV_FLAG_RAW: D3D12_BUFFER_SRV_FLAGS = 1;
+pub type D3D12_BUFFER_SRV_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BUFFER_SRV {
+    pub FirstElement: UINT64,
+    pub NumElements: UINT,
+    pub StructureByteStride: UINT,
+    pub Flags: D3D12_BUFFER_SRV_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub PlaneSlice: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+    pub PlaneSlice: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX3D_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEXCUBE_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEXCUBE_ARRAY_SRV {
+    pub MostDetailedMip: UINT,
+    pub MipLevels: UINT,
+    pub First2DArrayFace: UINT,
+    pub NumCubes: UINT,
+    pub ResourceMinLODClamp: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_SRV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_ARRAY_SRV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RAYTRACING_ACCELERATION_STRUCTURE_SRV {
+    pub Location: D3D12_GPU_VIRTUAL_ADDRESS,
+}
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_UNKNOWN: D3D12_SRV_DIMENSION = 0;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_BUFFER: D3D12_SRV_DIMENSION = 1;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE1D: D3D12_SRV_DIMENSION = 2;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE1DARRAY: D3D12_SRV_DIMENSION = 3;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE2D: D3D12_SRV_DIMENSION = 4;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE2DARRAY: D3D12_SRV_DIMENSION = 5;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE2DMS: D3D12_SRV_DIMENSION = 6;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY: D3D12_SRV_DIMENSION = 7;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURE3D: D3D12_SRV_DIMENSION = 8;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURECUBE: D3D12_SRV_DIMENSION = 9;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_TEXTURECUBEARRAY: D3D12_SRV_DIMENSION = 10;
+pub const D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE:
+    D3D12_SRV_DIMENSION = 11;
+pub type D3D12_SRV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_SHADER_RESOURCE_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D12_SRV_DIMENSION,
+    pub Shader4ComponentMapping: UINT,
+    pub __bindgen_anon_1: D3D12_SHADER_RESOURCE_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_SHADER_RESOURCE_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D12_BUFFER_SRV,
+    pub Texture1D: D3D12_TEX1D_SRV,
+    pub Texture1DArray: D3D12_TEX1D_ARRAY_SRV,
+    pub Texture2D: D3D12_TEX2D_SRV,
+    pub Texture2DArray: D3D12_TEX2D_ARRAY_SRV,
+    pub Texture2DMS: D3D12_TEX2DMS_SRV,
+    pub Texture2DMSArray: D3D12_TEX2DMS_ARRAY_SRV,
+    pub Texture3D: D3D12_TEX3D_SRV,
+    pub TextureCube: D3D12_TEXCUBE_SRV,
+    pub TextureCubeArray: D3D12_TEXCUBE_ARRAY_SRV,
+    pub RaytracingAccelerationStructure: D3D12_RAYTRACING_ACCELERATION_STRUCTURE_SRV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_CONSTANT_BUFFER_VIEW_DESC {
+    pub BufferLocation: D3D12_GPU_VIRTUAL_ADDRESS,
+    pub SizeInBytes: UINT,
+}
+pub const D3D12_FILTER_D3D12_FILTER_MIN_MAG_MIP_POINT: D3D12_FILTER = 0;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 1;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 4;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR: D3D12_FILTER = 5;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT: D3D12_FILTER = 16;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 17;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 20;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_MAG_MIP_LINEAR: D3D12_FILTER = 21;
+pub const D3D12_FILTER_D3D12_FILTER_MIN_MAG_ANISOTROPIC_MIP_POINT: D3D12_FILTER = 84;
+pub const D3D12_FILTER_D3D12_FILTER_ANISOTROPIC: D3D12_FILTER = 85;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT: D3D12_FILTER = 128;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 129;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 132;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR: D3D12_FILTER = 133;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT: D3D12_FILTER = 144;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 145;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 148;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR: D3D12_FILTER = 149;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_MIN_MAG_ANISOTROPIC_MIP_POINT: D3D12_FILTER = 212;
+pub const D3D12_FILTER_D3D12_FILTER_COMPARISON_ANISOTROPIC: D3D12_FILTER = 213;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT: D3D12_FILTER = 256;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 257;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 260;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR: D3D12_FILTER = 261;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT: D3D12_FILTER = 272;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 273;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 276;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR: D3D12_FILTER = 277;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_MIN_MAG_ANISOTROPIC_MIP_POINT: D3D12_FILTER = 340;
+pub const D3D12_FILTER_D3D12_FILTER_MINIMUM_ANISOTROPIC: D3D12_FILTER = 341;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT: D3D12_FILTER = 384;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 385;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 388;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR: D3D12_FILTER = 389;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT: D3D12_FILTER = 400;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR: D3D12_FILTER = 401;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT: D3D12_FILTER = 404;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR: D3D12_FILTER = 405;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_MIN_MAG_ANISOTROPIC_MIP_POINT: D3D12_FILTER = 468;
+pub const D3D12_FILTER_D3D12_FILTER_MAXIMUM_ANISOTROPIC: D3D12_FILTER = 469;
+pub type D3D12_FILTER = ::std::os::raw::c_int;
+pub const D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_WRAP: D3D12_TEXTURE_ADDRESS_MODE =
+    1;
+pub const D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_MIRROR: D3D12_TEXTURE_ADDRESS_MODE =
+    2;
+pub const D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_CLAMP: D3D12_TEXTURE_ADDRESS_MODE =
+    3;
+pub const D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_BORDER: D3D12_TEXTURE_ADDRESS_MODE =
+    4;
+pub const D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE:
+    D3D12_TEXTURE_ADDRESS_MODE = 5;
+pub type D3D12_TEXTURE_ADDRESS_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_SAMPLER_DESC {
+    pub Filter: D3D12_FILTER,
+    pub AddressU: D3D12_TEXTURE_ADDRESS_MODE,
+    pub AddressV: D3D12_TEXTURE_ADDRESS_MODE,
+    pub AddressW: D3D12_TEXTURE_ADDRESS_MODE,
+    pub MipLODBias: FLOAT,
+    pub MaxAnisotropy: UINT,
+    pub ComparisonFunc: D3D12_COMPARISON_FUNC,
+    pub BorderColor: [FLOAT; 4usize],
+    pub MinLOD: FLOAT,
+    pub MaxLOD: FLOAT,
+}
+pub const D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_NONE: D3D12_BUFFER_UAV_FLAGS = 0;
+pub const D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_RAW: D3D12_BUFFER_UAV_FLAGS = 1;
+pub type D3D12_BUFFER_UAV_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BUFFER_UAV {
+    pub FirstElement: UINT64,
+    pub NumElements: UINT,
+    pub StructureByteStride: UINT,
+    pub CounterOffsetInBytes: UINT64,
+    pub Flags: D3D12_BUFFER_UAV_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_UAV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_ARRAY_UAV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_UAV {
+    pub MipSlice: UINT,
+    pub PlaneSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_ARRAY_UAV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+    pub PlaneSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_UAV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_ARRAY_UAV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX3D_UAV {
+    pub MipSlice: UINT,
+    pub FirstWSlice: UINT,
+    pub WSize: UINT,
+}
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_UNKNOWN: D3D12_UAV_DIMENSION = 0;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_BUFFER: D3D12_UAV_DIMENSION = 1;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE1D: D3D12_UAV_DIMENSION = 2;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE1DARRAY: D3D12_UAV_DIMENSION = 3;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2D: D3D12_UAV_DIMENSION = 4;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2DARRAY: D3D12_UAV_DIMENSION = 5;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2DMS: D3D12_UAV_DIMENSION = 6;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY: D3D12_UAV_DIMENSION = 7;
+pub const D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE3D: D3D12_UAV_DIMENSION = 8;
+pub type D3D12_UAV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_UNORDERED_ACCESS_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D12_UAV_DIMENSION,
+    pub __bindgen_anon_1: D3D12_UNORDERED_ACCESS_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_UNORDERED_ACCESS_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D12_BUFFER_UAV,
+    pub Texture1D: D3D12_TEX1D_UAV,
+    pub Texture1DArray: D3D12_TEX1D_ARRAY_UAV,
+    pub Texture2D: D3D12_TEX2D_UAV,
+    pub Texture2DArray: D3D12_TEX2D_ARRAY_UAV,
+    pub Texture2DMS: D3D12_TEX2DMS_UAV,
+    pub Texture2DMSArray: D3D12_TEX2DMS_ARRAY_UAV,
+    pub Texture3D: D3D12_TEX3D_UAV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BUFFER_RTV {
+    pub FirstElement: UINT64,
+    pub NumElements: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_RTV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_ARRAY_RTV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_RTV {
+    pub MipSlice: UINT,
+    pub PlaneSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_RTV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_ARRAY_RTV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+    pub PlaneSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_ARRAY_RTV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX3D_RTV {
+    pub MipSlice: UINT,
+    pub FirstWSlice: UINT,
+    pub WSize: UINT,
+}
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_UNKNOWN: D3D12_RTV_DIMENSION = 0;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_BUFFER: D3D12_RTV_DIMENSION = 1;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE1D: D3D12_RTV_DIMENSION = 2;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE1DARRAY: D3D12_RTV_DIMENSION = 3;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE2D: D3D12_RTV_DIMENSION = 4;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE2DARRAY: D3D12_RTV_DIMENSION = 5;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE2DMS: D3D12_RTV_DIMENSION = 6;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY: D3D12_RTV_DIMENSION = 7;
+pub const D3D12_RTV_DIMENSION_D3D12_RTV_DIMENSION_TEXTURE3D: D3D12_RTV_DIMENSION = 8;
+pub type D3D12_RTV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_RENDER_TARGET_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D12_RTV_DIMENSION,
+    pub __bindgen_anon_1: D3D12_RENDER_TARGET_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_RENDER_TARGET_VIEW_DESC__bindgen_ty_1 {
+    pub Buffer: D3D12_BUFFER_RTV,
+    pub Texture1D: D3D12_TEX1D_RTV,
+    pub Texture1DArray: D3D12_TEX1D_ARRAY_RTV,
+    pub Texture2D: D3D12_TEX2D_RTV,
+    pub Texture2DArray: D3D12_TEX2D_ARRAY_RTV,
+    pub Texture2DMS: D3D12_TEX2DMS_RTV,
+    pub Texture2DMSArray: D3D12_TEX2DMS_ARRAY_RTV,
+    pub Texture3D: D3D12_TEX3D_RTV,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_DSV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX1D_ARRAY_DSV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_DSV {
+    pub MipSlice: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2D_ARRAY_DSV {
+    pub MipSlice: UINT,
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_DSV {
+    pub UnusedField_NothingToDefine: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEX2DMS_ARRAY_DSV {
+    pub FirstArraySlice: UINT,
+    pub ArraySize: UINT,
+}
+pub const D3D12_DSV_FLAGS_D3D12_DSV_FLAG_NONE: D3D12_DSV_FLAGS = 0;
+pub const D3D12_DSV_FLAGS_D3D12_DSV_FLAG_READ_ONLY_DEPTH: D3D12_DSV_FLAGS = 1;
+pub const D3D12_DSV_FLAGS_D3D12_DSV_FLAG_READ_ONLY_STENCIL: D3D12_DSV_FLAGS = 2;
+pub type D3D12_DSV_FLAGS = ::std::os::raw::c_int;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_UNKNOWN: D3D12_DSV_DIMENSION = 0;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE1D: D3D12_DSV_DIMENSION = 1;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE1DARRAY: D3D12_DSV_DIMENSION = 2;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE2D: D3D12_DSV_DIMENSION = 3;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE2DARRAY: D3D12_DSV_DIMENSION = 4;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE2DMS: D3D12_DSV_DIMENSION = 5;
+pub const D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY: D3D12_DSV_DIMENSION = 6;
+pub type D3D12_DSV_DIMENSION = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_DEPTH_STENCIL_VIEW_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ViewDimension: D3D12_DSV_DIMENSION,
+    pub Flags: D3D12_DSV_FLAGS,
+    pub __bindgen_anon_1: D3D12_DEPTH_STENCIL_VIEW_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_DEPTH_STENCIL_VIEW_DESC__bindgen_ty_1 {
+    pub Texture1D: D3D12_TEX1D_DSV,
+    pub Texture1DArray: D3D12_TEX1D_ARRAY_DSV,
+    pub Texture2D: D3D12_TEX2D_DSV,
+    pub Texture2DArray: D3D12_TEX2D_ARRAY_DSV,
+    pub Texture2DMS: D3D12_TEX2DMS_DSV,
+    pub Texture2DMSArray: D3D12_TEX2DMS_ARRAY_DSV,
+}
+pub const D3D12_FENCE_FLAGS_D3D12_FENCE_FLAG_NONE: D3D12_FENCE_FLAGS = 0;
+pub const D3D12_FENCE_FLAGS_D3D12_FENCE_FLAG_SHARED: D3D12_FENCE_FLAGS = 1;
+pub const D3D12_FENCE_FLAGS_D3D12_FENCE_FLAG_SHARED_CROSS_ADAPTER: D3D12_FENCE_FLAGS = 2;
+pub const D3D12_FENCE_FLAGS_D3D12_FENCE_FLAG_NON_MONITORED: D3D12_FENCE_FLAGS = 4;
+pub type D3D12_FENCE_FLAGS = ::std::os::raw::c_int;
+pub const D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+    D3D12_DESCRIPTOR_HEAP_TYPE = 0;
+pub const D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+    D3D12_DESCRIPTOR_HEAP_TYPE = 1;
+pub const D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_RTV: D3D12_DESCRIPTOR_HEAP_TYPE = 2;
+pub const D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_DSV: D3D12_DESCRIPTOR_HEAP_TYPE = 3;
+pub const D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES:
+    D3D12_DESCRIPTOR_HEAP_TYPE = 4;
+pub type D3D12_DESCRIPTOR_HEAP_TYPE = ::std::os::raw::c_int;
+pub const D3D12_DESCRIPTOR_HEAP_FLAGS_D3D12_DESCRIPTOR_HEAP_FLAG_NONE: D3D12_DESCRIPTOR_HEAP_FLAGS =
+    0;
+pub const D3D12_DESCRIPTOR_HEAP_FLAGS_D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE:
+    D3D12_DESCRIPTOR_HEAP_FLAGS = 1;
+pub type D3D12_DESCRIPTOR_HEAP_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_DESCRIPTOR_HEAP_DESC {
+    pub Type: D3D12_DESCRIPTOR_HEAP_TYPE,
+    pub NumDescriptors: UINT,
+    pub Flags: D3D12_DESCRIPTOR_HEAP_FLAGS,
+    pub NodeMask: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_CPU_DESCRIPTOR_HANDLE {
+    pub ptr: SIZE_T,
+}
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_OCCLUSION: D3D12_QUERY_HEAP_TYPE = 0;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_TIMESTAMP: D3D12_QUERY_HEAP_TYPE = 1;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS: D3D12_QUERY_HEAP_TYPE =
+    2;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_SO_STATISTICS: D3D12_QUERY_HEAP_TYPE = 3;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_VIDEO_DECODE_STATISTICS:
+    D3D12_QUERY_HEAP_TYPE = 4;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP: D3D12_QUERY_HEAP_TYPE =
+    5;
+pub const D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS1: D3D12_QUERY_HEAP_TYPE =
+    7;
+pub type D3D12_QUERY_HEAP_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_QUERY_HEAP_DESC {
+    pub Type: D3D12_QUERY_HEAP_TYPE,
+    pub Count: UINT,
+    pub NodeMask: UINT,
+}
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_DRAW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 0;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 1;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 2;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 3;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 4;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 5;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 6;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 7;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 8;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 9;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 10;
+pub const D3D12_INDIRECT_ARGUMENT_TYPE_D3D12_INDIRECT_ARGUMENT_TYPE_INCREMENTING_CONSTANT:
+    D3D12_INDIRECT_ARGUMENT_TYPE = 11;
+pub type D3D12_INDIRECT_ARGUMENT_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC {
+    pub Type: D3D12_INDIRECT_ARGUMENT_TYPE,
+    pub __bindgen_anon_1: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1 {
+    pub VertexBuffer: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_1,
+    pub Constant: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_2,
+    pub ConstantBufferView: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_3,
+    pub ShaderResourceView: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_4,
+    pub UnorderedAccessView: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_5,
+    pub IncrementingConstant: D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_6,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_1 {
+    pub Slot: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_2 {
+    pub RootParameterIndex: UINT,
+    pub DestOffsetIn32BitValues: UINT,
+    pub Num32BitValuesToSet: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_3 {
+    pub RootParameterIndex: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_4 {
+    pub RootParameterIndex: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_5 {
+    pub RootParameterIndex: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_INDIRECT_ARGUMENT_DESC__bindgen_ty_1__bindgen_ty_6 {
+    pub RootParameterIndex: UINT,
+    pub DestOffsetIn32BitValues: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_COMMAND_SIGNATURE_DESC {
+    pub ByteStride: UINT,
+    pub NumArgumentDescs: UINT,
+    pub pArgumentDescs: *const D3D12_INDIRECT_ARGUMENT_DESC,
+    pub NodeMask: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12PageableVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Pageable,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Pageable) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Pageable) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Pageable,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Pageable,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Pageable,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Pageable, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Pageable,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12Pageable {
+    pub lpVtbl: *mut ID3D12PageableVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12HeapVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Heap) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Heap) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Heap, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Heap,
+            RetVal: *mut D3D12_HEAP_DESC,
+        ) -> *mut D3D12_HEAP_DESC,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12Heap {
+    pub lpVtbl: *mut ID3D12HeapVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12ResourceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Resource) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Resource) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Resource, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub Map: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            Subresource: UINT,
+            pReadRange: *const D3D12_RANGE,
+            ppData: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub Unmap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            Subresource: UINT,
+            pWrittenRange: *const D3D12_RANGE,
+        ),
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            RetVal: *mut D3D12_RESOURCE_DESC,
+        ) -> *mut D3D12_RESOURCE_DESC,
+    >,
+    pub GetGPUVirtualAddress: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Resource) -> D3D12_GPU_VIRTUAL_ADDRESS,
+    >,
+    pub WriteToSubresource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            DstSubresource: UINT,
+            pDstBox: *const D3D12_BOX,
+            pSrcData: *const ::std::os::raw::c_void,
+            SrcRowPitch: UINT,
+            SrcDepthPitch: UINT,
+        ) -> HRESULT,
+    >,
+    pub ReadFromSubresource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            pDstData: *mut ::std::os::raw::c_void,
+            DstRowPitch: UINT,
+            DstDepthPitch: UINT,
+            SrcSubresource: UINT,
+            pSrcBox: *const D3D12_BOX,
+        ) -> HRESULT,
+    >,
+    pub GetHeapProperties: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Resource,
+            pHeapProperties: *mut D3D12_HEAP_PROPERTIES,
+            pHeapFlags: *mut D3D12_HEAP_FLAGS,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12Resource {
+    pub lpVtbl: *mut ID3D12ResourceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12CommandAllocatorVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12CommandAllocator,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12CommandAllocator) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12CommandAllocator) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12CommandAllocator,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12CommandAllocator,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12CommandAllocator,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12CommandAllocator, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12CommandAllocator,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub Reset:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12CommandAllocator) -> HRESULT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12CommandAllocator {
+    pub lpVtbl: *mut ID3D12CommandAllocatorVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12FenceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Fence,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Fence) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Fence) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Fence,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Fence,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Fence,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Fence, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Fence,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetCompletedValue:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Fence) -> UINT64>,
+    pub SetEventOnCompletion: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Fence, Value: UINT64, hEvent: HANDLE) -> HRESULT,
+    >,
+    pub Signal: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Fence, Value: UINT64) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12Fence {
+    pub lpVtbl: *mut ID3D12FenceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12PipelineStateVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12PipelineState,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12PipelineState) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12PipelineState) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12PipelineState,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12PipelineState,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12PipelineState,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12PipelineState, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12PipelineState,
+            riid: *const IID,
+            ppvDevice: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetCachedBlob: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12PipelineState, ppBlob: *mut *mut ID3DBlob) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12PipelineState {
+    pub lpVtbl: *mut ID3D12PipelineStateVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12DeviceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Device) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Device) -> ULONG>,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            guid: *const GUID,
+            pDataSize: *mut UINT,
+            pData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            guid: *const GUID,
+            DataSize: UINT,
+            pData: *const ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateDataInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            guid: *const GUID,
+            pData: *const IUnknown,
+        ) -> HRESULT,
+    >,
+    pub SetName: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Device, Name: LPCWSTR) -> HRESULT,
+    >,
+    pub GetNodeCount: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Device) -> UINT>,
+    pub CreateCommandQueue: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_COMMAND_QUEUE_DESC,
+            riid: *const IID,
+            ppCommandQueue: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateCommandAllocator: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            type_: D3D12_COMMAND_LIST_TYPE,
+            riid: *const IID,
+            ppCommandAllocator: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateGraphicsPipelineState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_GRAPHICS_PIPELINE_STATE_DESC,
+            riid: *const IID,
+            ppPipelineState: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateComputePipelineState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_COMPUTE_PIPELINE_STATE_DESC,
+            riid: *const IID,
+            ppPipelineState: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateCommandList: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            nodeMask: UINT,
+            type_: D3D12_COMMAND_LIST_TYPE,
+            pCommandAllocator: *mut ID3D12CommandAllocator,
+            pInitialState: *mut ID3D12PipelineState,
+            riid: *const IID,
+            ppCommandList: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CheckFeatureSupport: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            Feature: D3D12_FEATURE,
+            pFeatureSupportData: *mut ::std::os::raw::c_void,
+            FeatureSupportDataSize: UINT,
+        ) -> HRESULT,
+    >,
+    pub CreateDescriptorHeap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDescriptorHeapDesc: *const D3D12_DESCRIPTOR_HEAP_DESC,
+            riid: *const IID,
+            ppvHeap: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetDescriptorHandleIncrementSize: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            DescriptorHeapType: D3D12_DESCRIPTOR_HEAP_TYPE,
+        ) -> UINT,
+    >,
+    pub CreateRootSignature: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            nodeMask: UINT,
+            pBlobWithRootSignature: *const ::std::os::raw::c_void,
+            blobLengthInBytes: SIZE_T,
+            riid: *const IID,
+            ppvRootSignature: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateConstantBufferView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_CONSTANT_BUFFER_VIEW_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CreateShaderResourceView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pResource: *mut ID3D12Resource,
+            pDesc: *const D3D12_SHADER_RESOURCE_VIEW_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CreateUnorderedAccessView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pResource: *mut ID3D12Resource,
+            pCounterResource: *mut ID3D12Resource,
+            pDesc: *const D3D12_UNORDERED_ACCESS_VIEW_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CreateRenderTargetView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pResource: *mut ID3D12Resource,
+            pDesc: *const D3D12_RENDER_TARGET_VIEW_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CreateDepthStencilView: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pResource: *mut ID3D12Resource,
+            pDesc: *const D3D12_DEPTH_STENCIL_VIEW_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CreateSampler: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_SAMPLER_DESC,
+            DestDescriptor: D3D12_CPU_DESCRIPTOR_HANDLE,
+        ),
+    >,
+    pub CopyDescriptors: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            NumDestDescriptorRanges: UINT,
+            pDestDescriptorRangeStarts: *const D3D12_CPU_DESCRIPTOR_HANDLE,
+            pDestDescriptorRangeSizes: *const UINT,
+            NumSrcDescriptorRanges: UINT,
+            pSrcDescriptorRangeStarts: *const D3D12_CPU_DESCRIPTOR_HANDLE,
+            pSrcDescriptorRangeSizes: *const UINT,
+            DescriptorHeapsType: D3D12_DESCRIPTOR_HEAP_TYPE,
+        ),
+    >,
+    pub CopyDescriptorsSimple: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            NumDescriptors: UINT,
+            DestDescriptorRangeStart: D3D12_CPU_DESCRIPTOR_HANDLE,
+            SrcDescriptorRangeStart: D3D12_CPU_DESCRIPTOR_HANDLE,
+            DescriptorHeapsType: D3D12_DESCRIPTOR_HEAP_TYPE,
+        ),
+    >,
+    pub GetResourceAllocationInfo: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            RetVal: *mut D3D12_RESOURCE_ALLOCATION_INFO,
+            visibleMask: UINT,
+            numResourceDescs: UINT,
+            pResourceDescs: *const D3D12_RESOURCE_DESC,
+        ) -> *mut D3D12_RESOURCE_ALLOCATION_INFO,
+    >,
+    pub GetCustomHeapProperties: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            RetVal: *mut D3D12_HEAP_PROPERTIES,
+            nodeMask: UINT,
+            heapType: D3D12_HEAP_TYPE,
+        ) -> *mut D3D12_HEAP_PROPERTIES,
+    >,
+    pub CreateCommittedResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pHeapProperties: *const D3D12_HEAP_PROPERTIES,
+            HeapFlags: D3D12_HEAP_FLAGS,
+            pDesc: *const D3D12_RESOURCE_DESC,
+            InitialResourceState: D3D12_RESOURCE_STATES,
+            pOptimizedClearValue: *const D3D12_CLEAR_VALUE,
+            riidResource: *const IID,
+            ppvResource: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateHeap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_HEAP_DESC,
+            riid: *const IID,
+            ppvHeap: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreatePlacedResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pHeap: *mut ID3D12Heap,
+            HeapOffset: UINT64,
+            pDesc: *const D3D12_RESOURCE_DESC,
+            InitialState: D3D12_RESOURCE_STATES,
+            pOptimizedClearValue: *const D3D12_CLEAR_VALUE,
+            riid: *const IID,
+            ppvResource: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateReservedResource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_RESOURCE_DESC,
+            InitialState: D3D12_RESOURCE_STATES,
+            pOptimizedClearValue: *const D3D12_CLEAR_VALUE,
+            riid: *const IID,
+            ppvResource: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateSharedHandle: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pObject: *mut ID3D12DeviceChild,
+            pAttributes: *const SECURITY_ATTRIBUTES,
+            Access: DWORD,
+            Name: LPCWSTR,
+            pHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub OpenSharedHandle: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            NTHandle: HANDLE,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub OpenSharedHandleByName: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            Name: LPCWSTR,
+            Access: DWORD,
+            pNTHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub MakeResident: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            NumObjects: UINT,
+            ppObjects: *const *mut ID3D12Pageable,
+        ) -> HRESULT,
+    >,
+    pub Evict: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            NumObjects: UINT,
+            ppObjects: *const *mut ID3D12Pageable,
+        ) -> HRESULT,
+    >,
+    pub CreateFence: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            InitialValue: UINT64,
+            Flags: D3D12_FENCE_FLAGS,
+            riid: *const IID,
+            ppFence: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetDeviceRemovedReason:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12Device) -> HRESULT>,
+    pub GetCopyableFootprints: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pResourceDesc: *const D3D12_RESOURCE_DESC,
+            FirstSubresource: UINT,
+            NumSubresources: UINT,
+            BaseOffset: UINT64,
+            pLayouts: *mut D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
+            pNumRows: *mut UINT,
+            pRowSizeInBytes: *mut UINT64,
+            pTotalBytes: *mut UINT64,
+        ),
+    >,
+    pub CreateQueryHeap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_QUERY_HEAP_DESC,
+            riid: *const IID,
+            ppvHeap: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub SetStablePowerState: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Device, Enable: BOOL) -> HRESULT,
+    >,
+    pub CreateCommandSignature: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pDesc: *const D3D12_COMMAND_SIGNATURE_DESC,
+            pRootSignature: *mut ID3D12RootSignature,
+            riid: *const IID,
+            ppvCommandSignature: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetResourceTiling: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12Device,
+            pTiledResource: *mut ID3D12Resource,
+            pNumTilesForEntireResource: *mut UINT,
+            pPackedMipDesc: *mut D3D12_PACKED_MIP_INFO,
+            pStandardTileShapeForNonPackedMips: *mut D3D12_TILE_SHAPE,
+            pNumSubresourceTilings: *mut UINT,
+            FirstSubresourceTilingToGet: UINT,
+            pSubresourceTilingsForNonPackedMips: *mut D3D12_SUBRESOURCE_TILING,
+        ),
+    >,
+    pub GetAdapterLuid: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut ID3D12Device, RetVal: *mut LUID) -> *mut LUID,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12Device {
+    pub lpVtbl: *mut ID3D12DeviceVtbl,
+}
+pub const D3D12_VIDEO_FIELD_TYPE_D3D12_VIDEO_FIELD_TYPE_NONE: D3D12_VIDEO_FIELD_TYPE = 0;
+pub const D3D12_VIDEO_FIELD_TYPE_D3D12_VIDEO_FIELD_TYPE_INTERLACED_TOP_FIELD_FIRST:
+    D3D12_VIDEO_FIELD_TYPE = 1;
+pub const D3D12_VIDEO_FIELD_TYPE_D3D12_VIDEO_FIELD_TYPE_INTERLACED_BOTTOM_FIELD_FIRST:
+    D3D12_VIDEO_FIELD_TYPE = 2;
+pub type D3D12_VIDEO_FIELD_TYPE = ::std::os::raw::c_int;
+pub const D3D12_VIDEO_FRAME_STEREO_FORMAT_D3D12_VIDEO_FRAME_STEREO_FORMAT_NONE:
+    D3D12_VIDEO_FRAME_STEREO_FORMAT = 0;
+pub const D3D12_VIDEO_FRAME_STEREO_FORMAT_D3D12_VIDEO_FRAME_STEREO_FORMAT_MONO:
+    D3D12_VIDEO_FRAME_STEREO_FORMAT = 1;
+pub const D3D12_VIDEO_FRAME_STEREO_FORMAT_D3D12_VIDEO_FRAME_STEREO_FORMAT_HORIZONTAL:
+    D3D12_VIDEO_FRAME_STEREO_FORMAT = 2;
+pub const D3D12_VIDEO_FRAME_STEREO_FORMAT_D3D12_VIDEO_FRAME_STEREO_FORMAT_VERTICAL:
+    D3D12_VIDEO_FRAME_STEREO_FORMAT = 3;
+pub const D3D12_VIDEO_FRAME_STEREO_FORMAT_D3D12_VIDEO_FRAME_STEREO_FORMAT_SEPARATE:
+    D3D12_VIDEO_FRAME_STEREO_FORMAT = 4;
+pub type D3D12_VIDEO_FRAME_STEREO_FORMAT = ::std::os::raw::c_int;
+pub const D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE:
+    D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE = 0;
+pub const D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_FIELD_BASED: D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE = 1;
+pub type D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE = ::std::os::raw::c_int;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_SUPPORT: D3D12_FEATURE_VIDEO = 0;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_PROFILES: D3D12_FEATURE_VIDEO = 1;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_FORMATS: D3D12_FEATURE_VIDEO = 2;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_CONVERSION_SUPPORT: D3D12_FEATURE_VIDEO =
+    3;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESS_SUPPORT: D3D12_FEATURE_VIDEO = 5;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESS_MAX_INPUT_STREAMS: D3D12_FEATURE_VIDEO =
+    6;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESS_REFERENCE_INFO: D3D12_FEATURE_VIDEO = 7;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODER_HEAP_SIZE: D3D12_FEATURE_VIDEO = 8;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESSOR_SIZE: D3D12_FEATURE_VIDEO = 9;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_PROFILE_COUNT: D3D12_FEATURE_VIDEO = 10;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_FORMAT_COUNT: D3D12_FEATURE_VIDEO = 11;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ARCHITECTURE: D3D12_FEATURE_VIDEO = 17;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_HISTOGRAM: D3D12_FEATURE_VIDEO = 18;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_FEATURE_AREA_SUPPORT: D3D12_FEATURE_VIDEO = 19;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_MOTION_ESTIMATOR: D3D12_FEATURE_VIDEO = 20;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_MOTION_ESTIMATOR_SIZE: D3D12_FEATURE_VIDEO = 21;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMAND_COUNT: D3D12_FEATURE_VIDEO = 22;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMANDS: D3D12_FEATURE_VIDEO = 23;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMAND_PARAMETER_COUNT:
+    D3D12_FEATURE_VIDEO = 24;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMAND_PARAMETERS:
+    D3D12_FEATURE_VIDEO = 25;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMAND_SUPPORT: D3D12_FEATURE_VIDEO =
+    26;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_EXTENSION_COMMAND_SIZE: D3D12_FEATURE_VIDEO = 27;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODE_PROTECTED_RESOURCES: D3D12_FEATURE_VIDEO =
+    28;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESS_PROTECTED_RESOURCES: D3D12_FEATURE_VIDEO =
+    29;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_MOTION_ESTIMATOR_PROTECTED_RESOURCES:
+    D3D12_FEATURE_VIDEO = 30;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_DECODER_HEAP_SIZE1: D3D12_FEATURE_VIDEO = 31;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_PROCESSOR_SIZE1: D3D12_FEATURE_VIDEO = 32;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_CODEC: D3D12_FEATURE_VIDEO = 33;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_PROFILE_LEVEL: D3D12_FEATURE_VIDEO = 34;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_OUTPUT_RESOLUTION_RATIOS_COUNT:
+    D3D12_FEATURE_VIDEO = 35;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_OUTPUT_RESOLUTION: D3D12_FEATURE_VIDEO =
+    36;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_INPUT_FORMAT: D3D12_FEATURE_VIDEO = 37;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE: D3D12_FEATURE_VIDEO =
+    38;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_INTRA_REFRESH_MODE: D3D12_FEATURE_VIDEO =
+    39;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE:
+    D3D12_FEATURE_VIDEO = 40;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_HEAP_SIZE: D3D12_FEATURE_VIDEO = 41;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT:
+    D3D12_FEATURE_VIDEO = 42;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_SUPPORT: D3D12_FEATURE_VIDEO = 43;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT:
+    D3D12_FEATURE_VIDEO = 44;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_RESOURCE_REQUIREMENTS:
+    D3D12_FEATURE_VIDEO = 45;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_CONFIG:
+    D3D12_FEATURE_VIDEO = 46;
+pub const D3D12_FEATURE_VIDEO_D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1: D3D12_FEATURE_VIDEO = 47;
+pub type D3D12_FEATURE_VIDEO = ::std::os::raw::c_int;
+pub const D3D12_BITSTREAM_ENCRYPTION_TYPE_D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE:
+    D3D12_BITSTREAM_ENCRYPTION_TYPE = 0;
+pub type D3D12_BITSTREAM_ENCRYPTION_TYPE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_DECODE_CONFIGURATION {
+    pub DecodeProfile: GUID,
+    pub BitstreamEncryption: D3D12_BITSTREAM_ENCRYPTION_TYPE,
+    pub InterlaceType: D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_DECODER_DESC {
+    pub NodeMask: UINT,
+    pub Configuration: D3D12_VIDEO_DECODE_CONFIGURATION,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_DECODER_HEAP_DESC {
+    pub NodeMask: UINT,
+    pub Configuration: D3D12_VIDEO_DECODE_CONFIGURATION,
+    pub DecodeWidth: UINT,
+    pub DecodeHeight: UINT,
+    pub Format: DXGI_FORMAT,
+    pub FrameRate: DXGI_RATIONAL,
+    pub BitRate: UINT,
+    pub MaxDecodePictureBufferCount: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_SIZE_RANGE {
+    pub MaxWidth: UINT,
+    pub MaxHeight: UINT,
+    pub MinWidth: UINT,
+    pub MinHeight: UINT,
+}
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_NONE:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 0;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_BRIGHTNESS:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 1;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_CONTRAST:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 2;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_HUE:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 4;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_SATURATION:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 8;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_NOISE_REDUCTION:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 16;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_EDGE_ENHANCEMENT:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 32;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_ANAMORPHIC_SCALING:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 64;
+pub const D3D12_VIDEO_PROCESS_FILTER_FLAGS_D3D12_VIDEO_PROCESS_FILTER_FLAG_STEREO_ADJUSTMENT:
+    D3D12_VIDEO_PROCESS_FILTER_FLAGS = 128;
+pub type D3D12_VIDEO_PROCESS_FILTER_FLAGS = ::std::os::raw::c_int;
+pub const D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS_D3D12_VIDEO_PROCESS_DEINTERLACE_FLAG_NONE:
+    D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS = 0;
+pub const D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS_D3D12_VIDEO_PROCESS_DEINTERLACE_FLAG_BOB:
+    D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS = 1;
+pub const D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS_D3D12_VIDEO_PROCESS_DEINTERLACE_FLAG_CUSTOM:
+    D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS = -2147483648;
+pub type D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_PROCESS_LUMA_KEY {
+    pub Enable: BOOL,
+    pub Lower: FLOAT,
+    pub Upper: FLOAT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_PROCESS_INPUT_STREAM_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ColorSpace: DXGI_COLOR_SPACE_TYPE,
+    pub SourceAspectRatio: DXGI_RATIONAL,
+    pub DestinationAspectRatio: DXGI_RATIONAL,
+    pub FrameRate: DXGI_RATIONAL,
+    pub SourceSizeRange: D3D12_VIDEO_SIZE_RANGE,
+    pub DestinationSizeRange: D3D12_VIDEO_SIZE_RANGE,
+    pub EnableOrientation: BOOL,
+    pub FilterFlags: D3D12_VIDEO_PROCESS_FILTER_FLAGS,
+    pub StereoFormat: D3D12_VIDEO_FRAME_STEREO_FORMAT,
+    pub FieldType: D3D12_VIDEO_FIELD_TYPE,
+    pub DeinterlaceMode: D3D12_VIDEO_PROCESS_DEINTERLACE_FLAGS,
+    pub EnableAlphaBlending: BOOL,
+    pub LumaKey: D3D12_VIDEO_PROCESS_LUMA_KEY,
+    pub NumPastFrames: UINT,
+    pub NumFutureFrames: UINT,
+    pub EnableAutoProcessing: BOOL,
+}
+pub const D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_OPAQUE:
+    D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE = 0;
+pub const D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_BACKGROUND:
+    D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE = 1;
+pub const D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_DESTINATION:
+    D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE = 2;
+pub const D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE_SOURCE_STREAM:
+    D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE = 3;
+pub type D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC {
+    pub Format: DXGI_FORMAT,
+    pub ColorSpace: DXGI_COLOR_SPACE_TYPE,
+    pub AlphaFillMode: D3D12_VIDEO_PROCESS_ALPHA_FILL_MODE,
+    pub AlphaFillModeSourceStreamIndex: UINT,
+    pub BackgroundColor: [FLOAT; 4usize],
+    pub FrameRate: DXGI_RATIONAL,
+    pub EnableStereo: BOOL,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12VideoDeviceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12VideoDevice,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12VideoDevice) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut ID3D12VideoDevice) -> ULONG>,
+    pub CheckFeatureSupport: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12VideoDevice,
+            FeatureVideo: D3D12_FEATURE_VIDEO,
+            pFeatureSupportData: *mut ::std::os::raw::c_void,
+            FeatureSupportDataSize: UINT,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoDecoder: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12VideoDevice,
+            pDesc: *const D3D12_VIDEO_DECODER_DESC,
+            riid: *const IID,
+            ppVideoDecoder: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoDecoderHeap: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12VideoDevice,
+            pVideoDecoderHeapDesc: *const D3D12_VIDEO_DECODER_HEAP_DESC,
+            riid: *const IID,
+            ppVideoDecoderHeap: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoProcessor: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut ID3D12VideoDevice,
+            NodeMask: UINT,
+            pOutputStreamDesc: *const D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC,
+            NumInputStreamDescs: UINT,
+            pInputStreamDescs: *const D3D12_VIDEO_PROCESS_INPUT_STREAM_DESC,
+            riid: *const IID,
+            ppVideoProcessor: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12VideoDevice {
+    pub lpVtbl: *mut ID3D12VideoDeviceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D12VADeviceContext {
+    pub device: *mut ID3D12Device,
+    pub video_device: *mut ID3D12VideoDevice,
+    pub lock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub unlock: ::std::option::Option<unsafe extern "C" fn(lock_ctx: *mut ::std::os::raw::c_void)>,
+    pub lock_ctx: *mut ::std::os::raw::c_void,
+    pub resource_flags: D3D12_RESOURCE_FLAGS,
+    pub heap_flags: D3D12_HEAP_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D12VASyncContext {
+    pub fence: *mut ID3D12Fence,
+    pub event: HANDLE,
+    pub fence_value: u64,
+}
+pub const AVD3D12VAFrameFlags_AV_D3D12VA_FRAME_FLAG_NONE: AVD3D12VAFrameFlags = 0;
+pub const AVD3D12VAFrameFlags_AV_D3D12VA_FRAME_FLAG_TEXTURE_ARRAY: AVD3D12VAFrameFlags = 2;
+pub type AVD3D12VAFrameFlags = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D12VAFrame {
+    pub texture: *mut ID3D12Resource,
+    pub subresource_index: ::std::os::raw::c_int,
+    pub sync_ctx: AVD3D12VASyncContext,
+    pub flags: AVD3D12VAFrameFlags,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVD3D12VAFramesContext {
+    pub format: DXGI_FORMAT,
+    pub resource_flags: D3D12_RESOURCE_FLAGS,
+    pub heap_flags: D3D12_HEAP_FLAGS,
+    pub texture_array: *mut ID3D12Resource,
+    pub flags: AVD3D12VAFrameFlags,
+}
+pub type D3DCOLOR = DWORD;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVECTOR {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+pub type D3DVECTOR = _D3DVECTOR;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DRECT {
+    pub x1: LONG,
+    pub y1: LONG,
+    pub x2: LONG,
+    pub y2: LONG,
+}
+pub type D3DRECT = _D3DRECT;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _D3DMATRIX {
+    pub __bindgen_anon_1: _D3DMATRIX__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _D3DMATRIX__bindgen_ty_1 {
+    pub __bindgen_anon_1: _D3DMATRIX__bindgen_ty_1__bindgen_ty_1,
+    pub m: [[f32; 4usize]; 4usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DMATRIX__bindgen_ty_1__bindgen_ty_1 {
+    pub _11: f32,
+    pub _12: f32,
+    pub _13: f32,
+    pub _14: f32,
+    pub _21: f32,
+    pub _22: f32,
+    pub _23: f32,
+    pub _24: f32,
+    pub _31: f32,
+    pub _32: f32,
+    pub _33: f32,
+    pub _34: f32,
+    pub _41: f32,
+    pub _42: f32,
+    pub _43: f32,
+    pub _44: f32,
+}
+pub type D3DMATRIX = _D3DMATRIX;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVIEWPORT9 {
+    pub X: DWORD,
+    pub Y: DWORD,
+    pub Width: DWORD,
+    pub Height: DWORD,
+    pub MinZ: f32,
+    pub MaxZ: f32,
+}
+pub type D3DVIEWPORT9 = _D3DVIEWPORT9;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DCLIPSTATUS9 {
+    pub ClipUnion: DWORD,
+    pub ClipIntersection: DWORD,
+}
+pub type D3DCLIPSTATUS9 = _D3DCLIPSTATUS9;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DMATERIAL9 {
+    pub Diffuse: D3DCOLORVALUE,
+    pub Ambient: D3DCOLORVALUE,
+    pub Specular: D3DCOLORVALUE,
+    pub Emissive: D3DCOLORVALUE,
+    pub Power: f32,
+}
+pub type D3DMATERIAL9 = _D3DMATERIAL9;
+pub const _D3DLIGHTTYPE_D3DLIGHT_POINT: _D3DLIGHTTYPE = 1;
+pub const _D3DLIGHTTYPE_D3DLIGHT_SPOT: _D3DLIGHTTYPE = 2;
+pub const _D3DLIGHTTYPE_D3DLIGHT_DIRECTIONAL: _D3DLIGHTTYPE = 3;
+pub const _D3DLIGHTTYPE_D3DLIGHT_FORCE_DWORD: _D3DLIGHTTYPE = 2147483647;
+pub type _D3DLIGHTTYPE = ::std::os::raw::c_int;
+pub use self::_D3DLIGHTTYPE as D3DLIGHTTYPE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DLIGHT9 {
+    pub Type: D3DLIGHTTYPE,
+    pub Diffuse: D3DCOLORVALUE,
+    pub Specular: D3DCOLORVALUE,
+    pub Ambient: D3DCOLORVALUE,
+    pub Position: D3DVECTOR,
+    pub Direction: D3DVECTOR,
+    pub Range: f32,
+    pub Falloff: f32,
+    pub Attenuation0: f32,
+    pub Attenuation1: f32,
+    pub Attenuation2: f32,
+    pub Theta: f32,
+    pub Phi: f32,
+}
+pub type D3DLIGHT9 = _D3DLIGHT9;
+pub const _D3DPRIMITIVETYPE_D3DPT_POINTLIST: _D3DPRIMITIVETYPE = 1;
+pub const _D3DPRIMITIVETYPE_D3DPT_LINELIST: _D3DPRIMITIVETYPE = 2;
+pub const _D3DPRIMITIVETYPE_D3DPT_LINESTRIP: _D3DPRIMITIVETYPE = 3;
+pub const _D3DPRIMITIVETYPE_D3DPT_TRIANGLELIST: _D3DPRIMITIVETYPE = 4;
+pub const _D3DPRIMITIVETYPE_D3DPT_TRIANGLESTRIP: _D3DPRIMITIVETYPE = 5;
+pub const _D3DPRIMITIVETYPE_D3DPT_TRIANGLEFAN: _D3DPRIMITIVETYPE = 6;
+pub const _D3DPRIMITIVETYPE_D3DPT_FORCE_DWORD: _D3DPRIMITIVETYPE = 2147483647;
+pub type _D3DPRIMITIVETYPE = ::std::os::raw::c_int;
+pub use self::_D3DPRIMITIVETYPE as D3DPRIMITIVETYPE;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_VIEW: _D3DTRANSFORMSTATETYPE = 2;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_PROJECTION: _D3DTRANSFORMSTATETYPE = 3;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE0: _D3DTRANSFORMSTATETYPE = 16;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE1: _D3DTRANSFORMSTATETYPE = 17;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE2: _D3DTRANSFORMSTATETYPE = 18;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE3: _D3DTRANSFORMSTATETYPE = 19;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE4: _D3DTRANSFORMSTATETYPE = 20;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE5: _D3DTRANSFORMSTATETYPE = 21;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE6: _D3DTRANSFORMSTATETYPE = 22;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_TEXTURE7: _D3DTRANSFORMSTATETYPE = 23;
+pub const _D3DTRANSFORMSTATETYPE_D3DTS_FORCE_DWORD: _D3DTRANSFORMSTATETYPE = 2147483647;
+pub type _D3DTRANSFORMSTATETYPE = ::std::os::raw::c_int;
+pub use self::_D3DTRANSFORMSTATETYPE as D3DTRANSFORMSTATETYPE;
+pub const _D3DRENDERSTATETYPE_D3DRS_ZENABLE: _D3DRENDERSTATETYPE = 7;
+pub const _D3DRENDERSTATETYPE_D3DRS_FILLMODE: _D3DRENDERSTATETYPE = 8;
+pub const _D3DRENDERSTATETYPE_D3DRS_SHADEMODE: _D3DRENDERSTATETYPE = 9;
+pub const _D3DRENDERSTATETYPE_D3DRS_ZWRITEENABLE: _D3DRENDERSTATETYPE = 14;
+pub const _D3DRENDERSTATETYPE_D3DRS_ALPHATESTENABLE: _D3DRENDERSTATETYPE = 15;
+pub const _D3DRENDERSTATETYPE_D3DRS_LASTPIXEL: _D3DRENDERSTATETYPE = 16;
+pub const _D3DRENDERSTATETYPE_D3DRS_SRCBLEND: _D3DRENDERSTATETYPE = 19;
+pub const _D3DRENDERSTATETYPE_D3DRS_DESTBLEND: _D3DRENDERSTATETYPE = 20;
+pub const _D3DRENDERSTATETYPE_D3DRS_CULLMODE: _D3DRENDERSTATETYPE = 22;
+pub const _D3DRENDERSTATETYPE_D3DRS_ZFUNC: _D3DRENDERSTATETYPE = 23;
+pub const _D3DRENDERSTATETYPE_D3DRS_ALPHAREF: _D3DRENDERSTATETYPE = 24;
+pub const _D3DRENDERSTATETYPE_D3DRS_ALPHAFUNC: _D3DRENDERSTATETYPE = 25;
+pub const _D3DRENDERSTATETYPE_D3DRS_DITHERENABLE: _D3DRENDERSTATETYPE = 26;
+pub const _D3DRENDERSTATETYPE_D3DRS_ALPHABLENDENABLE: _D3DRENDERSTATETYPE = 27;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGENABLE: _D3DRENDERSTATETYPE = 28;
+pub const _D3DRENDERSTATETYPE_D3DRS_SPECULARENABLE: _D3DRENDERSTATETYPE = 29;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGCOLOR: _D3DRENDERSTATETYPE = 34;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGTABLEMODE: _D3DRENDERSTATETYPE = 35;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGSTART: _D3DRENDERSTATETYPE = 36;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGEND: _D3DRENDERSTATETYPE = 37;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGDENSITY: _D3DRENDERSTATETYPE = 38;
+pub const _D3DRENDERSTATETYPE_D3DRS_RANGEFOGENABLE: _D3DRENDERSTATETYPE = 48;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILENABLE: _D3DRENDERSTATETYPE = 52;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILFAIL: _D3DRENDERSTATETYPE = 53;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILZFAIL: _D3DRENDERSTATETYPE = 54;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILPASS: _D3DRENDERSTATETYPE = 55;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILFUNC: _D3DRENDERSTATETYPE = 56;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILREF: _D3DRENDERSTATETYPE = 57;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILMASK: _D3DRENDERSTATETYPE = 58;
+pub const _D3DRENDERSTATETYPE_D3DRS_STENCILWRITEMASK: _D3DRENDERSTATETYPE = 59;
+pub const _D3DRENDERSTATETYPE_D3DRS_TEXTUREFACTOR: _D3DRENDERSTATETYPE = 60;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP0: _D3DRENDERSTATETYPE = 128;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP1: _D3DRENDERSTATETYPE = 129;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP2: _D3DRENDERSTATETYPE = 130;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP3: _D3DRENDERSTATETYPE = 131;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP4: _D3DRENDERSTATETYPE = 132;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP5: _D3DRENDERSTATETYPE = 133;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP6: _D3DRENDERSTATETYPE = 134;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP7: _D3DRENDERSTATETYPE = 135;
+pub const _D3DRENDERSTATETYPE_D3DRS_CLIPPING: _D3DRENDERSTATETYPE = 136;
+pub const _D3DRENDERSTATETYPE_D3DRS_LIGHTING: _D3DRENDERSTATETYPE = 137;
+pub const _D3DRENDERSTATETYPE_D3DRS_AMBIENT: _D3DRENDERSTATETYPE = 139;
+pub const _D3DRENDERSTATETYPE_D3DRS_FOGVERTEXMODE: _D3DRENDERSTATETYPE = 140;
+pub const _D3DRENDERSTATETYPE_D3DRS_COLORVERTEX: _D3DRENDERSTATETYPE = 141;
+pub const _D3DRENDERSTATETYPE_D3DRS_LOCALVIEWER: _D3DRENDERSTATETYPE = 142;
+pub const _D3DRENDERSTATETYPE_D3DRS_NORMALIZENORMALS: _D3DRENDERSTATETYPE = 143;
+pub const _D3DRENDERSTATETYPE_D3DRS_DIFFUSEMATERIALSOURCE: _D3DRENDERSTATETYPE = 145;
+pub const _D3DRENDERSTATETYPE_D3DRS_SPECULARMATERIALSOURCE: _D3DRENDERSTATETYPE = 146;
+pub const _D3DRENDERSTATETYPE_D3DRS_AMBIENTMATERIALSOURCE: _D3DRENDERSTATETYPE = 147;
+pub const _D3DRENDERSTATETYPE_D3DRS_EMISSIVEMATERIALSOURCE: _D3DRENDERSTATETYPE = 148;
+pub const _D3DRENDERSTATETYPE_D3DRS_VERTEXBLEND: _D3DRENDERSTATETYPE = 151;
+pub const _D3DRENDERSTATETYPE_D3DRS_CLIPPLANEENABLE: _D3DRENDERSTATETYPE = 152;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSIZE: _D3DRENDERSTATETYPE = 154;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSIZE_MIN: _D3DRENDERSTATETYPE = 155;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSPRITEENABLE: _D3DRENDERSTATETYPE = 156;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSCALEENABLE: _D3DRENDERSTATETYPE = 157;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSCALE_A: _D3DRENDERSTATETYPE = 158;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSCALE_B: _D3DRENDERSTATETYPE = 159;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSCALE_C: _D3DRENDERSTATETYPE = 160;
+pub const _D3DRENDERSTATETYPE_D3DRS_MULTISAMPLEANTIALIAS: _D3DRENDERSTATETYPE = 161;
+pub const _D3DRENDERSTATETYPE_D3DRS_MULTISAMPLEMASK: _D3DRENDERSTATETYPE = 162;
+pub const _D3DRENDERSTATETYPE_D3DRS_PATCHEDGESTYLE: _D3DRENDERSTATETYPE = 163;
+pub const _D3DRENDERSTATETYPE_D3DRS_DEBUGMONITORTOKEN: _D3DRENDERSTATETYPE = 165;
+pub const _D3DRENDERSTATETYPE_D3DRS_POINTSIZE_MAX: _D3DRENDERSTATETYPE = 166;
+pub const _D3DRENDERSTATETYPE_D3DRS_INDEXEDVERTEXBLENDENABLE: _D3DRENDERSTATETYPE = 167;
+pub const _D3DRENDERSTATETYPE_D3DRS_COLORWRITEENABLE: _D3DRENDERSTATETYPE = 168;
+pub const _D3DRENDERSTATETYPE_D3DRS_TWEENFACTOR: _D3DRENDERSTATETYPE = 170;
+pub const _D3DRENDERSTATETYPE_D3DRS_BLENDOP: _D3DRENDERSTATETYPE = 171;
+pub const _D3DRENDERSTATETYPE_D3DRS_POSITIONDEGREE: _D3DRENDERSTATETYPE = 172;
+pub const _D3DRENDERSTATETYPE_D3DRS_NORMALDEGREE: _D3DRENDERSTATETYPE = 173;
+pub const _D3DRENDERSTATETYPE_D3DRS_SCISSORTESTENABLE: _D3DRENDERSTATETYPE = 174;
+pub const _D3DRENDERSTATETYPE_D3DRS_SLOPESCALEDEPTHBIAS: _D3DRENDERSTATETYPE = 175;
+pub const _D3DRENDERSTATETYPE_D3DRS_ANTIALIASEDLINEENABLE: _D3DRENDERSTATETYPE = 176;
+pub const _D3DRENDERSTATETYPE_D3DRS_MINTESSELLATIONLEVEL: _D3DRENDERSTATETYPE = 178;
+pub const _D3DRENDERSTATETYPE_D3DRS_MAXTESSELLATIONLEVEL: _D3DRENDERSTATETYPE = 179;
+pub const _D3DRENDERSTATETYPE_D3DRS_ADAPTIVETESS_X: _D3DRENDERSTATETYPE = 180;
+pub const _D3DRENDERSTATETYPE_D3DRS_ADAPTIVETESS_Y: _D3DRENDERSTATETYPE = 181;
+pub const _D3DRENDERSTATETYPE_D3DRS_ADAPTIVETESS_Z: _D3DRENDERSTATETYPE = 182;
+pub const _D3DRENDERSTATETYPE_D3DRS_ADAPTIVETESS_W: _D3DRENDERSTATETYPE = 183;
+pub const _D3DRENDERSTATETYPE_D3DRS_ENABLEADAPTIVETESSELLATION: _D3DRENDERSTATETYPE = 184;
+pub const _D3DRENDERSTATETYPE_D3DRS_TWOSIDEDSTENCILMODE: _D3DRENDERSTATETYPE = 185;
+pub const _D3DRENDERSTATETYPE_D3DRS_CCW_STENCILFAIL: _D3DRENDERSTATETYPE = 186;
+pub const _D3DRENDERSTATETYPE_D3DRS_CCW_STENCILZFAIL: _D3DRENDERSTATETYPE = 187;
+pub const _D3DRENDERSTATETYPE_D3DRS_CCW_STENCILPASS: _D3DRENDERSTATETYPE = 188;
+pub const _D3DRENDERSTATETYPE_D3DRS_CCW_STENCILFUNC: _D3DRENDERSTATETYPE = 189;
+pub const _D3DRENDERSTATETYPE_D3DRS_COLORWRITEENABLE1: _D3DRENDERSTATETYPE = 190;
+pub const _D3DRENDERSTATETYPE_D3DRS_COLORWRITEENABLE2: _D3DRENDERSTATETYPE = 191;
+pub const _D3DRENDERSTATETYPE_D3DRS_COLORWRITEENABLE3: _D3DRENDERSTATETYPE = 192;
+pub const _D3DRENDERSTATETYPE_D3DRS_BLENDFACTOR: _D3DRENDERSTATETYPE = 193;
+pub const _D3DRENDERSTATETYPE_D3DRS_SRGBWRITEENABLE: _D3DRENDERSTATETYPE = 194;
+pub const _D3DRENDERSTATETYPE_D3DRS_DEPTHBIAS: _D3DRENDERSTATETYPE = 195;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP8: _D3DRENDERSTATETYPE = 198;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP9: _D3DRENDERSTATETYPE = 199;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP10: _D3DRENDERSTATETYPE = 200;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP11: _D3DRENDERSTATETYPE = 201;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP12: _D3DRENDERSTATETYPE = 202;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP13: _D3DRENDERSTATETYPE = 203;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP14: _D3DRENDERSTATETYPE = 204;
+pub const _D3DRENDERSTATETYPE_D3DRS_WRAP15: _D3DRENDERSTATETYPE = 205;
+pub const _D3DRENDERSTATETYPE_D3DRS_SEPARATEALPHABLENDENABLE: _D3DRENDERSTATETYPE = 206;
+pub const _D3DRENDERSTATETYPE_D3DRS_SRCBLENDALPHA: _D3DRENDERSTATETYPE = 207;
+pub const _D3DRENDERSTATETYPE_D3DRS_DESTBLENDALPHA: _D3DRENDERSTATETYPE = 208;
+pub const _D3DRENDERSTATETYPE_D3DRS_BLENDOPALPHA: _D3DRENDERSTATETYPE = 209;
+pub const _D3DRENDERSTATETYPE_D3DRS_FORCE_DWORD: _D3DRENDERSTATETYPE = 2147483647;
+pub type _D3DRENDERSTATETYPE = ::std::os::raw::c_int;
+pub use self::_D3DRENDERSTATETYPE as D3DRENDERSTATETYPE;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_COLOROP: _D3DTEXTURESTAGESTATETYPE = 1;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_COLORARG1: _D3DTEXTURESTAGESTATETYPE = 2;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_COLORARG2: _D3DTEXTURESTAGESTATETYPE = 3;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_ALPHAOP: _D3DTEXTURESTAGESTATETYPE = 4;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_ALPHAARG1: _D3DTEXTURESTAGESTATETYPE = 5;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_ALPHAARG2: _D3DTEXTURESTAGESTATETYPE = 6;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVMAT00: _D3DTEXTURESTAGESTATETYPE = 7;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVMAT01: _D3DTEXTURESTAGESTATETYPE = 8;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVMAT10: _D3DTEXTURESTAGESTATETYPE = 9;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVMAT11: _D3DTEXTURESTAGESTATETYPE = 10;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_TEXCOORDINDEX: _D3DTEXTURESTAGESTATETYPE = 11;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVLSCALE: _D3DTEXTURESTAGESTATETYPE = 22;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_BUMPENVLOFFSET: _D3DTEXTURESTAGESTATETYPE = 23;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_TEXTURETRANSFORMFLAGS: _D3DTEXTURESTAGESTATETYPE = 24;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_COLORARG0: _D3DTEXTURESTAGESTATETYPE = 26;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_ALPHAARG0: _D3DTEXTURESTAGESTATETYPE = 27;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_RESULTARG: _D3DTEXTURESTAGESTATETYPE = 28;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_CONSTANT: _D3DTEXTURESTAGESTATETYPE = 32;
+pub const _D3DTEXTURESTAGESTATETYPE_D3DTSS_FORCE_DWORD: _D3DTEXTURESTAGESTATETYPE = 2147483647;
+pub type _D3DTEXTURESTAGESTATETYPE = ::std::os::raw::c_int;
+pub use self::_D3DTEXTURESTAGESTATETYPE as D3DTEXTURESTAGESTATETYPE;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_ADDRESSU: _D3DSAMPLERSTATETYPE = 1;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_ADDRESSV: _D3DSAMPLERSTATETYPE = 2;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_ADDRESSW: _D3DSAMPLERSTATETYPE = 3;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_BORDERCOLOR: _D3DSAMPLERSTATETYPE = 4;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MAGFILTER: _D3DSAMPLERSTATETYPE = 5;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MINFILTER: _D3DSAMPLERSTATETYPE = 6;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MIPFILTER: _D3DSAMPLERSTATETYPE = 7;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MIPMAPLODBIAS: _D3DSAMPLERSTATETYPE = 8;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MAXMIPLEVEL: _D3DSAMPLERSTATETYPE = 9;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_MAXANISOTROPY: _D3DSAMPLERSTATETYPE = 10;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_SRGBTEXTURE: _D3DSAMPLERSTATETYPE = 11;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_ELEMENTINDEX: _D3DSAMPLERSTATETYPE = 12;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_DMAPOFFSET: _D3DSAMPLERSTATETYPE = 13;
+pub const _D3DSAMPLERSTATETYPE_D3DSAMP_FORCE_DWORD: _D3DSAMPLERSTATETYPE = 2147483647;
+pub type _D3DSAMPLERSTATETYPE = ::std::os::raw::c_int;
+pub use self::_D3DSAMPLERSTATETYPE as D3DSAMPLERSTATETYPE;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_NONE: _D3DTEXTUREFILTERTYPE = 0;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_POINT: _D3DTEXTUREFILTERTYPE = 1;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_LINEAR: _D3DTEXTUREFILTERTYPE = 2;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_ANISOTROPIC: _D3DTEXTUREFILTERTYPE = 3;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_PYRAMIDALQUAD: _D3DTEXTUREFILTERTYPE = 6;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_GAUSSIANQUAD: _D3DTEXTUREFILTERTYPE = 7;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_CONVOLUTIONMONO: _D3DTEXTUREFILTERTYPE = 8;
+pub const _D3DTEXTUREFILTERTYPE_D3DTEXF_FORCE_DWORD: _D3DTEXTUREFILTERTYPE = 2147483647;
+pub type _D3DTEXTUREFILTERTYPE = ::std::os::raw::c_int;
+pub use self::_D3DTEXTUREFILTERTYPE as D3DTEXTUREFILTERTYPE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVERTEXELEMENT9 {
+    pub Stream: WORD,
+    pub Offset: WORD,
+    pub Type: BYTE,
+    pub Method: BYTE,
+    pub Usage: BYTE,
+    pub UsageIndex: BYTE,
+}
+pub type D3DVERTEXELEMENT9 = _D3DVERTEXELEMENT9;
+pub const _D3DBASISTYPE_D3DBASIS_BEZIER: _D3DBASISTYPE = 0;
+pub const _D3DBASISTYPE_D3DBASIS_BSPLINE: _D3DBASISTYPE = 1;
+pub const _D3DBASISTYPE_D3DBASIS_CATMULL_ROM: _D3DBASISTYPE = 2;
+pub const _D3DBASISTYPE_D3DBASIS_FORCE_DWORD: _D3DBASISTYPE = 2147483647;
+pub type _D3DBASISTYPE = ::std::os::raw::c_int;
+pub use self::_D3DBASISTYPE as D3DBASISTYPE;
+pub const _D3DDEGREETYPE_D3DDEGREE_LINEAR: _D3DDEGREETYPE = 1;
+pub const _D3DDEGREETYPE_D3DDEGREE_QUADRATIC: _D3DDEGREETYPE = 2;
+pub const _D3DDEGREETYPE_D3DDEGREE_CUBIC: _D3DDEGREETYPE = 3;
+pub const _D3DDEGREETYPE_D3DDEGREE_QUINTIC: _D3DDEGREETYPE = 5;
+pub const _D3DDEGREETYPE_D3DDEGREE_FORCE_DWORD: _D3DDEGREETYPE = 2147483647;
+pub type _D3DDEGREETYPE = ::std::os::raw::c_int;
+pub use self::_D3DDEGREETYPE as D3DDEGREETYPE;
+pub const _D3DSTATEBLOCKTYPE_D3DSBT_ALL: _D3DSTATEBLOCKTYPE = 1;
+pub const _D3DSTATEBLOCKTYPE_D3DSBT_PIXELSTATE: _D3DSTATEBLOCKTYPE = 2;
+pub const _D3DSTATEBLOCKTYPE_D3DSBT_VERTEXSTATE: _D3DSTATEBLOCKTYPE = 3;
+pub const _D3DSTATEBLOCKTYPE_D3DSBT_FORCE_DWORD: _D3DSTATEBLOCKTYPE = 2147483647;
+pub type _D3DSTATEBLOCKTYPE = ::std::os::raw::c_int;
+pub use self::_D3DSTATEBLOCKTYPE as D3DSTATEBLOCKTYPE;
+pub const _D3DDEVTYPE_D3DDEVTYPE_HAL: _D3DDEVTYPE = 1;
+pub const _D3DDEVTYPE_D3DDEVTYPE_REF: _D3DDEVTYPE = 2;
+pub const _D3DDEVTYPE_D3DDEVTYPE_SW: _D3DDEVTYPE = 3;
+pub const _D3DDEVTYPE_D3DDEVTYPE_NULLREF: _D3DDEVTYPE = 4;
+pub const _D3DDEVTYPE_D3DDEVTYPE_FORCE_DWORD: _D3DDEVTYPE = 2147483647;
+pub type _D3DDEVTYPE = ::std::os::raw::c_int;
+pub use self::_D3DDEVTYPE as D3DDEVTYPE;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_NONE: _D3DMULTISAMPLE_TYPE = 0;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_NONMASKABLE: _D3DMULTISAMPLE_TYPE = 1;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_2_SAMPLES: _D3DMULTISAMPLE_TYPE = 2;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_3_SAMPLES: _D3DMULTISAMPLE_TYPE = 3;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_4_SAMPLES: _D3DMULTISAMPLE_TYPE = 4;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_5_SAMPLES: _D3DMULTISAMPLE_TYPE = 5;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_6_SAMPLES: _D3DMULTISAMPLE_TYPE = 6;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_7_SAMPLES: _D3DMULTISAMPLE_TYPE = 7;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_8_SAMPLES: _D3DMULTISAMPLE_TYPE = 8;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_9_SAMPLES: _D3DMULTISAMPLE_TYPE = 9;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_10_SAMPLES: _D3DMULTISAMPLE_TYPE = 10;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_11_SAMPLES: _D3DMULTISAMPLE_TYPE = 11;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_12_SAMPLES: _D3DMULTISAMPLE_TYPE = 12;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_13_SAMPLES: _D3DMULTISAMPLE_TYPE = 13;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_14_SAMPLES: _D3DMULTISAMPLE_TYPE = 14;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_15_SAMPLES: _D3DMULTISAMPLE_TYPE = 15;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_16_SAMPLES: _D3DMULTISAMPLE_TYPE = 16;
+pub const _D3DMULTISAMPLE_TYPE_D3DMULTISAMPLE_FORCE_DWORD: _D3DMULTISAMPLE_TYPE = 2147483647;
+pub type _D3DMULTISAMPLE_TYPE = ::std::os::raw::c_int;
+pub use self::_D3DMULTISAMPLE_TYPE as D3DMULTISAMPLE_TYPE;
+pub const _D3DFORMAT_D3DFMT_UNKNOWN: _D3DFORMAT = 0;
+pub const _D3DFORMAT_D3DFMT_R8G8B8: _D3DFORMAT = 20;
+pub const _D3DFORMAT_D3DFMT_A8R8G8B8: _D3DFORMAT = 21;
+pub const _D3DFORMAT_D3DFMT_X8R8G8B8: _D3DFORMAT = 22;
+pub const _D3DFORMAT_D3DFMT_R5G6B5: _D3DFORMAT = 23;
+pub const _D3DFORMAT_D3DFMT_X1R5G5B5: _D3DFORMAT = 24;
+pub const _D3DFORMAT_D3DFMT_A1R5G5B5: _D3DFORMAT = 25;
+pub const _D3DFORMAT_D3DFMT_A4R4G4B4: _D3DFORMAT = 26;
+pub const _D3DFORMAT_D3DFMT_R3G3B2: _D3DFORMAT = 27;
+pub const _D3DFORMAT_D3DFMT_A8: _D3DFORMAT = 28;
+pub const _D3DFORMAT_D3DFMT_A8R3G3B2: _D3DFORMAT = 29;
+pub const _D3DFORMAT_D3DFMT_X4R4G4B4: _D3DFORMAT = 30;
+pub const _D3DFORMAT_D3DFMT_A2B10G10R10: _D3DFORMAT = 31;
+pub const _D3DFORMAT_D3DFMT_A8B8G8R8: _D3DFORMAT = 32;
+pub const _D3DFORMAT_D3DFMT_X8B8G8R8: _D3DFORMAT = 33;
+pub const _D3DFORMAT_D3DFMT_G16R16: _D3DFORMAT = 34;
+pub const _D3DFORMAT_D3DFMT_A2R10G10B10: _D3DFORMAT = 35;
+pub const _D3DFORMAT_D3DFMT_A16B16G16R16: _D3DFORMAT = 36;
+pub const _D3DFORMAT_D3DFMT_A8P8: _D3DFORMAT = 40;
+pub const _D3DFORMAT_D3DFMT_P8: _D3DFORMAT = 41;
+pub const _D3DFORMAT_D3DFMT_L8: _D3DFORMAT = 50;
+pub const _D3DFORMAT_D3DFMT_A8L8: _D3DFORMAT = 51;
+pub const _D3DFORMAT_D3DFMT_A4L4: _D3DFORMAT = 52;
+pub const _D3DFORMAT_D3DFMT_V8U8: _D3DFORMAT = 60;
+pub const _D3DFORMAT_D3DFMT_L6V5U5: _D3DFORMAT = 61;
+pub const _D3DFORMAT_D3DFMT_X8L8V8U8: _D3DFORMAT = 62;
+pub const _D3DFORMAT_D3DFMT_Q8W8V8U8: _D3DFORMAT = 63;
+pub const _D3DFORMAT_D3DFMT_V16U16: _D3DFORMAT = 64;
+pub const _D3DFORMAT_D3DFMT_A2W10V10U10: _D3DFORMAT = 67;
+pub const _D3DFORMAT_D3DFMT_UYVY: _D3DFORMAT = 1498831189;
+pub const _D3DFORMAT_D3DFMT_R8G8_B8G8: _D3DFORMAT = 1195525970;
+pub const _D3DFORMAT_D3DFMT_YUY2: _D3DFORMAT = 844715353;
+pub const _D3DFORMAT_D3DFMT_G8R8_G8B8: _D3DFORMAT = 1111970375;
+pub const _D3DFORMAT_D3DFMT_DXT1: _D3DFORMAT = 827611204;
+pub const _D3DFORMAT_D3DFMT_DXT2: _D3DFORMAT = 844388420;
+pub const _D3DFORMAT_D3DFMT_DXT3: _D3DFORMAT = 861165636;
+pub const _D3DFORMAT_D3DFMT_DXT4: _D3DFORMAT = 877942852;
+pub const _D3DFORMAT_D3DFMT_DXT5: _D3DFORMAT = 894720068;
+pub const _D3DFORMAT_D3DFMT_D16_LOCKABLE: _D3DFORMAT = 70;
+pub const _D3DFORMAT_D3DFMT_D32: _D3DFORMAT = 71;
+pub const _D3DFORMAT_D3DFMT_D15S1: _D3DFORMAT = 73;
+pub const _D3DFORMAT_D3DFMT_D24S8: _D3DFORMAT = 75;
+pub const _D3DFORMAT_D3DFMT_D24X8: _D3DFORMAT = 77;
+pub const _D3DFORMAT_D3DFMT_D24X4S4: _D3DFORMAT = 79;
+pub const _D3DFORMAT_D3DFMT_D16: _D3DFORMAT = 80;
+pub const _D3DFORMAT_D3DFMT_D32F_LOCKABLE: _D3DFORMAT = 82;
+pub const _D3DFORMAT_D3DFMT_D24FS8: _D3DFORMAT = 83;
+pub const _D3DFORMAT_D3DFMT_D32_LOCKABLE: _D3DFORMAT = 84;
+pub const _D3DFORMAT_D3DFMT_S8_LOCKABLE: _D3DFORMAT = 85;
+pub const _D3DFORMAT_D3DFMT_L16: _D3DFORMAT = 81;
+pub const _D3DFORMAT_D3DFMT_VERTEXDATA: _D3DFORMAT = 100;
+pub const _D3DFORMAT_D3DFMT_INDEX16: _D3DFORMAT = 101;
+pub const _D3DFORMAT_D3DFMT_INDEX32: _D3DFORMAT = 102;
+pub const _D3DFORMAT_D3DFMT_Q16W16V16U16: _D3DFORMAT = 110;
+pub const _D3DFORMAT_D3DFMT_MULTI2_ARGB8: _D3DFORMAT = 827606349;
+pub const _D3DFORMAT_D3DFMT_R16F: _D3DFORMAT = 111;
+pub const _D3DFORMAT_D3DFMT_G16R16F: _D3DFORMAT = 112;
+pub const _D3DFORMAT_D3DFMT_A16B16G16R16F: _D3DFORMAT = 113;
+pub const _D3DFORMAT_D3DFMT_R32F: _D3DFORMAT = 114;
+pub const _D3DFORMAT_D3DFMT_G32R32F: _D3DFORMAT = 115;
+pub const _D3DFORMAT_D3DFMT_A32B32G32R32F: _D3DFORMAT = 116;
+pub const _D3DFORMAT_D3DFMT_CxV8U8: _D3DFORMAT = 117;
+pub const _D3DFORMAT_D3DFMT_A1: _D3DFORMAT = 118;
+pub const _D3DFORMAT_D3DFMT_A2B10G10R10_XR_BIAS: _D3DFORMAT = 119;
+pub const _D3DFORMAT_D3DFMT_BINARYBUFFER: _D3DFORMAT = 199;
+pub const _D3DFORMAT_D3DFMT_FORCE_DWORD: _D3DFORMAT = 2147483647;
+pub type _D3DFORMAT = ::std::os::raw::c_int;
+pub use self::_D3DFORMAT as D3DFORMAT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DDISPLAYMODE {
+    pub Width: UINT,
+    pub Height: UINT,
+    pub RefreshRate: UINT,
+    pub Format: D3DFORMAT,
+}
+pub type D3DDISPLAYMODE = _D3DDISPLAYMODE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DDEVICE_CREATION_PARAMETERS {
+    pub AdapterOrdinal: UINT,
+    pub DeviceType: D3DDEVTYPE,
+    pub hFocusWindow: HWND,
+    pub BehaviorFlags: DWORD,
+}
+pub type D3DDEVICE_CREATION_PARAMETERS = _D3DDEVICE_CREATION_PARAMETERS;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_DISCARD: _D3DSWAPEFFECT = 1;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_FLIP: _D3DSWAPEFFECT = 2;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_COPY: _D3DSWAPEFFECT = 3;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_OVERLAY: _D3DSWAPEFFECT = 4;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_FLIPEX: _D3DSWAPEFFECT = 5;
+pub const _D3DSWAPEFFECT_D3DSWAPEFFECT_FORCE_DWORD: _D3DSWAPEFFECT = 2147483647;
+pub type _D3DSWAPEFFECT = ::std::os::raw::c_int;
+pub use self::_D3DSWAPEFFECT as D3DSWAPEFFECT;
+pub const _D3DPOOL_D3DPOOL_DEFAULT: _D3DPOOL = 0;
+pub const _D3DPOOL_D3DPOOL_MANAGED: _D3DPOOL = 1;
+pub const _D3DPOOL_D3DPOOL_SYSTEMMEM: _D3DPOOL = 2;
+pub const _D3DPOOL_D3DPOOL_SCRATCH: _D3DPOOL = 3;
+pub const _D3DPOOL_D3DPOOL_FORCE_DWORD: _D3DPOOL = 2147483647;
+pub type _D3DPOOL = ::std::os::raw::c_int;
+pub use self::_D3DPOOL as D3DPOOL;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DPRESENT_PARAMETERS_ {
+    pub BackBufferWidth: UINT,
+    pub BackBufferHeight: UINT,
+    pub BackBufferFormat: D3DFORMAT,
+    pub BackBufferCount: UINT,
+    pub MultiSampleType: D3DMULTISAMPLE_TYPE,
+    pub MultiSampleQuality: DWORD,
+    pub SwapEffect: D3DSWAPEFFECT,
+    pub hDeviceWindow: HWND,
+    pub Windowed: BOOL,
+    pub EnableAutoDepthStencil: BOOL,
+    pub AutoDepthStencilFormat: D3DFORMAT,
+    pub Flags: DWORD,
+    pub FullScreen_RefreshRateInHz: UINT,
+    pub PresentationInterval: UINT,
+}
+pub type D3DPRESENT_PARAMETERS = _D3DPRESENT_PARAMETERS_;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DGAMMARAMP {
+    pub red: [WORD; 256usize],
+    pub green: [WORD; 256usize],
+    pub blue: [WORD; 256usize],
+}
+pub type D3DGAMMARAMP = _D3DGAMMARAMP;
+pub const _D3DBACKBUFFER_TYPE_D3DBACKBUFFER_TYPE_MONO: _D3DBACKBUFFER_TYPE = 0;
+pub const _D3DBACKBUFFER_TYPE_D3DBACKBUFFER_TYPE_LEFT: _D3DBACKBUFFER_TYPE = 1;
+pub const _D3DBACKBUFFER_TYPE_D3DBACKBUFFER_TYPE_RIGHT: _D3DBACKBUFFER_TYPE = 2;
+pub const _D3DBACKBUFFER_TYPE_D3DBACKBUFFER_TYPE_FORCE_DWORD: _D3DBACKBUFFER_TYPE = 2147483647;
+pub type _D3DBACKBUFFER_TYPE = ::std::os::raw::c_int;
+pub use self::_D3DBACKBUFFER_TYPE as D3DBACKBUFFER_TYPE;
+pub const _D3DRESOURCETYPE_D3DRTYPE_SURFACE: _D3DRESOURCETYPE = 1;
+pub const _D3DRESOURCETYPE_D3DRTYPE_VOLUME: _D3DRESOURCETYPE = 2;
+pub const _D3DRESOURCETYPE_D3DRTYPE_TEXTURE: _D3DRESOURCETYPE = 3;
+pub const _D3DRESOURCETYPE_D3DRTYPE_VOLUMETEXTURE: _D3DRESOURCETYPE = 4;
+pub const _D3DRESOURCETYPE_D3DRTYPE_CUBETEXTURE: _D3DRESOURCETYPE = 5;
+pub const _D3DRESOURCETYPE_D3DRTYPE_VERTEXBUFFER: _D3DRESOURCETYPE = 6;
+pub const _D3DRESOURCETYPE_D3DRTYPE_INDEXBUFFER: _D3DRESOURCETYPE = 7;
+pub const _D3DRESOURCETYPE_D3DRTYPE_FORCE_DWORD: _D3DRESOURCETYPE = 2147483647;
+pub type _D3DRESOURCETYPE = ::std::os::raw::c_int;
+pub use self::_D3DRESOURCETYPE as D3DRESOURCETYPE;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_POSITIVE_X: _D3DCUBEMAP_FACES = 0;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_NEGATIVE_X: _D3DCUBEMAP_FACES = 1;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_POSITIVE_Y: _D3DCUBEMAP_FACES = 2;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_NEGATIVE_Y: _D3DCUBEMAP_FACES = 3;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_POSITIVE_Z: _D3DCUBEMAP_FACES = 4;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_NEGATIVE_Z: _D3DCUBEMAP_FACES = 5;
+pub const _D3DCUBEMAP_FACES_D3DCUBEMAP_FACE_FORCE_DWORD: _D3DCUBEMAP_FACES = 2147483647;
+pub type _D3DCUBEMAP_FACES = ::std::os::raw::c_int;
+pub use self::_D3DCUBEMAP_FACES as D3DCUBEMAP_FACES;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVERTEXBUFFER_DESC {
+    pub Format: D3DFORMAT,
+    pub Type: D3DRESOURCETYPE,
+    pub Usage: DWORD,
+    pub Pool: D3DPOOL,
+    pub Size: UINT,
+    pub FVF: DWORD,
+}
+pub type D3DVERTEXBUFFER_DESC = _D3DVERTEXBUFFER_DESC;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DINDEXBUFFER_DESC {
+    pub Format: D3DFORMAT,
+    pub Type: D3DRESOURCETYPE,
+    pub Usage: DWORD,
+    pub Pool: D3DPOOL,
+    pub Size: UINT,
+}
+pub type D3DINDEXBUFFER_DESC = _D3DINDEXBUFFER_DESC;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DSURFACE_DESC {
+    pub Format: D3DFORMAT,
+    pub Type: D3DRESOURCETYPE,
+    pub Usage: DWORD,
+    pub Pool: D3DPOOL,
+    pub MultiSampleType: D3DMULTISAMPLE_TYPE,
+    pub MultiSampleQuality: DWORD,
+    pub Width: UINT,
+    pub Height: UINT,
+}
+pub type D3DSURFACE_DESC = _D3DSURFACE_DESC;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVOLUME_DESC {
+    pub Format: D3DFORMAT,
+    pub Type: D3DRESOURCETYPE,
+    pub Usage: DWORD,
+    pub Pool: D3DPOOL,
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Depth: UINT,
+}
+pub type D3DVOLUME_DESC = _D3DVOLUME_DESC;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DLOCKED_RECT {
+    pub Pitch: INT,
+    pub pBits: *mut ::std::os::raw::c_void,
+}
+pub type D3DLOCKED_RECT = _D3DLOCKED_RECT;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DBOX {
+    pub Left: UINT,
+    pub Top: UINT,
+    pub Right: UINT,
+    pub Bottom: UINT,
+    pub Front: UINT,
+    pub Back: UINT,
+}
+pub type D3DBOX = _D3DBOX;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DLOCKED_BOX {
+    pub RowPitch: INT,
+    pub SlicePitch: INT,
+    pub pBits: *mut ::std::os::raw::c_void,
+}
+pub type D3DLOCKED_BOX = _D3DLOCKED_BOX;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DRECTPATCH_INFO {
+    pub StartVertexOffsetWidth: UINT,
+    pub StartVertexOffsetHeight: UINT,
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Stride: UINT,
+    pub Basis: D3DBASISTYPE,
+    pub Degree: D3DDEGREETYPE,
+}
+pub type D3DRECTPATCH_INFO = _D3DRECTPATCH_INFO;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DTRIPATCH_INFO {
+    pub StartVertexOffset: UINT,
+    pub NumVertices: UINT,
+    pub Basis: D3DBASISTYPE,
+    pub Degree: D3DDEGREETYPE,
+}
+pub type D3DTRIPATCH_INFO = _D3DTRIPATCH_INFO;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _D3DADAPTER_IDENTIFIER9 {
+    pub Driver: [::std::os::raw::c_char; 512usize],
+    pub Description: [::std::os::raw::c_char; 512usize],
+    pub DeviceName: [::std::os::raw::c_char; 32usize],
+    pub DriverVersion: LARGE_INTEGER,
+    pub VendorId: DWORD,
+    pub DeviceId: DWORD,
+    pub SubSysId: DWORD,
+    pub Revision: DWORD,
+    pub DeviceIdentifier: GUID,
+    pub WHQLLevel: DWORD,
+}
+pub type D3DADAPTER_IDENTIFIER9 = _D3DADAPTER_IDENTIFIER9;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DRASTER_STATUS {
+    pub InVBlank: BOOL,
+    pub ScanLine: UINT,
+}
+pub type D3DRASTER_STATUS = _D3DRASTER_STATUS;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_VCACHE: _D3DQUERYTYPE = 4;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_RESOURCEMANAGER: _D3DQUERYTYPE = 5;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_VERTEXSTATS: _D3DQUERYTYPE = 6;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_EVENT: _D3DQUERYTYPE = 8;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_OCCLUSION: _D3DQUERYTYPE = 9;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_TIMESTAMP: _D3DQUERYTYPE = 10;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_TIMESTAMPDISJOINT: _D3DQUERYTYPE = 11;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_TIMESTAMPFREQ: _D3DQUERYTYPE = 12;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_PIPELINETIMINGS: _D3DQUERYTYPE = 13;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_INTERFACETIMINGS: _D3DQUERYTYPE = 14;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_VERTEXTIMINGS: _D3DQUERYTYPE = 15;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_PIXELTIMINGS: _D3DQUERYTYPE = 16;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_BANDWIDTHTIMINGS: _D3DQUERYTYPE = 17;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_CACHEUTILIZATION: _D3DQUERYTYPE = 18;
+pub const _D3DQUERYTYPE_D3DQUERYTYPE_MEMORYPRESSURE: _D3DQUERYTYPE = 19;
+pub type _D3DQUERYTYPE = ::std::os::raw::c_int;
+pub use self::_D3DQUERYTYPE as D3DQUERYTYPE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DVSHADERCAPS2_0 {
+    pub Caps: DWORD,
+    pub DynamicFlowControlDepth: INT,
+    pub NumTemps: INT,
+    pub StaticFlowControlDepth: INT,
+}
+pub type D3DVSHADERCAPS2_0 = _D3DVSHADERCAPS2_0;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DPSHADERCAPS2_0 {
+    pub Caps: DWORD,
+    pub DynamicFlowControlDepth: INT,
+    pub NumTemps: INT,
+    pub StaticFlowControlDepth: INT,
+    pub NumInstructionSlots: INT,
+}
+pub type D3DPSHADERCAPS2_0 = _D3DPSHADERCAPS2_0;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _D3DCAPS9 {
+    pub DeviceType: D3DDEVTYPE,
+    pub AdapterOrdinal: UINT,
+    pub Caps: DWORD,
+    pub Caps2: DWORD,
+    pub Caps3: DWORD,
+    pub PresentationIntervals: DWORD,
+    pub CursorCaps: DWORD,
+    pub DevCaps: DWORD,
+    pub PrimitiveMiscCaps: DWORD,
+    pub RasterCaps: DWORD,
+    pub ZCmpCaps: DWORD,
+    pub SrcBlendCaps: DWORD,
+    pub DestBlendCaps: DWORD,
+    pub AlphaCmpCaps: DWORD,
+    pub ShadeCaps: DWORD,
+    pub TextureCaps: DWORD,
+    pub TextureFilterCaps: DWORD,
+    pub CubeTextureFilterCaps: DWORD,
+    pub VolumeTextureFilterCaps: DWORD,
+    pub TextureAddressCaps: DWORD,
+    pub VolumeTextureAddressCaps: DWORD,
+    pub LineCaps: DWORD,
+    pub MaxTextureWidth: DWORD,
+    pub MaxTextureHeight: DWORD,
+    pub MaxVolumeExtent: DWORD,
+    pub MaxTextureRepeat: DWORD,
+    pub MaxTextureAspectRatio: DWORD,
+    pub MaxAnisotropy: DWORD,
+    pub MaxVertexW: f32,
+    pub GuardBandLeft: f32,
+    pub GuardBandTop: f32,
+    pub GuardBandRight: f32,
+    pub GuardBandBottom: f32,
+    pub ExtentsAdjust: f32,
+    pub StencilCaps: DWORD,
+    pub FVFCaps: DWORD,
+    pub TextureOpCaps: DWORD,
+    pub MaxTextureBlendStages: DWORD,
+    pub MaxSimultaneousTextures: DWORD,
+    pub VertexProcessingCaps: DWORD,
+    pub MaxActiveLights: DWORD,
+    pub MaxUserClipPlanes: DWORD,
+    pub MaxVertexBlendMatrices: DWORD,
+    pub MaxVertexBlendMatrixIndex: DWORD,
+    pub MaxPointSize: f32,
+    pub MaxPrimitiveCount: DWORD,
+    pub MaxVertexIndex: DWORD,
+    pub MaxStreams: DWORD,
+    pub MaxStreamStride: DWORD,
+    pub VertexShaderVersion: DWORD,
+    pub MaxVertexShaderConst: DWORD,
+    pub PixelShaderVersion: DWORD,
+    pub PixelShader1xMaxValue: f32,
+    pub DevCaps2: DWORD,
+    pub MaxNpatchTessellationLevel: f32,
+    pub Reserved5: DWORD,
+    pub MasterAdapterOrdinal: UINT,
+    pub AdapterOrdinalInGroup: UINT,
+    pub NumberOfAdaptersInGroup: UINT,
+    pub DeclTypes: DWORD,
+    pub NumSimultaneousRTs: DWORD,
+    pub StretchRectFilterCaps: DWORD,
+    pub VS20Caps: D3DVSHADERCAPS2_0,
+    pub PS20Caps: D3DPSHADERCAPS2_0,
+    pub VertexTextureFilterCaps: DWORD,
+    pub MaxVShaderInstructionsExecuted: DWORD,
+    pub MaxPShaderInstructionsExecuted: DWORD,
+    pub MaxVertexShader30InstructionSlots: DWORD,
+    pub MaxPixelShader30InstructionSlots: DWORD,
+}
+pub type D3DCAPS9 = _D3DCAPS9;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3D9 {
+    pub lpVtbl: *mut IDirect3D9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3D9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3D9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3D9) -> ULONG>,
+    pub RegisterSoftwareDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            pInitializeFunction: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetAdapterCount: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3D9) -> UINT>,
+    pub GetAdapterIdentifier: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            Flags: DWORD,
+            pIdentifier: *mut D3DADAPTER_IDENTIFIER9,
+        ) -> HRESULT,
+    >,
+    pub GetAdapterModeCount: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3D9, Adapter: UINT, Format: D3DFORMAT) -> UINT,
+    >,
+    pub EnumAdapterModes: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            Format: D3DFORMAT,
+            Mode: UINT,
+            pMode: *mut D3DDISPLAYMODE,
+        ) -> HRESULT,
+    >,
+    pub GetAdapterDisplayMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            pMode: *mut D3DDISPLAYMODE,
+        ) -> HRESULT,
+    >,
+    pub CheckDeviceType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DevType: D3DDEVTYPE,
+            AdapterFormat: D3DFORMAT,
+            BackBufferFormat: D3DFORMAT,
+            bWindowed: BOOL,
+        ) -> HRESULT,
+    >,
+    pub CheckDeviceFormat: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            AdapterFormat: D3DFORMAT,
+            Usage: DWORD,
+            RType: D3DRESOURCETYPE,
+            CheckFormat: D3DFORMAT,
+        ) -> HRESULT,
+    >,
+    pub CheckDeviceMultiSampleType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            SurfaceFormat: D3DFORMAT,
+            Windowed: BOOL,
+            MultiSampleType: D3DMULTISAMPLE_TYPE,
+            pQualityLevels: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub CheckDepthStencilMatch: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            AdapterFormat: D3DFORMAT,
+            RenderTargetFormat: D3DFORMAT,
+            DepthStencilFormat: D3DFORMAT,
+        ) -> HRESULT,
+    >,
+    pub CheckDeviceFormatConversion: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            SourceFormat: D3DFORMAT,
+            TargetFormat: D3DFORMAT,
+        ) -> HRESULT,
+    >,
+    pub GetDeviceCaps: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            pCaps: *mut D3DCAPS9,
+        ) -> HRESULT,
+    >,
+    pub GetAdapterMonitor: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3D9, Adapter: UINT) -> HMONITOR,
+    >,
+    pub CreateDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3D9,
+            Adapter: UINT,
+            DeviceType: D3DDEVTYPE,
+            hFocusWindow: HWND,
+            BehaviorFlags: DWORD,
+            pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
+            ppReturnedDeviceInterface: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DDevice9 {
+    pub lpVtbl: *mut IDirect3DDevice9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DDevice9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> ULONG>,
+    pub TestCooperativeLevel:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> HRESULT>,
+    pub GetAvailableTextureMem:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> UINT>,
+    pub EvictManagedResources:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> HRESULT>,
+    pub GetDirect3D: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, ppD3D9: *mut *mut IDirect3D9) -> HRESULT,
+    >,
+    pub GetDeviceCaps: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pCaps: *mut D3DCAPS9) -> HRESULT,
+    >,
+    pub GetDisplayMode: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            pMode: *mut D3DDISPLAYMODE,
+        ) -> HRESULT,
+    >,
+    pub GetCreationParameters: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pParameters: *mut D3DDEVICE_CREATION_PARAMETERS,
+        ) -> HRESULT,
+    >,
+    pub SetCursorProperties: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            XHotSpot: UINT,
+            YHotSpot: UINT,
+            pCursorBitmap: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub SetCursorPosition: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            X: ::std::os::raw::c_int,
+            Y: ::std::os::raw::c_int,
+            Flags: DWORD,
+        ),
+    >,
+    pub ShowCursor: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, bShow: BOOL) -> BOOL,
+    >,
+    pub CreateAdditionalSwapChain: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
+            pSwapChain: *mut *mut IDirect3DSwapChain9,
+        ) -> HRESULT,
+    >,
+    pub GetSwapChain: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            pSwapChain: *mut *mut IDirect3DSwapChain9,
+        ) -> HRESULT,
+    >,
+    pub GetNumberOfSwapChains:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> UINT>,
+    pub Reset: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
+        ) -> HRESULT,
+    >,
+    pub Present: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pSourceRect: *const RECT,
+            pDestRect: *const RECT,
+            hDestWindowOverride: HWND,
+            pDirtyRegion: *const RGNDATA,
+        ) -> HRESULT,
+    >,
+    pub GetBackBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            iBackBuffer: UINT,
+            Type: D3DBACKBUFFER_TYPE,
+            ppBackBuffer: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetRasterStatus: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            pRasterStatus: *mut D3DRASTER_STATUS,
+        ) -> HRESULT,
+    >,
+    pub SetDialogBoxMode: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, bEnableDialogs: BOOL) -> HRESULT,
+    >,
+    pub SetGammaRamp: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            Flags: DWORD,
+            pRamp: *const D3DGAMMARAMP,
+        ),
+    >,
+    pub GetGammaRamp: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            pRamp: *mut D3DGAMMARAMP,
+        ),
+    >,
+    pub CreateTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Width: UINT,
+            Height: UINT,
+            Levels: UINT,
+            Usage: DWORD,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            ppTexture: *mut *mut IDirect3DTexture9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateVolumeTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Width: UINT,
+            Height: UINT,
+            Depth: UINT,
+            Levels: UINT,
+            Usage: DWORD,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            ppVolumeTexture: *mut *mut IDirect3DVolumeTexture9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateCubeTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            EdgeLength: UINT,
+            Levels: UINT,
+            Usage: DWORD,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            ppCubeTexture: *mut *mut IDirect3DCubeTexture9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateVertexBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Length: UINT,
+            Usage: DWORD,
+            FVF: DWORD,
+            Pool: D3DPOOL,
+            ppVertexBuffer: *mut *mut IDirect3DVertexBuffer9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateIndexBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Length: UINT,
+            Usage: DWORD,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            ppIndexBuffer: *mut *mut IDirect3DIndexBuffer9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateRenderTarget: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Width: UINT,
+            Height: UINT,
+            Format: D3DFORMAT,
+            MultiSample: D3DMULTISAMPLE_TYPE,
+            MultisampleQuality: DWORD,
+            Lockable: BOOL,
+            ppSurface: *mut *mut IDirect3DSurface9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub CreateDepthStencilSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Width: UINT,
+            Height: UINT,
+            Format: D3DFORMAT,
+            MultiSample: D3DMULTISAMPLE_TYPE,
+            MultisampleQuality: DWORD,
+            Discard: BOOL,
+            ppSurface: *mut *mut IDirect3DSurface9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub UpdateSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pSourceSurface: *mut IDirect3DSurface9,
+            pSourceRect: *const RECT,
+            pDestinationSurface: *mut IDirect3DSurface9,
+            pDestPoint: *const POINT,
+        ) -> HRESULT,
+    >,
+    pub UpdateTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pSourceTexture: *mut IDirect3DBaseTexture9,
+            pDestinationTexture: *mut IDirect3DBaseTexture9,
+        ) -> HRESULT,
+    >,
+    pub GetRenderTargetData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pRenderTarget: *mut IDirect3DSurface9,
+            pDestSurface: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetFrontBufferData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            iSwapChain: UINT,
+            pDestSurface: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub StretchRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pSourceSurface: *mut IDirect3DSurface9,
+            pSourceRect: *const RECT,
+            pDestSurface: *mut IDirect3DSurface9,
+            pDestRect: *const RECT,
+            Filter: D3DTEXTUREFILTERTYPE,
+        ) -> HRESULT,
+    >,
+    pub ColorFill: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pSurface: *mut IDirect3DSurface9,
+            pRect: *const RECT,
+            color: D3DCOLOR,
+        ) -> HRESULT,
+    >,
+    pub CreateOffscreenPlainSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Width: UINT,
+            Height: UINT,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            ppSurface: *mut *mut IDirect3DSurface9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub SetRenderTarget: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            RenderTargetIndex: DWORD,
+            pRenderTarget: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetRenderTarget: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            RenderTargetIndex: DWORD,
+            ppRenderTarget: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub SetDepthStencilSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pNewZStencil: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetDepthStencilSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppZStencilSurface: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub BeginScene:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> HRESULT>,
+    pub EndScene:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> HRESULT>,
+    pub Clear: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Count: DWORD,
+            pRects: *const D3DRECT,
+            Flags: DWORD,
+            Color: D3DCOLOR,
+            Z: f32,
+            Stencil: DWORD,
+        ) -> HRESULT,
+    >,
+    pub SetTransform: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            State: D3DTRANSFORMSTATETYPE,
+            pMatrix: *const D3DMATRIX,
+        ) -> HRESULT,
+    >,
+    pub GetTransform: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            State: D3DTRANSFORMSTATETYPE,
+            pMatrix: *mut D3DMATRIX,
+        ) -> HRESULT,
+    >,
+    pub MultiplyTransform: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            arg1: D3DTRANSFORMSTATETYPE,
+            arg2: *const D3DMATRIX,
+        ) -> HRESULT,
+    >,
+    pub SetViewport: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pViewport: *const D3DVIEWPORT9,
+        ) -> HRESULT,
+    >,
+    pub GetViewport: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pViewport: *mut D3DVIEWPORT9) -> HRESULT,
+    >,
+    pub SetMaterial: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pMaterial: *const D3DMATERIAL9,
+        ) -> HRESULT,
+    >,
+    pub GetMaterial: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pMaterial: *mut D3DMATERIAL9) -> HRESULT,
+    >,
+    pub SetLight: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Index: DWORD,
+            arg1: *const D3DLIGHT9,
+        ) -> HRESULT,
+    >,
+    pub GetLight: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Index: DWORD,
+            arg1: *mut D3DLIGHT9,
+        ) -> HRESULT,
+    >,
+    pub LightEnable: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, Index: DWORD, Enable: BOOL) -> HRESULT,
+    >,
+    pub GetLightEnable: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Index: DWORD,
+            pEnable: *mut BOOL,
+        ) -> HRESULT,
+    >,
+    pub SetClipPlane: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Index: DWORD,
+            pPlane: *const f32,
+        ) -> HRESULT,
+    >,
+    pub GetClipPlane: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Index: DWORD,
+            pPlane: *mut f32,
+        ) -> HRESULT,
+    >,
+    pub SetRenderState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            State: D3DRENDERSTATETYPE,
+            Value: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetRenderState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            State: D3DRENDERSTATETYPE,
+            pValue: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub CreateStateBlock: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Type: D3DSTATEBLOCKTYPE,
+            ppSB: *mut *mut IDirect3DStateBlock9,
+        ) -> HRESULT,
+    >,
+    pub BeginStateBlock:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> HRESULT>,
+    pub EndStateBlock: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppSB: *mut *mut IDirect3DStateBlock9,
+        ) -> HRESULT,
+    >,
+    pub SetClipStatus: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pClipStatus: *const D3DCLIPSTATUS9,
+        ) -> HRESULT,
+    >,
+    pub GetClipStatus: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pClipStatus: *mut D3DCLIPSTATUS9,
+        ) -> HRESULT,
+    >,
+    pub GetTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Stage: DWORD,
+            ppTexture: *mut *mut IDirect3DBaseTexture9,
+        ) -> HRESULT,
+    >,
+    pub SetTexture: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Stage: DWORD,
+            pTexture: *mut IDirect3DBaseTexture9,
+        ) -> HRESULT,
+    >,
+    pub GetTextureStageState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Stage: DWORD,
+            Type: D3DTEXTURESTAGESTATETYPE,
+            pValue: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub SetTextureStageState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Stage: DWORD,
+            Type: D3DTEXTURESTAGESTATETYPE,
+            Value: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetSamplerState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Sampler: DWORD,
+            Type: D3DSAMPLERSTATETYPE,
+            pValue: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub SetSamplerState: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Sampler: DWORD,
+            Type: D3DSAMPLERSTATETYPE,
+            Value: DWORD,
+        ) -> HRESULT,
+    >,
+    pub ValidateDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pNumPasses: *mut DWORD) -> HRESULT,
+    >,
+    pub SetPaletteEntries: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            PaletteNumber: UINT,
+            pEntries: *const PALETTEENTRY,
+        ) -> HRESULT,
+    >,
+    pub GetPaletteEntries: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            PaletteNumber: UINT,
+            pEntries: *mut PALETTEENTRY,
+        ) -> HRESULT,
+    >,
+    pub SetCurrentTexturePalette: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, PaletteNumber: UINT) -> HRESULT,
+    >,
+    pub GetCurrentTexturePalette: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, PaletteNumber: *mut UINT) -> HRESULT,
+    >,
+    pub SetScissorRect: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pRect: *const RECT) -> HRESULT,
+    >,
+    pub GetScissorRect: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pRect: *mut RECT) -> HRESULT,
+    >,
+    pub SetSoftwareVertexProcessing: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, bSoftware: BOOL) -> HRESULT,
+    >,
+    pub GetSoftwareVertexProcessing:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> BOOL>,
+    pub SetNPatchMode: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, nSegments: f32) -> HRESULT,
+    >,
+    pub GetNPatchMode:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDevice9) -> f32>,
+    pub DrawPrimitive: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            PrimitiveType: D3DPRIMITIVETYPE,
+            StartVertex: UINT,
+            PrimitiveCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub DrawIndexedPrimitive: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            arg1: D3DPRIMITIVETYPE,
+            BaseVertexIndex: INT,
+            MinVertexIndex: UINT,
+            NumVertices: UINT,
+            startIndex: UINT,
+            primCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub DrawPrimitiveUP: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            PrimitiveType: D3DPRIMITIVETYPE,
+            PrimitiveCount: UINT,
+            pVertexStreamZeroData: *const ::std::os::raw::c_void,
+            VertexStreamZeroStride: UINT,
+        ) -> HRESULT,
+    >,
+    pub DrawIndexedPrimitiveUP: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            PrimitiveType: D3DPRIMITIVETYPE,
+            MinVertexIndex: UINT,
+            NumVertices: UINT,
+            PrimitiveCount: UINT,
+            pIndexData: *const ::std::os::raw::c_void,
+            IndexDataFormat: D3DFORMAT,
+            pVertexStreamZeroData: *const ::std::os::raw::c_void,
+            VertexStreamZeroStride: UINT,
+        ) -> HRESULT,
+    >,
+    pub ProcessVertices: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            SrcStartIndex: UINT,
+            DestIndex: UINT,
+            VertexCount: UINT,
+            pDestBuffer: *mut IDirect3DVertexBuffer9,
+            pVertexDecl: *mut IDirect3DVertexDeclaration9,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub CreateVertexDeclaration: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pVertexElements: *const D3DVERTEXELEMENT9,
+            ppDecl: *mut *mut IDirect3DVertexDeclaration9,
+        ) -> HRESULT,
+    >,
+    pub SetVertexDeclaration: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pDecl: *mut IDirect3DVertexDeclaration9,
+        ) -> HRESULT,
+    >,
+    pub GetVertexDeclaration: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppDecl: *mut *mut IDirect3DVertexDeclaration9,
+        ) -> HRESULT,
+    >,
+    pub SetFVF: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, FVF: DWORD) -> HRESULT,
+    >,
+    pub GetFVF: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, pFVF: *mut DWORD) -> HRESULT,
+    >,
+    pub CreateVertexShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pFunction: *const DWORD,
+            ppShader: *mut *mut IDirect3DVertexShader9,
+        ) -> HRESULT,
+    >,
+    pub SetVertexShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pShader: *mut IDirect3DVertexShader9,
+        ) -> HRESULT,
+    >,
+    pub GetVertexShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppShader: *mut *mut IDirect3DVertexShader9,
+        ) -> HRESULT,
+    >,
+    pub SetVertexShaderConstantF: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const f32,
+            Vector4fCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetVertexShaderConstantF: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut f32,
+            Vector4fCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetVertexShaderConstantI: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const ::std::os::raw::c_int,
+            Vector4iCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetVertexShaderConstantI: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut ::std::os::raw::c_int,
+            Vector4iCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetVertexShaderConstantB: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const BOOL,
+            BoolCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetVertexShaderConstantB: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut BOOL,
+            BoolCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetStreamSource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StreamNumber: UINT,
+            pStreamData: *mut IDirect3DVertexBuffer9,
+            OffsetInBytes: UINT,
+            Stride: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetStreamSource: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StreamNumber: UINT,
+            ppStreamData: *mut *mut IDirect3DVertexBuffer9,
+            pOffsetInBytes: *mut UINT,
+            pStride: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub SetStreamSourceFreq: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StreamNumber: UINT,
+            Setting: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetStreamSourceFreq: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StreamNumber: UINT,
+            pSetting: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub SetIndices: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pIndexData: *mut IDirect3DIndexBuffer9,
+        ) -> HRESULT,
+    >,
+    pub GetIndices: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppIndexData: *mut *mut IDirect3DIndexBuffer9,
+        ) -> HRESULT,
+    >,
+    pub CreatePixelShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pFunction: *const DWORD,
+            ppShader: *mut *mut IDirect3DPixelShader9,
+        ) -> HRESULT,
+    >,
+    pub SetPixelShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            pShader: *mut IDirect3DPixelShader9,
+        ) -> HRESULT,
+    >,
+    pub GetPixelShader: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            ppShader: *mut *mut IDirect3DPixelShader9,
+        ) -> HRESULT,
+    >,
+    pub SetPixelShaderConstantF: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const f32,
+            Vector4fCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetPixelShaderConstantF: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut f32,
+            Vector4fCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetPixelShaderConstantI: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const ::std::os::raw::c_int,
+            Vector4iCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetPixelShaderConstantI: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut ::std::os::raw::c_int,
+            Vector4iCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub SetPixelShaderConstantB: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *const BOOL,
+            BoolCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub GetPixelShaderConstantB: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            StartRegister: UINT,
+            pConstantData: *mut BOOL,
+            BoolCount: UINT,
+        ) -> HRESULT,
+    >,
+    pub DrawRectPatch: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Handle: UINT,
+            pNumSegs: *const f32,
+            pRectPatchInfo: *const D3DRECTPATCH_INFO,
+        ) -> HRESULT,
+    >,
+    pub DrawTriPatch: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Handle: UINT,
+            pNumSegs: *const f32,
+            pTriPatchInfo: *const D3DTRIPATCH_INFO,
+        ) -> HRESULT,
+    >,
+    pub DeletePatch: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDevice9, Handle: UINT) -> HRESULT,
+    >,
+    pub CreateQuery: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDevice9,
+            Type: D3DQUERYTYPE,
+            ppQuery: *mut *mut IDirect3DQuery9,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DStateBlock9 {
+    pub lpVtbl: *mut IDirect3DStateBlock9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DStateBlock9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DStateBlock9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DStateBlock9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DStateBlock9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DStateBlock9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub Capture:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DStateBlock9) -> HRESULT>,
+    pub Apply:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DStateBlock9) -> HRESULT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DSwapChain9 {
+    pub lpVtbl: *mut IDirect3DSwapChain9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DSwapChain9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSwapChain9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSwapChain9) -> ULONG>,
+    pub Present: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            pSourceRect: *const RECT,
+            pDestRect: *const RECT,
+            hDestWindowOverride: HWND,
+            pDirtyRegion: *const RGNDATA,
+            dwFlags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetFrontBufferData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            pDestSurface: *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetBackBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            iBackBuffer: UINT,
+            Type: D3DBACKBUFFER_TYPE,
+            ppBackBuffer: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub GetRasterStatus: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            pRasterStatus: *mut D3DRASTER_STATUS,
+        ) -> HRESULT,
+    >,
+    pub GetDisplayMode: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSwapChain9, pMode: *mut D3DDISPLAYMODE) -> HRESULT,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub GetPresentParameters: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSwapChain9,
+            pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexDeclaration9 {
+    pub lpVtbl: *mut IDirect3DVertexDeclaration9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexDeclaration9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexDeclaration9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVertexDeclaration9) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVertexDeclaration9) -> ULONG,
+    >,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexDeclaration9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub GetDeclaration: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexDeclaration9,
+            pElement: *mut D3DVERTEXELEMENT9,
+            pNumElements: *mut UINT,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexShader9 {
+    pub lpVtbl: *mut IDirect3DVertexShader9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexShader9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexShader9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexShader9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexShader9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexShader9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub GetFunction: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexShader9,
+            arg1: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut UINT,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DPixelShader9 {
+    pub lpVtbl: *mut IDirect3DPixelShader9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DPixelShader9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DPixelShader9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DPixelShader9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DPixelShader9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DPixelShader9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub GetFunction: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DPixelShader9,
+            arg1: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut UINT,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DBaseTexture9 {
+    pub lpVtbl: *mut IDirect3DBaseTexture9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DBaseTexture9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DBaseTexture9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DBaseTexture9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DBaseTexture9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DBaseTexture9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> D3DRESOURCETYPE,
+    >,
+    pub SetLOD: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9, LODNew: DWORD) -> DWORD,
+    >,
+    pub GetLOD:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> DWORD>,
+    pub GetLevelCount:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> DWORD>,
+    pub SetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DBaseTexture9,
+            FilterType: D3DTEXTUREFILTERTYPE,
+        ) -> HRESULT,
+    >,
+    pub GetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9) -> D3DTEXTUREFILTERTYPE,
+    >,
+    pub GenerateMipSubLevels:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DBaseTexture9)>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DTexture9 {
+    pub lpVtbl: *mut IDirect3DTexture9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DTexture9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> D3DRESOURCETYPE,
+    >,
+    pub SetLOD: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9, LODNew: DWORD) -> DWORD,
+    >,
+    pub GetLOD: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> DWORD>,
+    pub GetLevelCount:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> DWORD>,
+    pub SetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            FilterType: D3DTEXTUREFILTERTYPE,
+        ) -> HRESULT,
+    >,
+    pub GetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9) -> D3DTEXTUREFILTERTYPE,
+    >,
+    pub GenerateMipSubLevels:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DTexture9)>,
+    pub GetLevelDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            Level: UINT,
+            pDesc: *mut D3DSURFACE_DESC,
+        ) -> HRESULT,
+    >,
+    pub GetSurfaceLevel: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            Level: UINT,
+            ppSurfaceLevel: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub LockRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DTexture9,
+            Level: UINT,
+            pLockedRect: *mut D3DLOCKED_RECT,
+            pRect: *const RECT,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub UnlockRect: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9, Level: UINT) -> HRESULT,
+    >,
+    pub AddDirtyRect: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DTexture9, pDirtyRect: *const RECT) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVolumeTexture9 {
+    pub lpVtbl: *mut IDirect3DVolumeTexture9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVolumeTexture9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> D3DRESOURCETYPE,
+    >,
+    pub SetLOD: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9, LODNew: DWORD) -> DWORD,
+    >,
+    pub GetLOD:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> DWORD>,
+    pub GetLevelCount:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> DWORD>,
+    pub SetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            FilterType: D3DTEXTUREFILTERTYPE,
+        ) -> HRESULT,
+    >,
+    pub GetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9) -> D3DTEXTUREFILTERTYPE,
+    >,
+    pub GenerateMipSubLevels:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9)>,
+    pub GetLevelDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            Level: UINT,
+            pDesc: *mut D3DVOLUME_DESC,
+        ) -> HRESULT,
+    >,
+    pub GetVolumeLevel: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            Level: UINT,
+            ppVolumeLevel: *mut *mut IDirect3DVolume9,
+        ) -> HRESULT,
+    >,
+    pub LockBox: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            Level: UINT,
+            pLockedVolume: *mut D3DLOCKED_BOX,
+            pBox: *const D3DBOX,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub UnlockBox: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolumeTexture9, Level: UINT) -> HRESULT,
+    >,
+    pub AddDirtyBox: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolumeTexture9,
+            pDirtyBox: *const D3DBOX,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DCubeTexture9 {
+    pub lpVtbl: *mut IDirect3DCubeTexture9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DCubeTexture9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> D3DRESOURCETYPE,
+    >,
+    pub SetLOD: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9, LODNew: DWORD) -> DWORD,
+    >,
+    pub GetLOD:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> DWORD>,
+    pub GetLevelCount:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> DWORD>,
+    pub SetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            FilterType: D3DTEXTUREFILTERTYPE,
+        ) -> HRESULT,
+    >,
+    pub GetAutoGenFilterType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9) -> D3DTEXTUREFILTERTYPE,
+    >,
+    pub GenerateMipSubLevels:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DCubeTexture9)>,
+    pub GetLevelDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            Level: UINT,
+            pDesc: *mut D3DSURFACE_DESC,
+        ) -> HRESULT,
+    >,
+    pub GetCubeMapSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            FaceType: D3DCUBEMAP_FACES,
+            Level: UINT,
+            ppCubeMapSurface: *mut *mut IDirect3DSurface9,
+        ) -> HRESULT,
+    >,
+    pub LockRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            FaceType: D3DCUBEMAP_FACES,
+            Level: UINT,
+            pLockedRect: *mut D3DLOCKED_RECT,
+            pRect: *const RECT,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub UnlockRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            FaceType: D3DCUBEMAP_FACES,
+            Level: UINT,
+        ) -> HRESULT,
+    >,
+    pub AddDirtyRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DCubeTexture9,
+            FaceType: D3DCUBEMAP_FACES,
+            pDirtyRect: *const RECT,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexBuffer9 {
+    pub lpVtbl: *mut IDirect3DVertexBuffer9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVertexBuffer9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9) -> D3DRESOURCETYPE,
+    >,
+    pub Lock: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            OffsetToLock: UINT,
+            SizeToLock: UINT,
+            ppbData: *mut *mut ::std::os::raw::c_void,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub Unlock:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVertexBuffer9) -> HRESULT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVertexBuffer9,
+            pDesc: *mut D3DVERTEXBUFFER_DESC,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DIndexBuffer9 {
+    pub lpVtbl: *mut IDirect3DIndexBuffer9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DIndexBuffer9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9) -> D3DRESOURCETYPE,
+    >,
+    pub Lock: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            OffsetToLock: UINT,
+            SizeToLock: UINT,
+            ppbData: *mut *mut ::std::os::raw::c_void,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub Unlock:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DIndexBuffer9) -> HRESULT>,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DIndexBuffer9,
+            pDesc: *mut D3DINDEXBUFFER_DESC,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DSurface9 {
+    pub lpVtbl: *mut IDirect3DSurface9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DSurface9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSurface9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSurface9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub SetPriority: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9, PriorityNew: DWORD) -> DWORD,
+    >,
+    pub GetPriority:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSurface9) -> DWORD>,
+    pub PreLoad: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSurface9)>,
+    pub GetType: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9) -> D3DRESOURCETYPE,
+    >,
+    pub GetContainer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            riid: *const IID,
+            ppContainer: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9, pDesc: *mut D3DSURFACE_DESC) -> HRESULT,
+    >,
+    pub LockRect: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DSurface9,
+            pLockedRect: *mut D3DLOCKED_RECT,
+            pRect: *const RECT,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub UnlockRect:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DSurface9) -> HRESULT>,
+    pub GetDC: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9, phdc: *mut HDC) -> HRESULT,
+    >,
+    pub ReleaseDC: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DSurface9, hdc: HDC) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVolume9 {
+    pub lpVtbl: *mut IDirect3DVolume9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DVolume9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolume9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolume9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub SetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            refguid: *const GUID,
+            pData: *const ::std::os::raw::c_void,
+            SizeOfData: DWORD,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub GetPrivateData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            refguid: *const GUID,
+            pData: *mut ::std::os::raw::c_void,
+            pSizeOfData: *mut DWORD,
+        ) -> HRESULT,
+    >,
+    pub FreePrivateData: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolume9, refguid: *const GUID) -> HRESULT,
+    >,
+    pub GetContainer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            riid: *const IID,
+            ppContainer: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub GetDesc: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DVolume9, pDesc: *mut D3DVOLUME_DESC) -> HRESULT,
+    >,
+    pub LockBox: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DVolume9,
+            pLockedVolume: *mut D3DLOCKED_BOX,
+            pBox: *const D3DBOX,
+            Flags: DWORD,
+        ) -> HRESULT,
+    >,
+    pub UnlockBox:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DVolume9) -> HRESULT>,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DQuery9 {
+    pub lpVtbl: *mut IDirect3DQuery9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DQuery9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DQuery9,
+            riid: *const IID,
+            ppvObj: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DQuery9) -> ULONG>,
+    pub Release: ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DQuery9) -> ULONG>,
+    pub GetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DQuery9,
+            ppDevice: *mut *mut IDirect3DDevice9,
+        ) -> HRESULT,
+    >,
+    pub GetType:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DQuery9) -> D3DQUERYTYPE>,
+    pub GetDataSize:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DQuery9) -> DWORD>,
+    pub Issue: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DQuery9, dwIssueFlags: DWORD) -> HRESULT,
+    >,
+    pub GetData: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DQuery9,
+            pData: *mut ::std::os::raw::c_void,
+            dwSize: DWORD,
+            dwGetDataFlags: DWORD,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _DXVA2_ExtendedFormat {
+    pub __bindgen_anon_1: _DXVA2_ExtendedFormat__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union _DXVA2_ExtendedFormat__bindgen_ty_1 {
+    pub __bindgen_anon_1: _DXVA2_ExtendedFormat__bindgen_ty_1__bindgen_ty_1,
+    pub value: UINT,
+}
+#[repr(C)]
+#[repr(align(4))]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_ExtendedFormat__bindgen_ty_1__bindgen_ty_1 {
+    pub _bitfield_align_1: [u8; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
+}
+impl _DXVA2_ExtendedFormat__bindgen_ty_1__bindgen_ty_1 {
+    #[inline]
+    pub fn SampleFormat(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 8u8) as u32) }
+    }
+    #[inline]
+    pub fn set_SampleFormat(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 8u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn SampleFormat_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                0usize,
+                8u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_SampleFormat_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                0usize,
+                8u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn VideoChromaSubsampling(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(8usize, 4u8) as u32) }
+    }
+    #[inline]
+    pub fn set_VideoChromaSubsampling(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(8usize, 4u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn VideoChromaSubsampling_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                8usize,
+                4u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_VideoChromaSubsampling_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                8usize,
+                4u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn NominalRange(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(12usize, 3u8) as u32) }
+    }
+    #[inline]
+    pub fn set_NominalRange(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(12usize, 3u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn NominalRange_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                12usize,
+                3u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_NominalRange_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                12usize,
+                3u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn VideoTransferMatrix(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(15usize, 3u8) as u32) }
+    }
+    #[inline]
+    pub fn set_VideoTransferMatrix(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(15usize, 3u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn VideoTransferMatrix_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                15usize,
+                3u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_VideoTransferMatrix_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                15usize,
+                3u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn VideoLighting(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(18usize, 4u8) as u32) }
+    }
+    #[inline]
+    pub fn set_VideoLighting(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(18usize, 4u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn VideoLighting_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                18usize,
+                4u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_VideoLighting_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                18usize,
+                4u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn VideoPrimaries(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(22usize, 5u8) as u32) }
+    }
+    #[inline]
+    pub fn set_VideoPrimaries(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(22usize, 5u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn VideoPrimaries_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                22usize,
+                5u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_VideoPrimaries_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                22usize,
+                5u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn VideoTransferFunction(&self) -> UINT {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(27usize, 5u8) as u32) }
+    }
+    #[inline]
+    pub fn set_VideoTransferFunction(&mut self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(27usize, 5u8, val as u64)
+        }
+    }
+    #[inline]
+    pub unsafe fn VideoTransferFunction_raw(this: *const Self) -> UINT {
+        unsafe {
+            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+                ::std::ptr::addr_of!((*this)._bitfield_1),
+                27usize,
+                5u8,
+            ) as u32)
+        }
+    }
+    #[inline]
+    pub unsafe fn set_VideoTransferFunction_raw(this: *mut Self, val: UINT) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
+                ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                27usize,
+                5u8,
+                val as u64,
+            )
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        SampleFormat: UINT,
+        VideoChromaSubsampling: UINT,
+        NominalRange: UINT,
+        VideoTransferMatrix: UINT,
+        VideoLighting: UINT,
+        VideoPrimaries: UINT,
+        VideoTransferFunction: UINT,
+    ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 8u8, {
+            let SampleFormat: u32 = unsafe { ::std::mem::transmute(SampleFormat) };
+            SampleFormat as u64
+        });
+        __bindgen_bitfield_unit.set(8usize, 4u8, {
+            let VideoChromaSubsampling: u32 =
+                unsafe { ::std::mem::transmute(VideoChromaSubsampling) };
+            VideoChromaSubsampling as u64
+        });
+        __bindgen_bitfield_unit.set(12usize, 3u8, {
+            let NominalRange: u32 = unsafe { ::std::mem::transmute(NominalRange) };
+            NominalRange as u64
+        });
+        __bindgen_bitfield_unit.set(15usize, 3u8, {
+            let VideoTransferMatrix: u32 = unsafe { ::std::mem::transmute(VideoTransferMatrix) };
+            VideoTransferMatrix as u64
+        });
+        __bindgen_bitfield_unit.set(18usize, 4u8, {
+            let VideoLighting: u32 = unsafe { ::std::mem::transmute(VideoLighting) };
+            VideoLighting as u64
+        });
+        __bindgen_bitfield_unit.set(22usize, 5u8, {
+            let VideoPrimaries: u32 = unsafe { ::std::mem::transmute(VideoPrimaries) };
+            VideoPrimaries as u64
+        });
+        __bindgen_bitfield_unit.set(27usize, 5u8, {
+            let VideoTransferFunction: u32 =
+                unsafe { ::std::mem::transmute(VideoTransferFunction) };
+            VideoTransferFunction as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+pub type DXVA2_ExtendedFormat = _DXVA2_ExtendedFormat;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_Frequency {
+    pub Numerator: UINT,
+    pub Denominator: UINT,
+}
+pub type DXVA2_Frequency = _DXVA2_Frequency;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _DXVA2_VideoDesc {
+    pub SampleWidth: UINT,
+    pub SampleHeight: UINT,
+    pub SampleFormat: DXVA2_ExtendedFormat,
+    pub Format: D3DFORMAT,
+    pub InputSampleFreq: DXVA2_Frequency,
+    pub OutputFrameFreq: DXVA2_Frequency,
+    pub UABProtectionLevel: UINT,
+    pub Reserved: UINT,
+}
+pub type DXVA2_VideoDesc = _DXVA2_VideoDesc;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_ConfigPictureDecode {
+    pub guidConfigBitstreamEncryption: GUID,
+    pub guidConfigMBcontrolEncryption: GUID,
+    pub guidConfigResidDiffEncryption: GUID,
+    pub ConfigBitstreamRaw: UINT,
+    pub ConfigMBcontrolRasterOrder: UINT,
+    pub ConfigResidDiffHost: UINT,
+    pub ConfigSpatialResid8: UINT,
+    pub ConfigResid8Subtraction: UINT,
+    pub ConfigSpatialHost8or9Clipping: UINT,
+    pub ConfigSpatialResidInterleaved: UINT,
+    pub ConfigIntraResidUnsigned: UINT,
+    pub ConfigResidDiffAccelerator: UINT,
+    pub ConfigHostInverseScan: UINT,
+    pub ConfigSpecificIDCT: UINT,
+    pub Config4GroupedCoefs: UINT,
+    pub ConfigMinRenderTargetBuffCount: USHORT,
+    pub ConfigDecoderSpecific: USHORT,
+}
+pub type DXVA2_ConfigPictureDecode = _DXVA2_ConfigPictureDecode;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_DecodeBufferDesc {
+    pub CompressedBufferType: DWORD,
+    pub BufferIndex: UINT,
+    pub DataOffset: UINT,
+    pub DataSize: UINT,
+    pub FirstMBaddress: UINT,
+    pub NumMBsInBuffer: UINT,
+    pub Width: UINT,
+    pub Height: UINT,
+    pub Stride: UINT,
+    pub ReservedBits: UINT,
+    pub pvPVPState: PVOID,
+}
+pub type DXVA2_DecodeBufferDesc = _DXVA2_DecodeBufferDesc;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_DecodeExtensionData {
+    pub Function: UINT,
+    pub pPrivateInputData: PVOID,
+    pub PrivateInputDataSize: UINT,
+    pub pPrivateOutputData: PVOID,
+    pub PrivateOutputDataSize: UINT,
+}
+pub type DXVA2_DecodeExtensionData = _DXVA2_DecodeExtensionData;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _DXVA2_DecodeExecuteParams {
+    pub NumCompBuffers: UINT,
+    pub pCompressedBuffers: *mut DXVA2_DecodeBufferDesc,
+    pub pExtensionData: *mut DXVA2_DecodeExtensionData,
+}
+pub type DXVA2_DecodeExecuteParams = _DXVA2_DecodeExecuteParams;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DDeviceManager9Vtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDeviceManager9,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDeviceManager9) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirect3DDeviceManager9) -> ULONG>,
+    pub ResetDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDeviceManager9,
+            pDevice: *mut IDirect3DDevice9,
+            resetToken: UINT,
+        ) -> HRESULT,
+    >,
+    pub OpenDeviceHandle: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDeviceManager9, phDevice: *mut HANDLE) -> HRESULT,
+    >,
+    pub CloseDeviceHandle: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDeviceManager9, hDevice: HANDLE) -> HRESULT,
+    >,
+    pub TestDevice: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirect3DDeviceManager9, hDevice: HANDLE) -> HRESULT,
+    >,
+    pub LockDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDeviceManager9,
+            hDevice: HANDLE,
+            ppDevice: *mut *mut IDirect3DDevice9,
+            fBlock: BOOL,
+        ) -> HRESULT,
+    >,
+    pub UnlockDevice: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDeviceManager9,
+            hDevice: HANDLE,
+            fSaveState: BOOL,
+        ) -> HRESULT,
+    >,
+    pub GetVideoService: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirect3DDeviceManager9,
+            hDevice: HANDLE,
+            riid: *const IID,
+            ppService: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirect3DDeviceManager9 {
+    pub lpVtbl: *mut IDirect3DDeviceManager9Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirectXVideoDecoderServiceVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirectXVideoDecoderService) -> ULONG,
+    >,
+    pub Release: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirectXVideoDecoderService) -> ULONG,
+    >,
+    pub CreateSurface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            Width: UINT,
+            Height: UINT,
+            BackBuffers: UINT,
+            Format: D3DFORMAT,
+            Pool: D3DPOOL,
+            Usage: DWORD,
+            DxvaType: DWORD,
+            ppSurface: *mut *mut IDirect3DSurface9,
+            pSharedHandle: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub GetDecoderDeviceGuids: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            pCount: *mut UINT,
+            pGuids: *mut *mut GUID,
+        ) -> HRESULT,
+    >,
+    pub GetDecoderRenderTargets: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            Guid: *const GUID,
+            pCount: *mut UINT,
+            pFormats: *mut *mut D3DFORMAT,
+        ) -> HRESULT,
+    >,
+    pub GetDecoderConfigurations: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            Guid: *const GUID,
+            pVideoDesc: *const DXVA2_VideoDesc,
+            pReserved: *mut ::std::os::raw::c_void,
+            pCount: *mut UINT,
+            ppConfigs: *mut *mut DXVA2_ConfigPictureDecode,
+        ) -> HRESULT,
+    >,
+    pub CreateVideoDecoder: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoderService,
+            Guid: *const GUID,
+            pVideoDesc: *const DXVA2_VideoDesc,
+            pConfig: *const DXVA2_ConfigPictureDecode,
+            ppDecoderRenderTargets: *mut *mut IDirect3DSurface9,
+            NumRenderTargets: UINT,
+            ppDecode: *mut *mut IDirectXVideoDecoder,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirectXVideoDecoderService {
+    pub lpVtbl: *mut IDirectXVideoDecoderServiceVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirectXVideoDecoderVtbl {
+    pub QueryInterface: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            riid: *const IID,
+            ppvObject: *mut *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub AddRef:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirectXVideoDecoder) -> ULONG>,
+    pub Release:
+        ::std::option::Option<unsafe extern "C" fn(This: *mut IDirectXVideoDecoder) -> ULONG>,
+    pub GetVideoDecoderService: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            ppService: *mut *mut IDirectXVideoDecoderService,
+        ) -> HRESULT,
+    >,
+    pub GetCreationParameters: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            pDeviceGuid: *mut GUID,
+            pVideoDesc: *mut DXVA2_VideoDesc,
+            pConfig: *mut DXVA2_ConfigPictureDecode,
+            pDecoderRenderTargets: *mut *mut *mut IDirect3DSurface9,
+            pNumSurfaces: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub GetBuffer: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            BufferType: UINT,
+            ppBuffer: *mut *mut ::std::os::raw::c_void,
+            pBufferSize: *mut UINT,
+        ) -> HRESULT,
+    >,
+    pub ReleaseBuffer: ::std::option::Option<
+        unsafe extern "C" fn(This: *mut IDirectXVideoDecoder, BufferType: UINT) -> HRESULT,
+    >,
+    pub BeginFrame: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            pRenderTarget: *mut IDirect3DSurface9,
+            pvPVPData: *mut ::std::os::raw::c_void,
+        ) -> HRESULT,
+    >,
+    pub EndFrame: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            pHandleComplete: *mut HANDLE,
+        ) -> HRESULT,
+    >,
+    pub Execute: ::std::option::Option<
+        unsafe extern "C" fn(
+            This: *mut IDirectXVideoDecoder,
+            pExecuteParams: *const DXVA2_DecodeExecuteParams,
+        ) -> HRESULT,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IDirectXVideoDecoder {
+    pub lpVtbl: *mut IDirectXVideoDecoderVtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVDXVA2DeviceContext {
+    pub devmgr: *mut IDirect3DDeviceManager9,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVDXVA2FramesContext {
+    pub surface_type: DWORD,
+    pub surfaces: *mut *mut IDirect3DSurface9,
+    pub nb_surfaces: ::std::os::raw::c_int,
+    pub decoder_to_release: *mut IDirectXVideoDecoder,
+}
 unsafe extern "C" {
     pub fn av_version_info() -> *const ::std::os::raw::c_char;
-    pub fn av_get_media_type_string(
-        media_type: AVMediaType,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_get_media_type_string(media_type: AVMediaType) -> *const ::std::os::raw::c_char;
     pub fn av_get_picture_type_char(pict_type: AVPictureType) -> ::std::os::raw::c_char;
     pub fn av_strerror(
         errnum: ::std::os::raw::c_int,
@@ -6132,14 +21011,9 @@ unsafe extern "C" {
     pub fn av_mallocz(size: usize) -> *mut ::std::os::raw::c_void;
     pub fn av_malloc_array(nmemb: usize, size: usize) -> *mut ::std::os::raw::c_void;
     pub fn av_calloc(nmemb: usize, size: usize) -> *mut ::std::os::raw::c_void;
-    pub fn av_realloc(
-        ptr: *mut ::std::os::raw::c_void,
-        size: usize,
-    ) -> *mut ::std::os::raw::c_void;
-    pub fn av_reallocp(
-        ptr: *mut ::std::os::raw::c_void,
-        size: usize,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_realloc(ptr: *mut ::std::os::raw::c_void, size: usize)
+    -> *mut ::std::os::raw::c_void;
+    pub fn av_reallocp(ptr: *mut ::std::os::raw::c_void, size: usize) -> ::std::os::raw::c_int;
     pub fn av_realloc_f(
         ptr: *mut ::std::os::raw::c_void,
         nelem: usize,
@@ -6173,19 +21047,9 @@ unsafe extern "C" {
     pub fn av_free(ptr: *mut ::std::os::raw::c_void);
     pub fn av_freep(ptr: *mut ::std::os::raw::c_void);
     pub fn av_strdup(s: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
-    pub fn av_strndup(
-        s: *const ::std::os::raw::c_char,
-        len: usize,
-    ) -> *mut ::std::os::raw::c_char;
-    pub fn av_memdup(
-        p: *const ::std::os::raw::c_void,
-        size: usize,
-    ) -> *mut ::std::os::raw::c_void;
-    pub fn av_memcpy_backptr(
-        dst: *mut u8,
-        back: ::std::os::raw::c_int,
-        cnt: ::std::os::raw::c_int,
-    );
+    pub fn av_strndup(s: *const ::std::os::raw::c_char, len: usize) -> *mut ::std::os::raw::c_char;
+    pub fn av_memdup(p: *const ::std::os::raw::c_void, size: usize) -> *mut ::std::os::raw::c_void;
+    pub fn av_memcpy_backptr(dst: *mut u8, back: ::std::os::raw::c_int, cnt: ::std::os::raw::c_int);
     pub fn av_dynarray_add(
         tab_ptr: *mut ::std::os::raw::c_void,
         nb_ptr: *mut ::std::os::raw::c_int,
@@ -6218,15 +21082,9 @@ unsafe extern "C" {
     pub fn av_add_q(b: AVRational, c: AVRational) -> AVRational;
     pub fn av_sub_q(b: AVRational, c: AVRational) -> AVRational;
     pub fn av_d2q(d: f64, max: ::std::os::raw::c_int) -> AVRational;
-    pub fn av_nearer_q(
-        q: AVRational,
-        q1: AVRational,
-        q2: AVRational,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_find_nearest_q_idx(
-        q: AVRational,
-        q_list: *const AVRational,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_nearer_q(q: AVRational, q1: AVRational, q2: AVRational) -> ::std::os::raw::c_int;
+    pub fn av_find_nearest_q_idx(q: AVRational, q_list: *const AVRational)
+    -> ::std::os::raw::c_int;
     pub fn av_q2intfloat(q: AVRational) -> u32;
     pub fn av_gcd_q(
         a: AVRational,
@@ -6238,12 +21096,7 @@ unsafe extern "C" {
     pub fn av_rescale(a: i64, b: i64, c: i64) -> i64;
     pub fn av_rescale_rnd(a: i64, b: i64, c: i64, rnd: AVRounding) -> i64;
     pub fn av_rescale_q(a: i64, bq: AVRational, cq: AVRational) -> i64;
-    pub fn av_rescale_q_rnd(
-        a: i64,
-        bq: AVRational,
-        cq: AVRational,
-        rnd: AVRounding,
-    ) -> i64;
+    pub fn av_rescale_q_rnd(a: i64, bq: AVRational, cq: AVRational, rnd: AVRounding) -> i64;
     pub fn av_compare_ts(
         ts_a: i64,
         tb_a: AVRational,
@@ -6259,12 +21112,7 @@ unsafe extern "C" {
         last: *mut i64,
         out_tb: AVRational,
     ) -> i64;
-    pub fn av_add_stable(
-        ts_tb: AVRational,
-        ts: i64,
-        inc_tb: AVRational,
-        inc: i64,
-    ) -> i64;
+    pub fn av_add_stable(ts_tb: AVRational, ts: i64, inc_tb: AVRational, inc: i64) -> i64;
     pub fn av_bessel_i0(x: f64) -> f64;
     pub fn av_log(
         avcl: *mut ::std::os::raw::c_void,
@@ -6280,52 +21128,10 @@ unsafe extern "C" {
         fmt: *const ::std::os::raw::c_char,
         ...
     );
-    pub fn av_vlog(
-        avcl: *mut ::std::os::raw::c_void,
-        level: ::std::os::raw::c_int,
-        fmt: *const ::std::os::raw::c_char,
-        vl: va_list,
-    );
     pub fn av_log_get_level() -> ::std::os::raw::c_int;
     pub fn av_log_set_level(level: ::std::os::raw::c_int);
-    pub fn av_log_set_callback(
-        callback: ::std::option::Option<
-            unsafe extern "C" fn(
-                arg1: *mut ::std::os::raw::c_void,
-                arg2: ::std::os::raw::c_int,
-                arg3: *const ::std::os::raw::c_char,
-                arg4: va_list,
-            ),
-        >,
-    );
-    pub fn av_log_default_callback(
-        avcl: *mut ::std::os::raw::c_void,
-        level: ::std::os::raw::c_int,
-        fmt: *const ::std::os::raw::c_char,
-        vl: va_list,
-    );
-    pub fn av_default_item_name(
-        ctx: *mut ::std::os::raw::c_void,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_default_item_name(ctx: *mut ::std::os::raw::c_void) -> *const ::std::os::raw::c_char;
     pub fn av_default_get_category(ptr: *mut ::std::os::raw::c_void) -> AVClassCategory;
-    pub fn av_log_format_line(
-        ptr: *mut ::std::os::raw::c_void,
-        level: ::std::os::raw::c_int,
-        fmt: *const ::std::os::raw::c_char,
-        vl: va_list,
-        line: *mut ::std::os::raw::c_char,
-        line_size: ::std::os::raw::c_int,
-        print_prefix: *mut ::std::os::raw::c_int,
-    );
-    pub fn av_log_format_line2(
-        ptr: *mut ::std::os::raw::c_void,
-        level: ::std::os::raw::c_int,
-        fmt: *const ::std::os::raw::c_char,
-        vl: va_list,
-        line: *mut ::std::os::raw::c_char,
-        line_size: ::std::os::raw::c_int,
-        print_prefix: *mut ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
     pub fn av_log_set_flags(arg: ::std::os::raw::c_int);
     pub fn av_log_get_flags() -> ::std::os::raw::c_int;
     pub fn av_int_list_length_for_size(
@@ -6400,13 +21206,9 @@ unsafe extern "C" {
         channel_layout: *const AVChannelLayout,
         name: *const ::std::os::raw::c_char,
     ) -> AVChannel;
-    pub fn av_channel_layout_subset(
-        channel_layout: *const AVChannelLayout,
-        mask: u64,
-    ) -> u64;
-    pub fn av_channel_layout_check(
-        channel_layout: *const AVChannelLayout,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_channel_layout_subset(channel_layout: *const AVChannelLayout, mask: u64) -> u64;
+    pub fn av_channel_layout_check(channel_layout: *const AVChannelLayout)
+    -> ::std::os::raw::c_int;
     pub fn av_channel_layout_compare(
         chl: *const AVChannelLayout,
         chl1: *const AVChannelLayout,
@@ -6461,9 +21263,7 @@ unsafe extern "C" {
         key_val_sep: ::std::os::raw::c_char,
         pairs_sep: ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn av_get_sample_fmt_name(
-        sample_fmt: AVSampleFormat,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_get_sample_fmt_name(sample_fmt: AVSampleFormat) -> *const ::std::os::raw::c_char;
     pub fn av_get_sample_fmt(name: *const ::std::os::raw::c_char) -> AVSampleFormat;
     pub fn av_get_alt_sample_fmt(
         sample_fmt: AVSampleFormat,
@@ -6853,19 +21653,14 @@ unsafe extern "C" {
     pub fn av_buffer_get_opaque(buf: *const AVBufferRef) -> *mut ::std::os::raw::c_void;
     pub fn av_buffer_get_ref_count(buf: *const AVBufferRef) -> ::std::os::raw::c_int;
     pub fn av_buffer_make_writable(buf: *mut *mut AVBufferRef) -> ::std::os::raw::c_int;
-    pub fn av_buffer_realloc(
-        buf: *mut *mut AVBufferRef,
-        size: usize,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_buffer_realloc(buf: *mut *mut AVBufferRef, size: usize) -> ::std::os::raw::c_int;
     pub fn av_buffer_replace(
         dst: *mut *mut AVBufferRef,
         src: *const AVBufferRef,
     ) -> ::std::os::raw::c_int;
     pub fn av_buffer_pool_init(
         size: usize,
-        alloc: ::std::option::Option<
-            unsafe extern "C" fn(size: usize) -> *mut AVBufferRef,
-        >,
+        alloc: ::std::option::Option<unsafe extern "C" fn(size: usize) -> *mut AVBufferRef>,
     ) -> *mut AVBufferPool;
     pub fn av_buffer_pool_init2(
         size: usize,
@@ -6876,9 +21671,7 @@ unsafe extern "C" {
                 size: usize,
             ) -> *mut AVBufferRef,
         >,
-        pool_free: ::std::option::Option<
-            unsafe extern "C" fn(opaque: *mut ::std::os::raw::c_void),
-        >,
+        pool_free: ::std::option::Option<unsafe extern "C" fn(opaque: *mut ::std::os::raw::c_void)>,
     ) -> *mut AVBufferPool;
     pub fn av_buffer_pool_uninit(pool: *mut *mut AVBufferPool);
     pub fn av_buffer_pool_get(pool: *mut AVBufferPool) -> *mut AVBufferRef;
@@ -6888,10 +21681,7 @@ unsafe extern "C" {
     pub fn av_frame_alloc() -> *mut AVFrame;
     pub fn av_frame_free(frame: *mut *mut AVFrame);
     pub fn av_frame_ref(dst: *mut AVFrame, src: *const AVFrame) -> ::std::os::raw::c_int;
-    pub fn av_frame_replace(
-        dst: *mut AVFrame,
-        src: *const AVFrame,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_frame_replace(dst: *mut AVFrame, src: *const AVFrame) -> ::std::os::raw::c_int;
     pub fn av_frame_clone(src: *const AVFrame) -> *mut AVFrame;
     pub fn av_frame_unref(frame: *mut AVFrame);
     pub fn av_frame_move_ref(dst: *mut AVFrame, src: *mut AVFrame);
@@ -6901,14 +21691,8 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
     pub fn av_frame_is_writable(frame: *mut AVFrame) -> ::std::os::raw::c_int;
     pub fn av_frame_make_writable(frame: *mut AVFrame) -> ::std::os::raw::c_int;
-    pub fn av_frame_copy(
-        dst: *mut AVFrame,
-        src: *const AVFrame,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_frame_copy_props(
-        dst: *mut AVFrame,
-        src: *const AVFrame,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_frame_copy(dst: *mut AVFrame, src: *const AVFrame) -> ::std::os::raw::c_int;
+    pub fn av_frame_copy_props(dst: *mut AVFrame, src: *const AVFrame) -> ::std::os::raw::c_int;
     pub fn av_frame_get_plane_buffer(
         frame: *const AVFrame,
         plane: ::std::os::raw::c_int,
@@ -6932,12 +21716,8 @@ unsafe extern "C" {
         frame: *mut AVFrame,
         flags: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_frame_side_data_name(
-        type_: AVFrameSideDataType,
-    ) -> *const ::std::os::raw::c_char;
-    pub fn av_frame_side_data_desc(
-        type_: AVFrameSideDataType,
-    ) -> *const AVSideDataDescriptor;
+    pub fn av_frame_side_data_name(type_: AVFrameSideDataType) -> *const ::std::os::raw::c_char;
+    pub fn av_frame_side_data_desc(type_: AVFrameSideDataType) -> *const AVSideDataDescriptor;
     pub fn av_frame_side_data_free(
         sd: *mut *mut *mut AVFrameSideData,
         nb_sd: *mut ::std::os::raw::c_int,
@@ -6977,16 +21757,12 @@ unsafe extern "C" {
         nb_sd: *mut ::std::os::raw::c_int,
         props: ::std::os::raw::c_int,
     );
-    pub fn av_get_bits_per_pixel(
-        pixdesc: *const AVPixFmtDescriptor,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_get_bits_per_pixel(pixdesc: *const AVPixFmtDescriptor) -> ::std::os::raw::c_int;
     pub fn av_get_padded_bits_per_pixel(
         pixdesc: *const AVPixFmtDescriptor,
     ) -> ::std::os::raw::c_int;
     pub fn av_pix_fmt_desc_get(pix_fmt: AVPixelFormat) -> *const AVPixFmtDescriptor;
-    pub fn av_pix_fmt_desc_next(
-        prev: *const AVPixFmtDescriptor,
-    ) -> *const AVPixFmtDescriptor;
+    pub fn av_pix_fmt_desc_next(prev: *const AVPixFmtDescriptor) -> *const AVPixFmtDescriptor;
     pub fn av_pix_fmt_desc_get_id(desc: *const AVPixFmtDescriptor) -> AVPixelFormat;
     pub fn av_pix_fmt_get_chroma_sub_sample(
         pix_fmt: AVPixelFormat,
@@ -6995,12 +21771,8 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
     pub fn av_pix_fmt_count_planes(pix_fmt: AVPixelFormat) -> ::std::os::raw::c_int;
     pub fn av_color_range_name(range: AVColorRange) -> *const ::std::os::raw::c_char;
-    pub fn av_color_range_from_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_color_primaries_name(
-        primaries: AVColorPrimaries,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_color_range_from_name(name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn av_color_primaries_name(primaries: AVColorPrimaries) -> *const ::std::os::raw::c_char;
     pub fn av_color_primaries_from_name(
         name: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
@@ -7011,12 +21783,8 @@ unsafe extern "C" {
         name: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
     pub fn av_color_space_name(space: AVColorSpace) -> *const ::std::os::raw::c_char;
-    pub fn av_color_space_from_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_chroma_location_name(
-        location: AVChromaLocation,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_color_space_from_name(name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn av_chroma_location_name(location: AVChromaLocation) -> *const ::std::os::raw::c_char;
     pub fn av_chroma_location_from_name(
         name: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
@@ -7261,10 +22029,7 @@ unsafe extern "C" {
         fmt: *const ::std::os::raw::c_char,
         ...
     ) -> usize;
-    pub fn av_asprintf(
-        fmt: *const ::std::os::raw::c_char,
-        ...
-    ) -> *mut ::std::os::raw::c_char;
+    pub fn av_asprintf(fmt: *const ::std::os::raw::c_char, ...) -> *mut ::std::os::raw::c_char;
     pub fn av_get_token(
         buf: *mut *const ::std::os::raw::c_char,
         term: *const ::std::os::raw::c_char,
@@ -7288,12 +22053,8 @@ unsafe extern "C" {
         from: *const ::std::os::raw::c_char,
         to: *const ::std::os::raw::c_char,
     ) -> *mut ::std::os::raw::c_char;
-    pub fn av_basename(
-        path: *const ::std::os::raw::c_char,
-    ) -> *const ::std::os::raw::c_char;
-    pub fn av_dirname(
-        path: *mut ::std::os::raw::c_char,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_basename(path: *const ::std::os::raw::c_char) -> *const ::std::os::raw::c_char;
+    pub fn av_dirname(path: *mut ::std::os::raw::c_char) -> *const ::std::os::raw::c_char;
     pub fn av_match_name(
         name: *const ::std::os::raw::c_char,
         names: *const ::std::os::raw::c_char,
@@ -7382,21 +22143,9 @@ unsafe extern "C" {
     pub fn av_hash_init(ctx: *mut AVHashContext);
     pub fn av_hash_update(ctx: *mut AVHashContext, src: *const u8, len: usize);
     pub fn av_hash_final(ctx: *mut AVHashContext, dst: *mut u8);
-    pub fn av_hash_final_bin(
-        ctx: *mut AVHashContext,
-        dst: *mut u8,
-        size: ::std::os::raw::c_int,
-    );
-    pub fn av_hash_final_hex(
-        ctx: *mut AVHashContext,
-        dst: *mut u8,
-        size: ::std::os::raw::c_int,
-    );
-    pub fn av_hash_final_b64(
-        ctx: *mut AVHashContext,
-        dst: *mut u8,
-        size: ::std::os::raw::c_int,
-    );
+    pub fn av_hash_final_bin(ctx: *mut AVHashContext, dst: *mut u8, size: ::std::os::raw::c_int);
+    pub fn av_hash_final_hex(ctx: *mut AVHashContext, dst: *mut u8, size: ::std::os::raw::c_int);
+    pub fn av_hash_final_b64(ctx: *mut AVHashContext, dst: *mut u8, size: ::std::os::raw::c_int);
     pub fn av_hash_freep(ctx: *mut *mut AVHashContext);
     pub fn av_fifo_alloc2(
         elems: usize,
@@ -7494,18 +22243,11 @@ unsafe extern "C" {
     pub fn av_stereo3d_alloc() -> *mut AVStereo3D;
     pub fn av_stereo3d_alloc_size(size: *mut usize) -> *mut AVStereo3D;
     pub fn av_stereo3d_create_side_data(frame: *mut AVFrame) -> *mut AVStereo3D;
-    pub fn av_stereo3d_type_name(
-        type_: ::std::os::raw::c_uint,
-    ) -> *const ::std::os::raw::c_char;
-    pub fn av_stereo3d_from_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_stereo3d_view_name(
-        view: ::std::os::raw::c_uint,
-    ) -> *const ::std::os::raw::c_char;
-    pub fn av_stereo3d_view_from_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_stereo3d_type_name(type_: ::std::os::raw::c_uint) -> *const ::std::os::raw::c_char;
+    pub fn av_stereo3d_from_name(name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn av_stereo3d_view_name(view: ::std::os::raw::c_uint) -> *const ::std::os::raw::c_char;
+    pub fn av_stereo3d_view_from_name(name: *const ::std::os::raw::c_char)
+    -> ::std::os::raw::c_int;
     pub fn av_stereo3d_primary_eye_name(
         eye: ::std::os::raw::c_uint,
     ) -> *const ::std::os::raw::c_char;
@@ -7525,9 +22267,7 @@ unsafe extern "C" {
     pub fn av_spherical_projection_name(
         projection: AVSphericalProjection,
     ) -> *const ::std::os::raw::c_char;
-    pub fn av_spherical_from_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_spherical_from_name(name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
     pub fn av_mastering_display_metadata_alloc() -> *mut AVMasteringDisplayMetadata;
     pub fn av_mastering_display_metadata_alloc_size(
         size: *mut usize,
@@ -7535,23 +22275,15 @@ unsafe extern "C" {
     pub fn av_mastering_display_metadata_create_side_data(
         frame: *mut AVFrame,
     ) -> *mut AVMasteringDisplayMetadata;
-    pub fn av_content_light_metadata_alloc(
-        size: *mut usize,
-    ) -> *mut AVContentLightMetadata;
+    pub fn av_content_light_metadata_alloc(size: *mut usize) -> *mut AVContentLightMetadata;
     pub fn av_content_light_metadata_create_side_data(
         frame: *mut AVFrame,
     ) -> *mut AVContentLightMetadata;
     pub fn av_film_grain_params_alloc(size: *mut usize) -> *mut AVFilmGrainParams;
-    pub fn av_film_grain_params_create_side_data(
-        frame: *mut AVFrame,
-    ) -> *mut AVFilmGrainParams;
-    pub fn av_film_grain_params_select(
-        frame: *const AVFrame,
-    ) -> *const AVFilmGrainParams;
+    pub fn av_film_grain_params_create_side_data(frame: *mut AVFrame) -> *mut AVFilmGrainParams;
+    pub fn av_film_grain_params_select(frame: *const AVFrame) -> *const AVFilmGrainParams;
     pub fn av_dynamic_hdr_plus_alloc(size: *mut usize) -> *mut AVDynamicHDRPlus;
-    pub fn av_dynamic_hdr_plus_create_side_data(
-        frame: *mut AVFrame,
-    ) -> *mut AVDynamicHDRPlus;
+    pub fn av_dynamic_hdr_plus_create_side_data(frame: *mut AVFrame) -> *mut AVDynamicHDRPlus;
     pub fn av_dynamic_hdr_plus_from_t35(
         s: *mut AVDynamicHDRPlus,
         data: *const u8,
@@ -7562,12 +22294,8 @@ unsafe extern "C" {
         data: *mut *mut u8,
         size: *mut usize,
     ) -> ::std::os::raw::c_int;
-    pub fn av_hwdevice_find_type_by_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> AVHWDeviceType;
-    pub fn av_hwdevice_get_type_name(
-        type_: AVHWDeviceType,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_hwdevice_find_type_by_name(name: *const ::std::os::raw::c_char) -> AVHWDeviceType;
+    pub fn av_hwdevice_get_type_name(type_: AVHWDeviceType) -> *const ::std::os::raw::c_char;
     pub fn av_hwdevice_iterate_types(prev: AVHWDeviceType) -> AVHWDeviceType;
     pub fn av_hwdevice_ctx_alloc(type_: AVHWDeviceType) -> *mut AVBufferRef;
     pub fn av_hwdevice_ctx_init(ref_: *mut AVBufferRef) -> ::std::os::raw::c_int;
@@ -7609,9 +22337,7 @@ unsafe extern "C" {
         formats: *mut *mut AVPixelFormat,
         flags: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_hwdevice_hwconfig_alloc(
-        device_ctx: *mut AVBufferRef,
-    ) -> *mut ::std::os::raw::c_void;
+    pub fn av_hwdevice_hwconfig_alloc(device_ctx: *mut AVBufferRef) -> *mut ::std::os::raw::c_void;
     pub fn av_hwdevice_get_hwframe_constraints(
         ref_: *mut AVBufferRef,
         hwconfig: *const ::std::os::raw::c_void,
@@ -7640,13 +22366,9 @@ unsafe extern "C" {
     pub fn av_get_pcm_codec(fmt: AVSampleFormat, be: ::std::os::raw::c_int) -> AVCodecID;
     pub fn av_codec_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVCodec;
     pub fn avcodec_find_decoder(id: AVCodecID) -> *const AVCodec;
-    pub fn avcodec_find_decoder_by_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> *const AVCodec;
+    pub fn avcodec_find_decoder_by_name(name: *const ::std::os::raw::c_char) -> *const AVCodec;
     pub fn avcodec_find_encoder(id: AVCodecID) -> *const AVCodec;
-    pub fn avcodec_find_encoder_by_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> *const AVCodec;
+    pub fn avcodec_find_encoder_by_name(name: *const ::std::os::raw::c_char) -> *const AVCodec;
     pub fn av_codec_is_encoder(codec: *const AVCodec) -> ::std::os::raw::c_int;
     pub fn av_codec_is_decoder(codec: *const AVCodec) -> ::std::os::raw::c_int;
     pub fn av_get_profile_name(
@@ -7703,17 +22425,12 @@ unsafe extern "C" {
         src: *const AVPacketSideData,
         flags: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
-    pub fn av_packet_side_data_name(
-        type_: AVPacketSideDataType,
-    ) -> *const ::std::os::raw::c_char;
+    pub fn av_packet_side_data_name(type_: AVPacketSideDataType) -> *const ::std::os::raw::c_char;
     pub fn av_packet_alloc() -> *mut AVPacket;
     pub fn av_packet_clone(src: *const AVPacket) -> *mut AVPacket;
     pub fn av_packet_free(pkt: *mut *mut AVPacket);
     pub fn av_init_packet(pkt: *mut AVPacket);
-    pub fn av_new_packet(
-        pkt: *mut AVPacket,
-        size: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_new_packet(pkt: *mut AVPacket, size: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
     pub fn av_shrink_packet(pkt: *mut AVPacket, size: ::std::os::raw::c_int);
     pub fn av_grow_packet(
         pkt: *mut AVPacket,
@@ -7745,40 +22462,23 @@ unsafe extern "C" {
         type_: AVPacketSideDataType,
         size: *mut usize,
     ) -> *mut u8;
-    pub fn av_packet_pack_dictionary(
-        dict: *mut AVDictionary,
-        size: *mut usize,
-    ) -> *mut u8;
+    pub fn av_packet_pack_dictionary(dict: *mut AVDictionary, size: *mut usize) -> *mut u8;
     pub fn av_packet_unpack_dictionary(
         data: *const u8,
         size: usize,
         dict: *mut *mut AVDictionary,
     ) -> ::std::os::raw::c_int;
     pub fn av_packet_free_side_data(pkt: *mut AVPacket);
-    pub fn av_packet_ref(
-        dst: *mut AVPacket,
-        src: *const AVPacket,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_packet_ref(dst: *mut AVPacket, src: *const AVPacket) -> ::std::os::raw::c_int;
     pub fn av_packet_unref(pkt: *mut AVPacket);
     pub fn av_packet_move_ref(dst: *mut AVPacket, src: *mut AVPacket);
-    pub fn av_packet_copy_props(
-        dst: *mut AVPacket,
-        src: *const AVPacket,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_packet_copy_props(dst: *mut AVPacket, src: *const AVPacket) -> ::std::os::raw::c_int;
     pub fn av_packet_make_refcounted(pkt: *mut AVPacket) -> ::std::os::raw::c_int;
     pub fn av_packet_make_writable(pkt: *mut AVPacket) -> ::std::os::raw::c_int;
-    pub fn av_packet_rescale_ts(
-        pkt: *mut AVPacket,
-        tb_src: AVRational,
-        tb_dst: AVRational,
-    );
-    pub fn av_container_fifo_alloc_avpacket(
-        flags: ::std::os::raw::c_uint,
-    ) -> *mut AVContainerFifo;
+    pub fn av_packet_rescale_ts(pkt: *mut AVPacket, tb_src: AVRational, tb_dst: AVRational);
+    pub fn av_container_fifo_alloc_avpacket(flags: ::std::os::raw::c_uint) -> *mut AVContainerFifo;
     pub fn avcodec_descriptor_get(id: AVCodecID) -> *const AVCodecDescriptor;
-    pub fn avcodec_descriptor_next(
-        prev: *const AVCodecDescriptor,
-    ) -> *const AVCodecDescriptor;
+    pub fn avcodec_descriptor_next(prev: *const AVCodecDescriptor) -> *const AVCodecDescriptor;
     pub fn avcodec_descriptor_get_by_name(
         name: *const ::std::os::raw::c_char,
     ) -> *const AVCodecDescriptor;
@@ -7874,9 +22574,7 @@ unsafe extern "C" {
         out_configs: *mut *const ::std::os::raw::c_void,
         out_num_configs: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_parser_iterate(
-        opaque: *mut *mut ::std::os::raw::c_void,
-    ) -> *const AVCodecParser;
+    pub fn av_parser_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVCodecParser;
     pub fn av_parser_init(codec_id: ::std::os::raw::c_int) -> *mut AVCodecParserContext;
     pub fn av_parser_parse2(
         s: *mut AVCodecParserContext,
@@ -7896,9 +22594,7 @@ unsafe extern "C" {
         buf_size: ::std::os::raw::c_int,
         sub: *const AVSubtitle,
     ) -> ::std::os::raw::c_int;
-    pub fn avcodec_pix_fmt_to_codec_tag(
-        pix_fmt: AVPixelFormat,
-    ) -> ::std::os::raw::c_uint;
+    pub fn avcodec_pix_fmt_to_codec_tag(pix_fmt: AVPixelFormat) -> ::std::os::raw::c_uint;
     pub fn avcodec_find_best_pix_fmt_of_list(
         pix_fmt_list: *const AVPixelFormat,
         src_pix_fmt: AVPixelFormat,
@@ -7969,21 +22665,14 @@ unsafe extern "C" {
     pub fn avcodec_dct_alloc() -> *mut AVDCT;
     pub fn avcodec_dct_init(arg1: *mut AVDCT) -> ::std::os::raw::c_int;
     pub fn avcodec_dct_get_class() -> *const AVClass;
-    pub fn av_bsf_get_by_name(
-        name: *const ::std::os::raw::c_char,
-    ) -> *const AVBitStreamFilter;
-    pub fn av_bsf_iterate(
-        opaque: *mut *mut ::std::os::raw::c_void,
-    ) -> *const AVBitStreamFilter;
+    pub fn av_bsf_get_by_name(name: *const ::std::os::raw::c_char) -> *const AVBitStreamFilter;
+    pub fn av_bsf_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVBitStreamFilter;
     pub fn av_bsf_alloc(
         filter: *const AVBitStreamFilter,
         ctx: *mut *mut AVBSFContext,
     ) -> ::std::os::raw::c_int;
     pub fn av_bsf_init(ctx: *mut AVBSFContext) -> ::std::os::raw::c_int;
-    pub fn av_bsf_send_packet(
-        ctx: *mut AVBSFContext,
-        pkt: *mut AVPacket,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_bsf_send_packet(ctx: *mut AVBSFContext, pkt: *mut AVPacket) -> ::std::os::raw::c_int;
     pub fn av_bsf_receive_packet(
         ctx: *mut AVBSFContext,
         pkt: *mut AVPacket,
@@ -7993,10 +22682,8 @@ unsafe extern "C" {
     pub fn av_bsf_get_class() -> *const AVClass;
     pub fn av_bsf_list_alloc() -> *mut AVBSFList;
     pub fn av_bsf_list_free(lst: *mut *mut AVBSFList);
-    pub fn av_bsf_list_append(
-        lst: *mut AVBSFList,
-        bsf: *mut AVBSFContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_bsf_list_append(lst: *mut AVBSFList, bsf: *mut AVBSFContext)
+    -> ::std::os::raw::c_int;
     pub fn av_bsf_list_append2(
         lst: *mut AVBSFList,
         bsf_name: *const ::std::os::raw::c_char,
@@ -8134,19 +22821,10 @@ unsafe extern "C" {
         str_: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
     pub fn avio_write_marker(s: *mut AVIOContext, time: i64, type_: AVIODataMarkerType);
-    pub fn avio_seek(
-        s: *mut AVIOContext,
-        offset: i64,
-        whence: ::std::os::raw::c_int,
-    ) -> i64;
+    pub fn avio_seek(s: *mut AVIOContext, offset: i64, whence: ::std::os::raw::c_int) -> i64;
     pub fn avio_skip(s: *mut AVIOContext, offset: i64) -> i64;
     pub fn avio_size(s: *mut AVIOContext) -> i64;
     pub fn avio_feof(s: *mut AVIOContext) -> ::std::os::raw::c_int;
-    pub fn avio_vprintf(
-        s: *mut AVIOContext,
-        fmt: *const ::std::os::raw::c_char,
-        ap: va_list,
-    ) -> ::std::os::raw::c_int;
     pub fn avio_printf(
         s: *mut AVIOContext,
         fmt: *const ::std::os::raw::c_char,
@@ -8209,25 +22887,14 @@ unsafe extern "C" {
     pub fn avio_close(s: *mut AVIOContext) -> ::std::os::raw::c_int;
     pub fn avio_closep(s: *mut *mut AVIOContext) -> ::std::os::raw::c_int;
     pub fn avio_open_dyn_buf(s: *mut *mut AVIOContext) -> ::std::os::raw::c_int;
-    pub fn avio_get_dyn_buf(
-        s: *mut AVIOContext,
-        pbuffer: *mut *mut u8,
-    ) -> ::std::os::raw::c_int;
-    pub fn avio_close_dyn_buf(
-        s: *mut AVIOContext,
-        pbuffer: *mut *mut u8,
-    ) -> ::std::os::raw::c_int;
+    pub fn avio_get_dyn_buf(s: *mut AVIOContext, pbuffer: *mut *mut u8) -> ::std::os::raw::c_int;
+    pub fn avio_close_dyn_buf(s: *mut AVIOContext, pbuffer: *mut *mut u8) -> ::std::os::raw::c_int;
     pub fn avio_enum_protocols(
         opaque: *mut *mut ::std::os::raw::c_void,
         output: ::std::os::raw::c_int,
     ) -> *const ::std::os::raw::c_char;
-    pub fn avio_protocol_get_class(
-        name: *const ::std::os::raw::c_char,
-    ) -> *const AVClass;
-    pub fn avio_pause(
-        h: *mut AVIOContext,
-        pause: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
+    pub fn avio_protocol_get_class(name: *const ::std::os::raw::c_char) -> *const AVClass;
+    pub fn avio_pause(h: *mut AVIOContext, pause: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
     pub fn avio_seek_time(
         h: *mut AVIOContext,
         stream_index: ::std::os::raw::c_int,
@@ -8239,10 +22906,7 @@ unsafe extern "C" {
         pb: *mut AVBPrint,
         max_size: usize,
     ) -> ::std::os::raw::c_int;
-    pub fn avio_accept(
-        s: *mut AVIOContext,
-        c: *mut *mut AVIOContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn avio_accept(s: *mut AVIOContext, c: *mut *mut AVIOContext) -> ::std::os::raw::c_int;
     pub fn avio_handshake(c: *mut AVIOContext) -> ::std::os::raw::c_int;
     pub fn av_get_packet(
         s: *mut AVIOContext,
@@ -8254,9 +22918,8 @@ unsafe extern "C" {
         pkt: *mut AVPacket,
         size: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_disposition_from_string(
-        disp: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_disposition_from_string(disp: *const ::std::os::raw::c_char)
+    -> ::std::os::raw::c_int;
     pub fn av_disposition_to_string(
         disposition: ::std::os::raw::c_int,
     ) -> *const ::std::os::raw::c_char;
@@ -8267,12 +22930,8 @@ unsafe extern "C" {
     pub fn avformat_license() -> *const ::std::os::raw::c_char;
     pub fn avformat_network_init() -> ::std::os::raw::c_int;
     pub fn avformat_network_deinit() -> ::std::os::raw::c_int;
-    pub fn av_muxer_iterate(
-        opaque: *mut *mut ::std::os::raw::c_void,
-    ) -> *const AVOutputFormat;
-    pub fn av_demuxer_iterate(
-        opaque: *mut *mut ::std::os::raw::c_void,
-    ) -> *const AVInputFormat;
+    pub fn av_muxer_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVOutputFormat;
+    pub fn av_demuxer_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVInputFormat;
     pub fn avformat_alloc_context() -> *mut AVFormatContext;
     pub fn avformat_free_context(s: *mut AVFormatContext);
     pub fn avformat_get_class() -> *const AVClass;
@@ -8286,27 +22945,19 @@ unsafe extern "C" {
         type_: AVStreamGroupParamsType,
         options: *mut *mut AVDictionary,
     ) -> *mut AVStreamGroup;
-    pub fn avformat_new_stream(
-        s: *mut AVFormatContext,
-        c: *const AVCodec,
-    ) -> *mut AVStream;
+    pub fn avformat_new_stream(s: *mut AVFormatContext, c: *const AVCodec) -> *mut AVStream;
     pub fn avformat_stream_group_add_stream(
         stg: *mut AVStreamGroup,
         st: *mut AVStream,
     ) -> ::std::os::raw::c_int;
-    pub fn av_new_program(
-        s: *mut AVFormatContext,
-        id: ::std::os::raw::c_int,
-    ) -> *mut AVProgram;
+    pub fn av_new_program(s: *mut AVFormatContext, id: ::std::os::raw::c_int) -> *mut AVProgram;
     pub fn avformat_alloc_output_context2(
         ctx: *mut *mut AVFormatContext,
         oformat: *const AVOutputFormat,
         format_name: *const ::std::os::raw::c_char,
         filename: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn av_find_input_format(
-        short_name: *const ::std::os::raw::c_char,
-    ) -> *const AVInputFormat;
+    pub fn av_find_input_format(short_name: *const ::std::os::raw::c_char) -> *const AVInputFormat;
     pub fn av_probe_input_format(
         pd: *const AVProbeData,
         is_opened: ::std::os::raw::c_int,
@@ -8365,10 +23016,7 @@ unsafe extern "C" {
         decoder_ret: *mut *const AVCodec,
         flags: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_read_frame(
-        s: *mut AVFormatContext,
-        pkt: *mut AVPacket,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_read_frame(s: *mut AVFormatContext, pkt: *mut AVPacket) -> ::std::os::raw::c_int;
     pub fn av_seek_frame(
         s: *mut AVFormatContext,
         stream_index: ::std::os::raw::c_int,
@@ -8405,10 +23053,7 @@ unsafe extern "C" {
         s: *mut AVFormatContext,
         options: *mut *mut AVDictionary,
     ) -> ::std::os::raw::c_int;
-    pub fn av_write_frame(
-        s: *mut AVFormatContext,
-        pkt: *mut AVPacket,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_write_frame(s: *mut AVFormatContext, pkt: *mut AVPacket) -> ::std::os::raw::c_int;
     pub fn av_interleaved_write_frame(
         s: *mut AVFormatContext,
         pkt: *mut AVPacket,
@@ -8479,17 +23124,13 @@ unsafe extern "C" {
         id: AVCodecID,
         tag: *mut ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
-    pub fn av_find_default_stream_index(
-        s: *mut AVFormatContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_find_default_stream_index(s: *mut AVFormatContext) -> ::std::os::raw::c_int;
     pub fn av_index_search_timestamp(
         st: *mut AVStream,
         timestamp: i64,
         flags: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn avformat_index_get_entries_count(
-        st: *const AVStream,
-    ) -> ::std::os::raw::c_int;
+    pub fn avformat_index_get_entries_count(st: *const AVStream) -> ::std::os::raw::c_int;
     pub fn avformat_index_get_entry(
         st: *mut AVStream,
         idx: ::std::os::raw::c_int,
@@ -8580,9 +23221,7 @@ unsafe extern "C" {
         st: *mut AVStream,
         spec: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn avformat_queue_attached_pictures(
-        s: *mut AVFormatContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn avformat_queue_attached_pictures(s: *mut AVFormatContext) -> ::std::os::raw::c_int;
     pub fn avformat_transfer_internal_stream_timing_info(
         ofmt: *const AVOutputFormat,
         ost: *mut AVStream,
@@ -8620,9 +23259,7 @@ unsafe extern "C" {
         res_len: ::std::os::raw::c_int,
         flags: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn av_filter_iterate(
-        opaque: *mut *mut ::std::os::raw::c_void,
-    ) -> *const AVFilter;
+    pub fn av_filter_iterate(opaque: *mut *mut ::std::os::raw::c_void) -> *const AVFilter;
     pub fn avfilter_get_by_name(name: *const ::std::os::raw::c_char) -> *const AVFilter;
     pub fn avfilter_init_str(
         ctx: *mut AVFilterContext,
@@ -8741,9 +23378,7 @@ unsafe extern "C" {
         graph: *mut AVFilterGraph,
         options: *const ::std::os::raw::c_char,
     ) -> *mut ::std::os::raw::c_char;
-    pub fn avfilter_graph_request_oldest(
-        graph: *mut AVFilterGraph,
-    ) -> ::std::os::raw::c_int;
+    pub fn avfilter_graph_request_oldest(graph: *mut AVFilterGraph) -> ::std::os::raw::c_int;
     pub fn av_buffersrc_get_nb_failed_requests(
         buffer_src: *mut AVFilterContext,
     ) -> ::std::os::raw::c_uint;
@@ -8782,31 +23417,21 @@ unsafe extern "C" {
     );
     pub fn av_buffersink_get_type(ctx: *const AVFilterContext) -> AVMediaType;
     pub fn av_buffersink_get_time_base(ctx: *const AVFilterContext) -> AVRational;
-    pub fn av_buffersink_get_format(
-        ctx: *const AVFilterContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_buffersink_get_format(ctx: *const AVFilterContext) -> ::std::os::raw::c_int;
     pub fn av_buffersink_get_frame_rate(ctx: *const AVFilterContext) -> AVRational;
     pub fn av_buffersink_get_w(ctx: *const AVFilterContext) -> ::std::os::raw::c_int;
     pub fn av_buffersink_get_h(ctx: *const AVFilterContext) -> ::std::os::raw::c_int;
-    pub fn av_buffersink_get_sample_aspect_ratio(
-        ctx: *const AVFilterContext,
-    ) -> AVRational;
+    pub fn av_buffersink_get_sample_aspect_ratio(ctx: *const AVFilterContext) -> AVRational;
     pub fn av_buffersink_get_colorspace(ctx: *const AVFilterContext) -> AVColorSpace;
     pub fn av_buffersink_get_color_range(ctx: *const AVFilterContext) -> AVColorRange;
     pub fn av_buffersink_get_alpha_mode(ctx: *const AVFilterContext) -> AVAlphaMode;
-    pub fn av_buffersink_get_channels(
-        ctx: *const AVFilterContext,
-    ) -> ::std::os::raw::c_int;
+    pub fn av_buffersink_get_channels(ctx: *const AVFilterContext) -> ::std::os::raw::c_int;
     pub fn av_buffersink_get_ch_layout(
         ctx: *const AVFilterContext,
         ch_layout: *mut AVChannelLayout,
     ) -> ::std::os::raw::c_int;
-    pub fn av_buffersink_get_sample_rate(
-        ctx: *const AVFilterContext,
-    ) -> ::std::os::raw::c_int;
-    pub fn av_buffersink_get_hw_frames_ctx(
-        ctx: *const AVFilterContext,
-    ) -> *mut AVBufferRef;
+    pub fn av_buffersink_get_sample_rate(ctx: *const AVFilterContext) -> ::std::os::raw::c_int;
+    pub fn av_buffersink_get_hw_frames_ctx(ctx: *const AVFilterContext) -> *mut AVBufferRef;
     pub fn av_buffersink_get_side_data(
         ctx: *const AVFilterContext,
         nb_side_data: *mut ::std::os::raw::c_int,
@@ -8826,12 +23451,8 @@ unsafe extern "C" {
     pub fn avdevice_register_all();
     pub fn av_input_audio_device_next(d: *const AVInputFormat) -> *const AVInputFormat;
     pub fn av_input_video_device_next(d: *const AVInputFormat) -> *const AVInputFormat;
-    pub fn av_output_audio_device_next(
-        d: *const AVOutputFormat,
-    ) -> *const AVOutputFormat;
-    pub fn av_output_video_device_next(
-        d: *const AVOutputFormat,
-    ) -> *const AVOutputFormat;
+    pub fn av_output_audio_device_next(d: *const AVOutputFormat) -> *const AVOutputFormat;
+    pub fn av_output_video_device_next(d: *const AVOutputFormat) -> *const AVOutputFormat;
     pub fn avdevice_app_to_dev_control_message(
         s: *mut AVFormatContext,
         type_: AVAppToDevMessageType,
@@ -8893,23 +23514,16 @@ unsafe extern "C" {
         dst: *const AVFrame,
         src: *const AVFrame,
     ) -> ::std::os::raw::c_int;
-    pub fn sws_is_noop(
-        dst: *const AVFrame,
-        src: *const AVFrame,
-    ) -> ::std::os::raw::c_int;
+    pub fn sws_is_noop(dst: *const AVFrame, src: *const AVFrame) -> ::std::os::raw::c_int;
     pub fn sws_scale_frame(
         c: *mut SwsContext,
         dst: *mut AVFrame,
         src: *const AVFrame,
     ) -> ::std::os::raw::c_int;
-    pub fn sws_getCoefficients(
-        colorspace: ::std::os::raw::c_int,
-    ) -> *const ::std::os::raw::c_int;
+    pub fn sws_getCoefficients(colorspace: ::std::os::raw::c_int) -> *const ::std::os::raw::c_int;
     pub fn sws_isSupportedInput(pix_fmt: AVPixelFormat) -> ::std::os::raw::c_int;
     pub fn sws_isSupportedOutput(pix_fmt: AVPixelFormat) -> ::std::os::raw::c_int;
-    pub fn sws_isSupportedEndiannessConversion(
-        pix_fmt: AVPixelFormat,
-    ) -> ::std::os::raw::c_int;
+    pub fn sws_isSupportedEndiannessConversion(pix_fmt: AVPixelFormat) -> ::std::os::raw::c_int;
     pub fn sws_init_context(
         sws_context: *mut SwsContext,
         srcFilter: *mut SwsFilter,
@@ -9115,4 +23729,145 @@ unsafe extern "C" {
     pub fn av_vk_get_optional_device_extensions(
         count: *mut ::std::os::raw::c_int,
     ) -> *mut *const ::std::os::raw::c_char;
+    pub fn av_vdpau_bind_context(
+        avctx: *mut AVCodecContext,
+        device: VdpDevice,
+        get_proc_address: VdpGetProcAddress,
+        flags: ::std::os::raw::c_uint,
+    ) -> ::std::os::raw::c_int;
+    pub fn av_vdpau_get_surface_parameters(
+        avctx: *mut AVCodecContext,
+        type_: *mut VdpChromaType,
+        width: *mut u32,
+        height: *mut u32,
+    ) -> ::std::os::raw::c_int;
+    pub fn av_av_to_amf_format(fmt: AVPixelFormat) -> AMF_SURFACE_FORMAT;
+    pub fn av_amf_to_av_format(fmt: AMF_SURFACE_FORMAT) -> AVPixelFormat;
+    pub fn av_d3d11va_alloc_context() -> *mut AVD3D11VAContext;
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_vlog(
+        avcl: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: va_list,
+    );
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_vlog(
+        avcl: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: *mut __va_list_tag,
+    );
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_log_set_callback(
+        callback: ::std::option::Option<
+            unsafe extern "C" fn(
+                arg1: *mut ::std::os::raw::c_void,
+                arg2: ::std::os::raw::c_int,
+                arg3: *const ::std::os::raw::c_char,
+                arg4: va_list,
+            ),
+        >,
+    );
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_log_set_callback(
+        callback: ::std::option::Option<
+            unsafe extern "C" fn(
+                arg1: *mut ::std::os::raw::c_void,
+                arg2: ::std::os::raw::c_int,
+                arg3: *const ::std::os::raw::c_char,
+                arg4: *mut __va_list_tag,
+            ),
+        >,
+    );
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_log_default_callback(
+        avcl: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: va_list,
+    );
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_log_default_callback(
+        avcl: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: *mut __va_list_tag,
+    );
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_log_format_line(
+        ptr: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: va_list,
+        line: *mut ::std::os::raw::c_char,
+        line_size: ::std::os::raw::c_int,
+        print_prefix: *mut ::std::os::raw::c_int,
+    );
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_log_format_line(
+        ptr: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: *mut __va_list_tag,
+        line: *mut ::std::os::raw::c_char,
+        line_size: ::std::os::raw::c_int,
+        print_prefix: *mut ::std::os::raw::c_int,
+    );
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_log_format_line2(
+        ptr: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: va_list,
+        line: *mut ::std::os::raw::c_char,
+        line_size: ::std::os::raw::c_int,
+        print_prefix: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_log_format_line2(
+        ptr: *mut ::std::os::raw::c_void,
+        level: ::std::os::raw::c_int,
+        fmt: *const ::std::os::raw::c_char,
+        vl: *mut __va_list_tag,
+        line: *mut ::std::os::raw::c_char,
+        line_size: ::std::os::raw::c_int,
+        print_prefix: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn avio_vprintf(
+        s: *mut AVIOContext,
+        fmt: *const ::std::os::raw::c_char,
+        ap: va_list,
+    ) -> ::std::os::raw::c_int;
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn avio_vprintf(
+        s: *mut AVIOContext,
+        fmt: *const ::std::os::raw::c_char,
+        ap: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
 }
