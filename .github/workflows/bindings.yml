@@ -1,0 +1,117 @@
+name: Generate bindings
+
+# Regenerates the committed `src/sys/bindings.rs` by running `xtask generate` on every
+# target OS (each with its hardware SDK headers installed so bindgen can parse the
+# platform-specific FFmpeg headers), then `xtask merge`s the three outputs into one
+# comprehensive file and commits it directly to `main`.
+#
+# Run it manually from the Actions tab ("Run workflow"), via
+# `gh workflow run bindings.yml`, or automatically when the header set changes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "binaries-ffmpeg release to generate against"
+        required: false
+        default: "26.6.0"
+  push:
+    branches: [main]
+    paths:
+      - "wrapper.h"
+      - "build.rs"
+      - "xtask/**"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    name: generate (${{ matrix.os_label }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: macos-latest
+            os_label: macos
+          - runner: ubuntu-latest
+            os_label: linux
+          - runner: windows-latest
+            os_label: windows
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install hardware SDK headers (Linux)
+        if: matrix.os_label == 'linux'
+        run: |
+          sudo apt-get update
+          # Headers that the libavcodec/libavutil hardware wrappers #include. Anything not
+          # installed here is simply skipped by wrapper.h's __has_include guards.
+          sudo apt-get install -y \
+            libva-dev libvdpau-dev ocl-icd-opencl-dev opencl-headers \
+            libvpl-dev nv-codec-headers || true
+          sudo apt-get install -y clang libclang-dev
+
+      - name: Install LLVM/Clang (macOS)
+        if: matrix.os_label == 'macos'
+        run: echo "VideoToolbox ships with the macOS SDK; libclang comes with the runner."
+
+      - name: Install LLVM/Clang (Windows)
+        if: matrix.os_label == 'windows'
+        # The Windows SDK (d3d11.h / d3d9.h / dxva2api.h) is present on windows-latest.
+        # bindgen needs libclang; install LLVM.
+        run: choco install llvm --no-progress -y
+        shell: pwsh
+
+      - name: Generate bindings for ${{ matrix.os_label }}
+        run: cargo run -p xtask -- generate -o bindings-${{ matrix.os_label }}.rs --version ${{ github.event.inputs.version || '26.6.0' }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.os_label }}
+          path: bindings-${{ matrix.os_label }}.rs
+
+  merge:
+    name: merge and commit
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Download all per-OS bindings
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Merge into src/sys/bindings.rs
+        run: |
+          cargo run -p xtask -- merge \
+            macos=artifacts/bindings-macos/bindings-macos.rs \
+            linux=artifacts/bindings-linux/bindings-linux.rs \
+            windows=artifacts/bindings-windows/bindings-windows.rs \
+            -o src/sys/bindings.rs
+          rustfmt src/sys/bindings.rs
+
+      - name: Commit to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/sys/bindings.rs
+          if git diff --cached --quiet; then
+            echo "Bindings unchanged; nothing to commit."
+          else
+            git commit -m "build: Generate bindings"
+            git push origin main
+          fi

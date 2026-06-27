@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Dev-only binding generator for media-rs (not published)."
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[dependencies]
+bindgen = "0.72"
+ureq = "3"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+syn = { version = "2", features = ["full", "extra-traits", "parsing", "printing"] }
+quote = "1"
+proc-macro2 = "1"
+prettyplease = "0.2"

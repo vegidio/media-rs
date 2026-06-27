@@ -1,17 +1,18 @@
 //! Raw, auto-generated FFI bindings to the FFmpeg libraries.
 //!
-//! The contents of this module are produced by `bindgen` at build time from
-//! `wrapper.h` and written to `$OUT_DIR/bindings.rs`. They cover the *portable core*
-//! of the FFmpeg public API (avcodec, avformat, avutil, avfilter, avdevice, swscale,
-//! swresample, postproc) — the surface that is identical on every platform.
+//! The contents of this module live in the **committed** `sys/bindings.rs`, produced by
+//! the `xtask` crate across a per-OS CI matrix and unioned with `xtask merge`. They cover
+//! the FFmpeg core (avcodec, avformat, avutil, avfilter, avdevice, swscale, swresample,
+//! and postproc when shipped) plus every platform's hardware-context surface
+//! (VideoToolbox, D3D11VA/DXVA2, VAAPI/VDPAU, CUDA, QSV, OpenCL, AMF, Vulkan, …).
 //!
-//! Vendor-specific hardware-context bindings (`hwcontext_cuda`, `hwcontext_d3d11va`,
-//! `hwcontext_vaapi`, …) are intentionally absent: each requires an OS/SDK header that
-//! is not available on every build machine. They will be generated per-OS in CI and
-//! exposed here later, e.g. `pub mod hwcontext;`.
+//! Because bindgen output is pure Rust, the foreign-platform types are visible and
+//! compile on every host (e.g. you can reference `AVD3D11VADeviceContext` on macOS); the
+//! corresponding functions only fail to *link* if actually called on the wrong OS — which
+//! the crate's higher-level API guards against.
 
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case, dead_code)]
 // `bindgen` emits transmute-based bitfield accessors that newer rustc flags as redundant.
 #![allow(unnecessary_transmutes)]
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+include!("sys/bindings.rs");

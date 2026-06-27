@@ -1,1 +1,4 @@
 /target
+
+# Per-OS bindgen outputs from `xtask generate` (the committed file is src/sys/bindings.rs).
+/bindings-*.rs
