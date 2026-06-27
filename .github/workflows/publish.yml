@@ -1,0 +1,32 @@
+name: Publish to crates.io
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Set crate version in Cargo.toml
+        run: |
+          sed -i -E "0,/^version = \".*\"/s//version = \"${{ steps.version.outputs.version }}\"/" Cargo.toml
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Publish to crates.io
+        run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

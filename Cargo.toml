@@ -1,0 +1,26 @@
+[package]
+name = "media-rs"
+version = "26.6.0"
+edition = "2024"
+links = "ffmpeg"
+build = "build.rs"
+description = "Encode, decode and process audio/video with FFmpeg, via statically-linked libraries."
+license = "GPL-3.0"
+repository = "https://github.com/vegidio/media-rs"
+homepage = "https://github.com/vegidio/media-rs"
+readme = "README.md"
+authors = ["Vinicius Egidio <me@vinicius.io>"]
+keywords = ["ffmpeg", "video", "audio", "codec", "media"]
+categories = ["multimedia", "external-ffi-bindings"]
+exclude = [".github/", ".idea/", ".editorconfig", "rustfmt.toml"]
+
+[lib]
+name = "media"
+
+[dependencies]
+# none yet — the safe Rust API layer comes later
+
+[build-dependencies]
+bindgen = "0.72"
+ureq = "3"
+zip = { version = "8", default-features = false, features = ["deflate"] }
