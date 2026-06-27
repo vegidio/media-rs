@@ -1406,6 +1406,8 @@ pub const AV_OPT_FLAG_IMPLICIT_KEY: _bindgen_ty_2 = 1;
 pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type _bindgen_ty_1 = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVBuffer {
@@ -7459,6 +7461,8 @@ pub struct AVVkFrame {
 pub type __builtin_va_list = *mut ::std::os::raw::c_char;
 #[cfg(target_os = "linux")]
 pub type __builtin_va_list = [__va_list_tag; 1usize];
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub type __builtin_va_list = *mut ::std::os::raw::c_char;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AVCodecInternal {
@@ -7531,6 +7535,8 @@ pub struct _IO_FILE {
 pub type wchar_t = ::std::os::raw::c_int;
 #[cfg(target_os = "windows")]
 pub type wchar_t = ::std::os::raw::c_ushort;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type wchar_t = ::std::os::raw::c_int;
 pub type _bindgen_ty_8 = ::std::os::raw::c_uint;
 pub type VADisplay = *mut ::std::os::raw::c_void;
 pub type VAGenericID = ::std::os::raw::c_uint;
@@ -7880,6 +7886,8 @@ pub const AMF_RESULT_AMF_VULKAN_FAILED: AMF_RESULT = 45;
 pub type AMF_RESULT = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_RESULT = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_RESULT = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AMFInterfaceVtbl {
@@ -7920,6 +7928,8 @@ pub const AMF_VARIANT_TYPE_AMF_VARIANT_FLOAT_VECTOR4D: AMF_VARIANT_TYPE = 17;
 pub type AMF_VARIANT_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_VARIANT_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_VARIANT_TYPE = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct AMFVariantStruct {
@@ -8044,6 +8054,8 @@ pub const AMF_DATA_TYPE_AMF_DATA_USER: AMF_DATA_TYPE = 1000;
 pub type AMF_DATA_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_DATA_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_DATA_TYPE = ::std::os::raw::c_uint;
 pub const AMF_MEMORY_TYPE_AMF_MEMORY_UNKNOWN: AMF_MEMORY_TYPE = 0;
 pub const AMF_MEMORY_TYPE_AMF_MEMORY_HOST: AMF_MEMORY_TYPE = 1;
 pub const AMF_MEMORY_TYPE_AMF_MEMORY_DX9: AMF_MEMORY_TYPE = 2;
@@ -8061,6 +8073,8 @@ pub const AMF_MEMORY_TYPE_AMF_MEMORY_LAST: AMF_MEMORY_TYPE = 12;
 pub type AMF_MEMORY_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_MEMORY_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_MEMORY_TYPE = ::std::os::raw::c_uint;
 pub const AMF_DX_VERSION_AMF_DX9: AMF_DX_VERSION = 90;
 pub const AMF_DX_VERSION_AMF_DX9_EX: AMF_DX_VERSION = 91;
 pub const AMF_DX_VERSION_AMF_DX11_0: AMF_DX_VERSION = 110;
@@ -8070,6 +8084,8 @@ pub const AMF_DX_VERSION_AMF_DX12: AMF_DX_VERSION = 120;
 pub type AMF_DX_VERSION = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_DX_VERSION = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_DX_VERSION = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AMFDataVtbl {
@@ -8439,6 +8455,8 @@ pub const AMF_PLANE_TYPE_AMF_PLANE_V: AMF_PLANE_TYPE = 5;
 pub type AMF_PLANE_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_PLANE_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_PLANE_TYPE = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AMFPlaneVtbl {
@@ -8503,6 +8521,8 @@ pub const AMF_SURFACE_FORMAT_AMF_SURFACE_LAST: AMF_SURFACE_FORMAT = 25;
 pub type AMF_SURFACE_FORMAT = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_SURFACE_FORMAT = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_SURFACE_FORMAT = ::std::os::raw::c_uint;
 pub const AMF_FRAME_TYPE_AMF_FRAME_STEREO_FLAG: AMF_FRAME_TYPE = 268435456;
 pub const AMF_FRAME_TYPE_AMF_FRAME_LEFT_FLAG: AMF_FRAME_TYPE = 805306368;
 pub const AMF_FRAME_TYPE_AMF_FRAME_RIGHT_FLAG: AMF_FRAME_TYPE = 1342177280;
@@ -8684,6 +8704,8 @@ pub const AMF_CHANNEL_ORDER_AMF_CHANNEL_ORDER_ABGR: AMF_CHANNEL_ORDER = 7;
 pub type AMF_CHANNEL_ORDER = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_CHANNEL_ORDER = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_CHANNEL_ORDER = ::std::os::raw::c_uint;
 pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_INVALID: AMF_CHANNEL_TYPE = 0;
 pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNSIGNED_INT8: AMF_CHANNEL_TYPE = 1;
 pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNSIGNED_INT32: AMF_CHANNEL_TYPE = 2;
@@ -8698,6 +8720,8 @@ pub const AMF_CHANNEL_TYPE_AMF_CHANNEL_UNORM_INT_101010: AMF_CHANNEL_TYPE = 9;
 pub type AMF_CHANNEL_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_CHANNEL_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_CHANNEL_TYPE = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AMFComputeKernelVtbl {
@@ -9534,6 +9558,8 @@ pub const AMF_PROPERTY_ACCESS_TYPE_AMF_PROPERTY_ACCESS_INVALID: AMF_PROPERTY_ACC
 pub type AMF_PROPERTY_ACCESS_TYPE = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AMF_PROPERTY_ACCESS_TYPE = ::std::os::raw::c_int;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+pub type AMF_PROPERTY_ACCESS_TYPE = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct AMFEnumDescriptionEntry {
