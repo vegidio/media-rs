@@ -9,6 +9,7 @@ pub use crate::codec::{Decoder, VideoEncoder};
 pub use crate::filter::{ColorCorrect, DenoiseLevel, FilterChain};
 pub use crate::format::{MediaReader, MediaWriter};
 pub use crate::frame::Frame;
+pub use crate::log::{self, Level};
 pub use crate::packet::Packet;
 pub use crate::probe::{probe, MediaInfo, StreamInfo};
 pub use crate::transcode::{

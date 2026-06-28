@@ -31,6 +31,7 @@ pub struct MediaWriter {
 impl MediaWriter {
     /// Create `path`, inferring the container format from its extension.
     pub fn create(path: impl AsRef<str>) -> Result<Self> {
+        crate::log::ensure_init();
         Ok(Self {
             output: OutputFormatContext::create(path.as_ref())?,
             source_tb: Vec::new(),

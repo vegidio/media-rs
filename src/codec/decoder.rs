@@ -23,6 +23,7 @@ impl Decoder {
         codec_id: sys::AVCodecID,
         par: *const sys::AVCodecParameters,
     ) -> Result<Self> {
+        crate::log::ensure_init();
         let codec = find_decoder(codec_id);
         if codec.is_null() {
             return Err(Error::CodecUnavailable(format!("decoder for id {codec_id}")));

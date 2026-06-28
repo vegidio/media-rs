@@ -31,6 +31,7 @@ pub struct MediaReader {
 impl MediaReader {
     /// Open `path` for reading and probe its stream layout.
     pub fn open(path: impl AsRef<str>) -> Result<Self> {
+        crate::log::ensure_init();
         Ok(Self {
             input: InputFormatContext::open(path.as_ref())?,
         })

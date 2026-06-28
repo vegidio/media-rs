@@ -22,12 +22,14 @@ pub mod codec;
 pub mod filter;
 pub mod format;
 pub mod frame;
+pub mod log;
 pub mod packet;
 pub mod prelude;
 pub mod probe;
 pub mod transcode;
 
 pub use codec::{Decoder, VideoEncoder};
+pub use log::Level;
 pub use format::{MediaReader, MediaWriter};
 pub use frame::Frame;
 pub use packet::Packet;

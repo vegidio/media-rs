@@ -189,6 +189,7 @@ impl VideoEncoderBuilder {
 
     /// Validate the configuration, open the encoder, and return it.
     pub fn build(self) -> Result<VideoEncoder> {
+        crate::log::ensure_init();
         let codec = self
             .codec
             .ok_or(Error::InvalidConfig("video encoder requires a codec"))?;
