@@ -47,6 +47,26 @@ Run the **"Generate bindings"** workflow from the repo's **Actions** tab ("Run w
 
 > **libpostproc:** the current `binaries-ffmpeg` `26.6.3` static archives do **not** ship `libpostproc` (no `libpostproc.a`/headers), despite the upstream README listing it; the build skips it automatically and will pick it up if a later release includes it.
 
+## Examples
+
+Runnable, single-feature examples live in [`examples/`](examples/) — one per public capability, from the one-liner `transcode()` up to the frame-level pipeline. Run any of them with:
+
+```sh
+cargo run --example version             # linked FFmpeg version
+cargo run --example probe               # inspect streams without decoding
+cargo run --example transcode_oneliner  # transcode(input).to(output).run()
+cargo run --example transcode_drop_streams  # keep only video / only audio
+cargo run --example transcode_trim      # keep a time range
+cargo run --example transcode_builder   # full VideoConfig builder
+cargo run --example transcode_progress  # progress callback
+cargo run --example filters             # FilterChain (scale/fps/denoise/color)
+cargo run --example decode_frames       # MediaReader + Decoder (Tier 3 read)
+cargo run --example transcode_lowlevel  # read → decode → encode → mux by hand
+cargo run --example logging             # FFmpeg log verbosity control
+```
+
+They read from `assets/video*.mp4` and write outputs to `assets/temp_*` (git-ignored).
+
 ## Testing & coverage
 
 Run the test suite with `cargo test`. It includes unit tests plus integration tests under [`tests/`](tests/) that exercise `assets/video*.mp4`; the integration tests skip cleanly when those assets are absent.

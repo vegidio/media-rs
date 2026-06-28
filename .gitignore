@@ -2,3 +2,6 @@
 
 # Per-OS bindgen outputs from `xtask generate` (the committed file is src/sys/bindings.rs).
 /bindings-*.rs
+
+# Output files written by the examples under examples/ (see assets/temp_* convention).
+/assets/temp_*
