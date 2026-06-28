@@ -122,3 +122,33 @@ fn raw_filter_applies() {
     assert_eq!((v.width, v.height), (640, 360));
     let _ = std::fs::remove_file(&out);
 }
+
+#[test]
+fn typed_filters_apply_end_to_end() {
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    let out = common::temp("media_rs_typed_filters.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    // Exercise the non-scale filter path through the real filter graph: denoise + colour
+    // correction keep the frame geometry but run frames through `hqdn3d` and `eq`.
+    let in_video = probe(&input).unwrap().video().cloned().unwrap();
+    let filter = FilterChain::new()
+        .denoise(DenoiseLevel::Light)
+        .color_correct(|c| c.brightness(0.05).saturation(1.1));
+    let job = Transcoder::builder()
+        .input(&input)
+        .output(&out)
+        .drop_audio()
+        .video_filter(filter)
+        .build()
+        .unwrap();
+    let summary = job.run().unwrap();
+    assert!(summary.frames > 0);
+
+    let v = probe(&out).unwrap().video().cloned().unwrap();
+    assert_eq!((v.width, v.height), (in_video.width, in_video.height));
+    let _ = std::fs::remove_file(&out);
+}

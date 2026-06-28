@@ -205,3 +205,60 @@ impl VideoFilter {
         Ok(out)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_chain_has_empty_description() {
+        let chain = FilterChain::new();
+        assert!(chain.is_empty());
+        assert_eq!(chain.description(), "");
+    }
+
+    #[test]
+    fn raw_chain_is_used_verbatim() {
+        let chain = FilterChain::raw("scale=1280:720,unsharp=5:5:1.0");
+        assert!(!chain.is_empty());
+        assert_eq!(chain.description(), "scale=1280:720,unsharp=5:5:1.0");
+    }
+
+    #[test]
+    fn operators_compose_in_order_joined_by_commas() {
+        let chain = FilterChain::new()
+            .scale(640, 360)
+            .fps(30)
+            .denoise(DenoiseLevel::Moderate);
+        assert_eq!(chain.description(), "scale=640:360,fps=30,hqdn3d=4:4:9:9");
+    }
+
+    #[test]
+    fn denoise_levels_map_to_distinct_strengths() {
+        assert_eq!(
+            FilterChain::new().denoise(DenoiseLevel::Light).description(),
+            "hqdn3d=1.5:1.5:6:6"
+        );
+        assert_eq!(
+            FilterChain::new().denoise(DenoiseLevel::Heavy).description(),
+            "hqdn3d=8:8:12:12"
+        );
+    }
+
+    #[test]
+    fn color_correct_emits_an_eq_filter_with_all_knobs() {
+        // Defaults are identity; only the knobs touched should move away from them.
+        let chain = FilterChain::new().color_correct(|c| c.brightness(0.1).contrast(1.2));
+        assert_eq!(
+            chain.description(),
+            "eq=brightness=0.1:contrast=1.2:saturation=1:gamma=1"
+        );
+
+        let full = FilterChain::new()
+            .color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
+        assert_eq!(
+            full.description(),
+            "eq=brightness=-0.2:contrast=0.9:saturation=1.5:gamma=0.8"
+        );
+    }
+}

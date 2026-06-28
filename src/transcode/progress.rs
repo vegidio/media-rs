@@ -49,3 +49,45 @@ pub struct TranscodeSummary {
     /// Output media duration in seconds (best-effort).
     pub duration_secs: f64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn percent_is_ratio_of_processed_to_total() {
+        let p = Progress {
+            processed_secs: 3.0,
+            total_secs: 12.0,
+            frames: 90,
+            fps: 30.0,
+        };
+        assert_eq!(p.percent(), 25.0);
+        // The accessors expose the raw fields.
+        assert_eq!(p.processed_secs(), 3.0);
+        assert_eq!(p.total_secs(), 12.0);
+        assert_eq!(p.frames(), 90);
+        assert_eq!(p.fps(), 30.0);
+    }
+
+    #[test]
+    fn percent_handles_unknown_and_overshooting_totals() {
+        // Unknown total → 0%, never a divide-by-zero.
+        let unknown = Progress {
+            processed_secs: 5.0,
+            total_secs: 0.0,
+            frames: 0,
+            fps: 0.0,
+        };
+        assert_eq!(unknown.percent(), 0.0);
+
+        // Processing past the estimated duration clamps to 100%.
+        let overshoot = Progress {
+            processed_secs: 20.0,
+            total_secs: 10.0,
+            frames: 0,
+            fps: 0.0,
+        };
+        assert_eq!(overshoot.percent(), 100.0);
+    }
+}

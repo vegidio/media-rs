@@ -25,3 +25,10 @@ pub fn sample_videos() -> Vec<PathBuf> {
         .filter(|p| p.exists())
         .collect()
 }
+
+/// The one sample that carries an audio stream (`video2.mp4`), or `None` when assets are
+/// absent. Audio-path tests use this so they exercise real demux/decode/stream-copy.
+pub fn audio_sample() -> Option<PathBuf> {
+    let p = asset("video2.mp4");
+    p.exists().then_some(p)
+}

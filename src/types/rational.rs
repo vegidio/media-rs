@@ -107,3 +107,44 @@ impl Bitrate {
         self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rational_as_f64_handles_zero_denominator() {
+        assert_eq!(Rational::new(1, 2).as_f64(), 0.5);
+        assert_eq!(Rational::new(30000, 1001).as_f64(), 30000.0 / 1001.0);
+        // A zero denominator must not divide-by-zero; it reports 0.0.
+        assert_eq!(Rational::new(5, 0).as_f64(), 0.0);
+    }
+
+    #[test]
+    fn rational_roundtrips_through_av() {
+        let r = Rational::new(24000, 1001);
+        let av: sys::AVRational = r.into();
+        assert_eq!(av.num, 24000);
+        assert_eq!(av.den, 1001);
+        assert_eq!(Rational::from(av), r);
+        // The pub(crate) helpers agree with the From impls.
+        assert_eq!(Rational::from_av(r.to_av()), r);
+    }
+
+    #[test]
+    fn framerate_constructors_and_time_base() {
+        assert_eq!(Framerate::fps(30), Framerate(Rational::new(30, 1)));
+        assert_eq!(Framerate::ratio(30000, 1001).as_f64(), 30000.0 / 1001.0);
+        // The time base is the reciprocal of the frame rate.
+        assert_eq!(Framerate::fps(25).time_base(), Rational::new(1, 25));
+    }
+
+    #[test]
+    fn bitrate_unit_conversions() {
+        assert_eq!(Bitrate::bps(800).as_bps(), 800);
+        assert_eq!(Bitrate::kbps(128).as_bps(), 128_000);
+        assert_eq!(Bitrate::mbps(5).as_bps(), 5_000_000);
+        // Derived Ord compares by the underlying bps.
+        assert!(Bitrate::kbps(128) < Bitrate::mbps(1));
+    }
+}
