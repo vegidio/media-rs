@@ -6,19 +6,11 @@ name: Generate bindings
 # comprehensive file and commits it directly to `main`.
 #
 # Triggered ONLY manually — from the Actions tab ("Run workflow") or
-# `gh workflow run bindings.yml`. It never runs automatically on push.
+# `gh workflow run bindings.yml`. It never runs automatically on push. The FFmpeg
+# version is read from the repo-root `ffmpeg-version.txt` (no input to fill in).
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "binaries-ffmpeg release to generate against"
-        required: false
-        # Pre-filled value for the "Run workflow" UI only. The actual fallback when no
-        # value is supplied is read from the repo-root `ffmpeg-version.txt` (see the
-        # generate step); GitHub requires this default to be a static literal so it can't
-        # read the file. Keep it in sync, or just clear the box to use the file's version.
-        default: "26.6.3"
 
 permissions:
   contents: write
@@ -68,13 +60,11 @@ jobs:
         shell: pwsh
 
       - name: Generate bindings for ${{ matrix.os_label }}
-        # `bash` is available on all three runners (Git Bash on Windows), so the file-read
-        # fallback works cross-platform. Use the dispatched version if given, else the
-        # single source of truth in `ffmpeg-version.txt`.
+        # Read the version from the single source of truth in `ffmpeg-version.txt`.
+        # `bash` is available on all three runners (Git Bash on Windows).
         shell: bash
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          VERSION="${VERSION:-$(cat ffmpeg-version.txt)}"
+          VERSION="$(cat ffmpeg-version.txt)"
           cargo run -p xtask -- generate -o bindings-${{ matrix.os_label }}.rs --version "$VERSION"
 
       - name: Upload artifact
