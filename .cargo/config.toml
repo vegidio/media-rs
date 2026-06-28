@@ -1,6 +1,10 @@
-# Convenience aliases for code coverage (see scripts/coverage.sh and
-# .github/workflows/coverage.yml). Both require `cargo-llvm-cov`:
+# Convenience aliases for code coverage (see scripts/coverage.sh). Both require
+# `cargo-llvm-cov`:
 #   rustup component add llvm-tools-preview && cargo install cargo-llvm-cov
+#
+# `--ignore-filename-regex` drops the machine-generated FFI (`src/sys/bindings.rs`) from the
+# report: ~470 lines of `extern` declarations / type aliases / constants that can't be
+# "executed", which would otherwise cap the total near 78% and understate real coverage.
 [alias]
-cov = "llvm-cov --all-features --html --open"
-cov-lcov = "llvm-cov --all-features --lcov --output-path target/coverage/lcov.info"
+cov = "llvm-cov --all-features --ignore-filename-regex src/sys/bindings\\.rs --html --open"
+cov-lcov = "llvm-cov --all-features --ignore-filename-regex src/sys/bindings\\.rs --lcov --output-path target/coverage/lcov.info"

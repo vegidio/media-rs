@@ -4,22 +4,22 @@
  * FFmpeg has no single public header, so this file gathers the public API of all
  * eight libraries for bindgen to parse. It is split into two parts:
  *
- *  1. The PORTABLE CORE — headers identical on every platform that depend on nothing
+ *  1. The PORTABLE CORE — headers identical on every platform that depends on nothing
  *     outside FFmpeg.
  *
  *  2. The HARDWARE / PLATFORM-SPECIFIC headers. The release archives ship *all* of
  *     these on *every* platform, but each one `#include`s an external OS/SDK header
  *     (e.g. <d3d11.h>, <va/va.h>, <VideoToolbox/VideoToolbox.h>, <cuda.h>) that only
  *     exists on the matching platform/toolchain. Guarding on the FFmpeg header path is
- *     therefore NOT enough — we guard on the *external* dependency header. As a result
+ *     therefore NOT enough — we guard on the *external* dependency header. As a result,
  *     this single wrapper is adaptive: on any build host bindgen binds exactly the
- *     hardware backends that host can parse. Building on macOS yields the core plus the
+ *     hardware backends that the host can parse. Building on macOS yields the core plus the
  *     self-contained backends, Vulkan, and VideoToolbox; per-OS CI builds pick up D3D,
  *     VAAPI, VDPAU, CUDA, QSV, OpenCL and AMF on their native runners.
  *
  * EVERY include is wrapped in `__has_include` so the wrapper degrades gracefully when a
- * header is absent — both for headers dropped between FFmpeg releases (e.g. avfft.h,
- * removed in FFmpeg 8) and for libraries a given archive does not ship (e.g. libpostproc).
+ * header is absent — both for headers dropped between FFmpeg releases (e.g., avfft.h,
+ * removed in FFmpeg 8) and for libraries a given archive does not ship (e.g., libpostproc).
  */
 
 /* ============================ PORTABLE CORE ============================ */

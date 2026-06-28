@@ -63,3 +63,34 @@ impl SampleFormat {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sample_format_roundtrips_every_known_variant() {
+        for f in [
+            SampleFormat::U8,
+            SampleFormat::S16,
+            SampleFormat::S32,
+            SampleFormat::Flt,
+            SampleFormat::Dbl,
+            SampleFormat::S16p,
+            SampleFormat::S32p,
+            SampleFormat::Fltp,
+            SampleFormat::Dblp,
+        ] {
+            assert_eq!(SampleFormat::from_av(f.to_av()), f);
+        }
+    }
+
+    #[test]
+    fn sample_format_other_carries_raw_value() {
+        // A format id we don't enumerate falls through to Other, preserving the id so it can
+        // be round-tripped back to FFmpeg.
+        let raw = sys::AVSampleFormat_AV_SAMPLE_FMT_S64;
+        assert_eq!(SampleFormat::from_av(raw), SampleFormat::Other(raw));
+        assert_eq!(SampleFormat::Other(raw).to_av(), raw);
+    }
+}
