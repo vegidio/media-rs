@@ -66,4 +66,10 @@ impl Frame {
         let ts = self.raw.best_effort_timestamp();
         if ts == i64::MIN { None } else { Some(ts) }
     }
+
+    /// This frame's usable presentation timestamp in the source time base: the best-effort
+    /// estimate, falling back to the raw [`pts`](Self::pts), then to `0` when both are unknown.
+    pub(crate) fn best_ts(&self) -> i64 {
+        self.best_effort_timestamp().or_else(|| self.pts()).unwrap_or(0)
+    }
 }

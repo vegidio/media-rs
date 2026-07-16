@@ -29,6 +29,21 @@ impl Rational {
         }
     }
 
+    /// Convert a time in seconds to a timestamp in this time base, rounding to the nearest
+    /// tick. Returns `0` for a zero numerator (an undefined time base).
+    pub(crate) fn ts_from_secs(self, secs: f64) -> i64 {
+        if self.num == 0 {
+            0
+        } else {
+            (secs * self.den as f64 / self.num as f64).round() as i64
+        }
+    }
+
+    /// Convert a timestamp in this time base to seconds (the inverse of [`ts_from_secs`]).
+    pub(crate) fn secs_from_ts(self, ts: i64) -> f64 {
+        ts as f64 * self.as_f64()
+    }
+
     pub(crate) fn to_av(self) -> sys::AVRational {
         sys::AVRational {
             num: self.num,

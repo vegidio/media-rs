@@ -27,11 +27,7 @@ pub(crate) struct TranscodeOptions {
 
 /// Convert a time in seconds to a timestamp in `tb`.
 fn secs_to_ts(secs: f64, tb: Rational) -> i64 {
-    if tb.num == 0 {
-        0
-    } else {
-        (secs * tb.den as f64 / tb.num as f64).round() as i64
-    }
+    tb.ts_from_secs(secs)
 }
 
 /// Encode one (already filtered) frame and mux the resulting packets.
@@ -43,7 +39,7 @@ fn encode_and_mux(
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
-    let ts = frame.best_effort_timestamp().or_else(|| frame.pts()).unwrap_or(0);
+    let ts = frame.best_ts();
     frame.set_pts(ts - trim_start_ts);
     for pkt in encoder.encode(&frame)? {
         let mut pkt = pkt?;
@@ -78,9 +74,8 @@ fn process_video_frame(
 }
 
 /// A decoded frame's presentation time, in seconds, using the source time base.
-fn frame_secs(frame: &Frame, tb_f64: f64) -> f64 {
-    let ts = frame.best_effort_timestamp().or_else(|| frame.pts()).unwrap_or(0);
-    ts as f64 * tb_f64
+fn frame_secs(frame: &Frame, tb: Rational) -> f64 {
+    tb.secs_from_ts(frame.best_ts())
 }
 
 pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary> {
@@ -194,7 +189,6 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
     let (trim_start, trim_end) = opts.trim.unwrap_or((0.0, f64::INFINITY));
     let v_start_ts = secs_to_ts(trim_start, v_tb);
     let a_start_ts = secs_to_ts(trim_start, a_tb);
-    let v_tb_f64 = v_tb.as_f64();
     let a_tb_f64 = a_tb.as_f64();
     let in_trim = |secs: f64| secs >= trim_start && secs <= trim_end;
 
@@ -211,18 +205,17 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
             let enc = encoder.as_mut().unwrap();
             for frame in dec.decode(&packet)? {
                 let frame = frame?;
-                let secs = frame_secs(&frame, v_tb_f64);
+                let secs = frame_secs(&frame, v_tb);
                 if !in_trim(secs) {
                     continue;
                 }
                 process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;
-                let elapsed = started.elapsed().as_secs_f64().max(1e-6);
-                on_progress(Progress {
-                    processed_secs: (secs - trim_start).max(0.0),
-                    total_secs: total_secs - trim_start.min(total_secs),
+                on_progress(Progress::new(
+                    (secs - trim_start).max(0.0),
+                    total_secs - trim_start.min(total_secs),
                     frames,
-                    fps: frames as f64 / elapsed,
-                });
+                    started,
+                ));
             }
         } else if Some(sidx) == audio_idx {
             // Stream copy: gate on trim, offset timestamps, remap to the output stream.
@@ -244,7 +237,7 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
             tail.push(frame?);
         }
         for frame in tail {
-            if !in_trim(frame_secs(&frame, v_tb_f64)) {
+            if !in_trim(frame_secs(&frame, v_tb)) {
                 continue;
             }
             process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;

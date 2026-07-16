@@ -90,11 +90,7 @@ impl MediaReader {
     /// pre-seek buffers are discarded.
     pub fn seek(&mut self, stream_index: usize, at: Duration) -> Result<()> {
         let tb = self.input.stream_time_base(stream_index)?;
-        let ts = if tb.num == 0 {
-            0
-        } else {
-            (at.as_secs_f64() * tb.den as f64 / tb.num as f64).round() as i64
-        };
+        let ts = tb.ts_from_secs(at.as_secs_f64());
         self.input.seek(stream_index, ts)
     }
 

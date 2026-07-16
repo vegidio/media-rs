@@ -50,7 +50,6 @@ use crate::error::{Error, Result};
 use crate::format::MediaReader;
 use crate::transcode::Progress;
 use crate::types::stream_kind::StreamKind;
-use sampler::SampledFrames as Sampler;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -213,13 +212,7 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
         None => (0.0, duration_secs),
     };
 
-    let sampler = Sampler::new(
-        &mut reader,
-        video_idx,
-        opts.interval.clone(),
-        opts.range,
-        opts.resolution,
-    )?;
+    let sampler = SampledFrames::new(&mut reader, video_idx, opts.interval, opts.range, opts.resolution)?;
 
     // Prepare the output sink.
     let mut output = opts.output;
@@ -237,20 +230,14 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
         match &mut output {
             Output::Directory(dir) => {
                 let name = opts.naming.file_name(frame.index(), opts.format.extension());
-                frame.save_as(dir.join(name), opts.format)?;
+                frame.into_save_as(dir.join(name), opts.format)?;
             }
             Output::InMemory => collected.push(frame),
             Output::Callback(cb) => cb(frame)?,
         }
 
         count += 1;
-        let elapsed = started.elapsed().as_secs_f64().max(1e-6);
-        on_progress(Progress {
-            processed_secs: (ts_secs - start_secs).max(0.0),
-            total_secs: span_secs.max(0.0),
-            frames: count,
-            fps: count as f64 / elapsed,
-        });
+        on_progress(Progress::new((ts_secs - start_secs).max(0.0), span_secs, count, started));
     }
 
     Ok(ExtractReport::new(count, started.elapsed(), collected))

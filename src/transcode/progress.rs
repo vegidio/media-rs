@@ -1,5 +1,7 @@
 //! Transcode progress reporting.
 
+use std::time::Instant;
+
 /// A progress snapshot passed to the callback of
 /// [`Transcoder::run_with_progress`](super::Transcoder::run_with_progress).
 #[derive(Debug, Clone, Copy)]
@@ -11,6 +13,18 @@ pub struct Progress {
 }
 
 impl Progress {
+    /// Build a snapshot, deriving throughput from `frames` over the time since `started`
+    /// (floored so it never divides by zero). Shared by the transcode and extraction runners.
+    pub(crate) fn new(processed_secs: f64, total_secs: f64, frames: u64, started: Instant) -> Self {
+        let elapsed = started.elapsed().as_secs_f64().max(1e-6);
+        Self {
+            processed_secs,
+            total_secs,
+            frames,
+            fps: frames as f64 / elapsed,
+        }
+    }
+
     /// Completion as a percentage in `[0, 100]` (best-effort; `0` if total is unknown).
     pub fn percent(&self) -> f64 {
         if self.total_secs > 0.0 {
