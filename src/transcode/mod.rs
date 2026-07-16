@@ -7,7 +7,7 @@ pub mod progress;
 mod oneliner;
 
 pub use config::{VideoConfig, VideoConfigBuilder};
-pub use oneliner::{transcode, TranscodeJob};
+pub use oneliner::{TranscodeJob, transcode};
 pub use progress::{Progress, TranscodeSummary};
 
 use crate::error::{Error, Result};
@@ -15,6 +15,7 @@ use crate::filter::FilterChain;
 use config::VideoConfig as VConfig;
 use pipeline::TranscodeOptions;
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 /// A configured transcode job. Cheap to hold and re-runnable.
 ///
@@ -45,10 +46,7 @@ impl Transcoder {
     }
 
     /// Run the transcode, invoking `on_progress` as media is processed.
-    pub fn run_with_progress(
-        &self,
-        on_progress: impl FnMut(Progress),
-    ) -> Result<TranscodeSummary> {
+    pub fn run_with_progress(&self, on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary> {
         pipeline::run(&self.opts, on_progress)
     }
 }
@@ -96,9 +94,9 @@ impl TranscoderBuilder {
         self
     }
 
-    /// Keep only the given time range (seconds), re-based to start at zero.
-    pub fn trim(mut self, range: RangeInclusive<f64>) -> Self {
-        self.trim = Some((*range.start(), *range.end()));
+    /// Keep only the given time range, re-based to start at zero.
+    pub fn trim(mut self, range: RangeInclusive<Duration>) -> Self {
+        self.trim = Some((range.start().as_secs_f64(), range.end().as_secs_f64()));
         self
     }
 
@@ -112,9 +110,7 @@ impl TranscoderBuilder {
     pub fn build(self) -> Result<Transcoder> {
         Ok(Transcoder {
             opts: TranscodeOptions {
-                input: self
-                    .input
-                    .ok_or(Error::InvalidConfig("transcoder requires an input"))?,
+                input: self.input.ok_or(Error::InvalidConfig("transcoder requires an input"))?,
                 output: self
                     .output
                     .ok_or(Error::InvalidConfig("transcoder requires an output"))?,

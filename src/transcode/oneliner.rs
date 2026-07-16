@@ -1,11 +1,12 @@
 //! Tier 1: the one-liner `transcode(input).to(output).run()` API.
 
+use super::TranscoderBuilder;
 use super::config::VideoConfig;
 use super::progress::{Progress, TranscodeSummary};
-use super::TranscoderBuilder;
 use crate::error::Result;
 use crate::filter::FilterChain;
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 /// Begin a one-liner transcode from `input`. Chain [`to`](TranscodeJob::to) and
 /// [`run`](TranscodeJob::run):
@@ -47,8 +48,8 @@ impl TranscodeJob {
         self
     }
 
-    /// Keep only the given time range (seconds).
-    pub fn trim(mut self, range: RangeInclusive<f64>) -> Self {
+    /// Keep only the given time range.
+    pub fn trim(mut self, range: RangeInclusive<Duration>) -> Self {
         self.builder = self.builder.trim(range);
         self
     }
@@ -71,10 +72,7 @@ impl TranscodeJob {
     }
 
     /// Run the transcode, reporting progress.
-    pub fn run_with_progress(
-        self,
-        on_progress: impl FnMut(Progress),
-    ) -> Result<TranscodeSummary> {
+    pub fn run_with_progress(self, on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary> {
         self.builder.build()?.run_with_progress(on_progress)
     }
 }

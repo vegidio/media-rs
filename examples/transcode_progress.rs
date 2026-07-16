@@ -11,11 +11,7 @@ const INPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/video1.mp4");
 const OUTPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/temp_progress.mp4");
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let job = Transcoder::builder()
-        .input(INPUT)
-        .output(OUTPUT)
-        .drop_audio()
-        .build()?;
+    let job = Transcoder::builder().input(INPUT).output(OUTPUT).drop_audio().build()?;
 
     let summary = job.run_with_progress(|p| {
         // Overwrite the same line as progress advances.

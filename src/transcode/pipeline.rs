@@ -3,8 +3,8 @@
 
 use super::config::VideoConfig;
 use super::progress::{Progress, TranscodeSummary};
-use crate::codec::encoder::VideoEncoder;
 use crate::codec::decoder::Decoder;
+use crate::codec::encoder::VideoEncoder;
 use crate::error::{Error, Result};
 use crate::filter::{FilterChain, VideoFilter};
 use crate::format::{MediaReader, MediaWriter};
@@ -43,10 +43,7 @@ fn encode_and_mux(
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
-    let ts = frame
-        .best_effort_timestamp()
-        .or_else(|| frame.pts())
-        .unwrap_or(0);
+    let ts = frame.best_effort_timestamp().or_else(|| frame.pts()).unwrap_or(0);
     frame.set_pts(ts - trim_start_ts);
     for pkt in encoder.encode(&frame)? {
         let mut pkt = pkt?;
@@ -82,17 +79,11 @@ fn process_video_frame(
 
 /// A decoded frame's presentation time, in seconds, using the source time base.
 fn frame_secs(frame: &Frame, tb_f64: f64) -> f64 {
-    let ts = frame
-        .best_effort_timestamp()
-        .or_else(|| frame.pts())
-        .unwrap_or(0);
+    let ts = frame.best_effort_timestamp().or_else(|| frame.pts()).unwrap_or(0);
     ts as f64 * tb_f64
 }
 
-pub(crate) fn run(
-    opts: &TranscodeOptions,
-    mut on_progress: impl FnMut(Progress),
-) -> Result<TranscodeSummary> {
+pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary> {
     let mut reader = MediaReader::open(&opts.input)?;
     let total_secs = reader.duration_secs();
 

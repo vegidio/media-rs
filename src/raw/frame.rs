@@ -1,7 +1,7 @@
 //! RAII wrapper for `AVFrame`.
 
 use super::util::non_null;
-use crate::error::Result;
+use crate::error::{Result, check};
 use crate::sys;
 use std::ptr::NonNull;
 
@@ -59,6 +59,33 @@ impl RawFrame {
     /// Set the presentation timestamp (used before sending a frame to an encoder).
     pub(crate) fn set_pts(&mut self, pts: i64) {
         unsafe { (*self.ptr.as_ptr()).pts = pts };
+    }
+
+    /// Copy this frame's pixels into a freshly allocated, tightly packed buffer for the given
+    /// pixel format (`align = 1`, so rows have no padding — exactly what image encoders and
+    /// `image::RgbImage::from_raw` expect). The frame's own storage is untouched.
+    pub(crate) fn copy_to_packed_buffer(&self, pix_fmt: sys::AVPixelFormat) -> Result<Vec<u8>> {
+        let (w, h) = (self.width(), self.height());
+        // SAFETY: a pure size computation over valid dimensions/format.
+        let size = unsafe { sys::av_image_get_buffer_size(pix_fmt, w, h, 1) };
+        check(size)?;
+        let mut buf = vec![0u8; size as usize];
+        // SAFETY: `buf` is `size` bytes; the frame's `data`/`linesize` arrays describe valid
+        // planes for `pix_fmt` at `w`×`h`; align 1 packs rows contiguously.
+        let ret = unsafe {
+            sys::av_image_copy_to_buffer(
+                buf.as_mut_ptr(),
+                size,
+                (*self.ptr.as_ptr()).data.as_ptr() as *const *const u8,
+                (*self.ptr.as_ptr()).linesize.as_ptr(),
+                pix_fmt,
+                w,
+                h,
+                1,
+            )
+        };
+        check(ret)?;
+        Ok(buf)
     }
 
     /// Move the contents (refcounted buffers + metadata) of `self` into a brand-new frame,

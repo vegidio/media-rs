@@ -3,6 +3,7 @@
 mod common;
 
 use media::prelude::*;
+use std::time::Duration;
 
 #[test]
 fn one_liner_transcode_to_mp4() {
@@ -61,9 +62,11 @@ fn builder_scale_changes_resolution() {
         .drop_audio()
         .build()
         .unwrap();
-    let summary = job.run_with_progress(|p| {
-        assert!(p.percent() >= 0.0 && p.percent() <= 100.0);
-    }).unwrap();
+    let summary = job
+        .run_with_progress(|p| {
+            assert!(p.percent() >= 0.0 && p.percent() <= 100.0);
+        })
+        .unwrap();
     assert!(summary.frames > 0);
 
     let info = probe(&out).unwrap();
@@ -88,15 +91,12 @@ fn trim_shortens_duration() {
     transcode(&input_path)
         .to(&out)
         .drop_audio()
-        .trim(1.0..=2.0)
+        .trim(Duration::from_secs(1)..=Duration::from_secs(2))
         .run()
         .unwrap();
 
     let trimmed = probe(&out).unwrap().duration().as_secs_f64();
-    assert!(
-        trimmed < full,
-        "trimmed duration {trimmed} not shorter than {full}"
-    );
+    assert!(trimmed < full, "trimmed duration {trimmed} not shorter than {full}");
     let _ = std::fs::remove_file(&out);
 }
 

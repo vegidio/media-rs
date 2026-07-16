@@ -66,6 +66,10 @@ pub enum Error {
     #[error("path contains an interior NUL byte")]
     InvalidPath,
 
+    /// Encoding a decoded frame to an image (JPEG/PNG/…) or writing it out failed.
+    #[error("image encoding failed: {0}")]
+    ImageEncode(String),
+
     /// A raw FFmpeg error code plus its decoded message.
     #[error("ffmpeg error {code}: {message}")]
     Internal {
@@ -104,11 +108,7 @@ pub(crate) fn strerror(code: i32) -> String {
 
 /// Convert an FFmpeg return code into a `Result`: `code < 0` is an error, `>= 0` is `Ok`.
 pub(crate) fn check(code: i32) -> Result<()> {
-    if code < 0 {
-        Err(Error::from_code(code))
-    } else {
-        Ok(())
-    }
+    if code < 0 { Err(Error::from_code(code)) } else { Ok(()) }
 }
 
 // --- Constants FFmpeg only defines as C macros (bindgen does not emit these) ----------

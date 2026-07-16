@@ -5,10 +5,10 @@
 
 use super::frame::RawFrame;
 use super::util::non_null;
-use crate::error::{check, Error, Result};
+use crate::error::{Error, Result, check};
 use crate::raw::codec_context::Receive;
-use crate::types::rational::Rational;
 use crate::sys;
+use crate::types::rational::Rational;
 use std::ffi::CString;
 use std::ptr::{self, NonNull};
 
@@ -33,7 +33,9 @@ fn get_filter(name: &str) -> Result<*const sys::AVFilter> {
     // SAFETY: pure lookup over static filter tables.
     let f = unsafe { sys::avfilter_get_by_name(cname.as_ptr()) };
     if f.is_null() {
-        Err(Error::InvalidConfig("required filter (buffer/buffersink) is unavailable"))
+        Err(Error::InvalidConfig(
+            "required filter (buffer/buffersink) is unavailable",
+        ))
     } else {
         Ok(f)
     }
@@ -97,8 +99,7 @@ impl VideoFilterGraph {
 
         // Wire up the parse endpoints: the graph's open output is the buffer source ("in"),
         // its open input is the sink ("out"). parse_ptr connects the filter string between.
-        let cfilters = CString::new(filters)
-            .map_err(|_| Error::InvalidConfig("filter description has NUL"))?;
+        let cfilters = CString::new(filters).map_err(|_| Error::InvalidConfig("filter description has NUL"))?;
         // SAFETY: inout_alloc returns a node or null; names are av_strdup'd so inout_free
         // can release them.
         unsafe {

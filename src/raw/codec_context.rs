@@ -4,7 +4,7 @@
 use super::frame::RawFrame;
 use super::packet::RawPacket;
 use super::util::non_null;
-use crate::error::{check, Error, Result, AVERROR_EAGAIN, AVERROR_EOF};
+use crate::error::{AVERROR_EAGAIN, AVERROR_EOF, Error, Result, check};
 use crate::sys;
 use crate::types::channel_layout::ChannelLayout;
 use crate::types::rational::Rational;
@@ -40,10 +40,7 @@ impl Receive {
 
 /// Drive one step of a receive/drain iterator: on `Got`, take the produced item; on
 /// `Again`/`Eof`, stop; on error, surface it. Shared by the decode/encode iterators.
-pub(crate) fn drain_received<T>(
-    received: Result<Receive>,
-    take: impl FnOnce() -> Result<T>,
-) -> Option<Result<T>> {
+pub(crate) fn drain_received<T>(received: Result<Receive>, take: impl FnOnce() -> Result<T>) -> Option<Result<T>> {
     match received {
         Ok(Receive::Got) => Some(take()),
         Ok(Receive::Again) | Ok(Receive::Eof) => None,
@@ -114,12 +111,7 @@ impl CodecContext {
 
     // --- setters (encoder configuration) ----------------------------------------------
 
-    pub(crate) fn set_video_format(
-        &mut self,
-        width: i32,
-        height: i32,
-        pix_fmt: sys::AVPixelFormat,
-    ) {
+    pub(crate) fn set_video_format(&mut self, width: i32, height: i32, pix_fmt: sys::AVPixelFormat) {
         // SAFETY: ctx is a valid, not-yet-opened context.
         unsafe {
             (*self.ctx()).width = width;
@@ -238,6 +230,13 @@ impl CodecContext {
         }
     }
 
+    /// Drop the codec's buffered state. Called after seeking so stale frames from before the
+    /// seek don't leak into the output.
+    pub(crate) fn flush_buffers(&mut self) {
+        // SAFETY: ctx is valid and open.
+        unsafe { sys::avcodec_flush_buffers(self.ctx()) };
+    }
+
     /// Receive one decoded frame into `frame`.
     pub(crate) fn receive_frame(&mut self, frame: &mut RawFrame) -> Result<Receive> {
         // SAFETY: ctx is valid+open; frame is a valid owned frame.
@@ -252,11 +251,7 @@ impl CodecContext {
         let f = frame.map_or(ptr::null(), |f| f.as_ptr());
         // SAFETY: ctx is valid+open; f is null or a valid frame.
         let ret = unsafe { sys::avcodec_send_frame(self.ctx(), f) };
-        if ret == AVERROR_EOF {
-            Ok(())
-        } else {
-            check(ret)
-        }
+        if ret == AVERROR_EOF { Ok(()) } else { check(ret) }
     }
 
     /// Receive one encoded packet into `pkt`.

@@ -254,8 +254,7 @@ mod tests {
             "eq=brightness=0.1:contrast=1.2:saturation=1:gamma=1"
         );
 
-        let full = FilterChain::new()
-            .color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
+        let full = FilterChain::new().color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
         assert_eq!(
             full.description(),
             "eq=brightness=-0.2:contrast=0.9:saturation=1.5:gamma=0.8"

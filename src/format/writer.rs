@@ -50,11 +50,7 @@ impl MediaWriter {
 
     /// Add an output stream that copies `src_index` from `reader` verbatim (stream-copy /
     /// remux, e.g. passing audio through untouched). Returns the new stream index.
-    pub fn add_stream_copy(
-        &mut self,
-        reader: &crate::format::MediaReader,
-        src_index: usize,
-    ) -> Result<usize> {
+    pub fn add_stream_copy(&mut self, reader: &crate::format::MediaReader, src_index: usize) -> Result<usize> {
         let par = reader.input().stream_codecpar(src_index)?;
         let index = self.output.add_stream_copy(par)?;
         debug_assert_eq!(index, self.source_tb.len());
@@ -84,10 +80,7 @@ impl MediaWriter {
             return Err(Error::InvalidConfig("write_header must be called before write_packet"));
         }
         let index = packet.stream_index();
-        let src = *self
-            .source_tb
-            .get(index)
-            .ok_or(Error::StreamOutOfRange(index))?;
+        let src = *self.source_tb.get(index).ok_or(Error::StreamOutOfRange(index))?;
         let dst = self.output.stream_time_base(index)?;
         packet.rescale_ts(src, dst);
         packet.clear_pos();

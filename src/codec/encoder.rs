@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::raw::codec_context::{drain_received, find_encoder_by_name, CodecContext};
+use crate::raw::codec_context::{CodecContext, drain_received, find_encoder_by_name};
 use crate::raw::packet::RawPacket;
 use crate::types::codec::VideoCodec;
 use crate::types::pixel_format::PixelFormat;
@@ -129,8 +129,7 @@ impl VideoEncoderBuilder {
         let ctx = decoder.codec_ctx();
         self.width.get_or_insert(ctx.width());
         self.height.get_or_insert(ctx.height());
-        self.pix_fmt
-            .get_or_insert(PixelFormat::from_av(ctx.pix_fmt()));
+        self.pix_fmt.get_or_insert(PixelFormat::from_av(ctx.pix_fmt()));
         let fr = ctx.framerate();
         if self.framerate.is_none() && fr.num > 0 && fr.den > 0 {
             self.framerate = Some(Framerate(fr));

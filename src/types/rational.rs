@@ -37,10 +37,7 @@ impl Rational {
     }
 
     pub(crate) fn from_av(r: sys::AVRational) -> Self {
-        Self {
-            num: r.num,
-            den: r.den,
-        }
+        Self { num: r.num, den: r.den }
     }
 }
 

@@ -7,10 +7,10 @@
 use super::codec_context::CodecContext;
 use super::packet::RawPacket;
 use super::util::non_null;
-use crate::error::{check, Error, Result, AVERROR_EOF, AV_NOPTS_VALUE};
+use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check};
+use crate::sys;
 use crate::types::rational::Rational;
 use crate::types::stream_kind::StreamKind;
-use crate::sys;
 use std::ffi::CString;
 use std::ptr::{self, NonNull};
 
@@ -29,9 +29,7 @@ impl InputFormatContext {
         let curl = cstring(url)?;
         let mut raw: *mut sys::AVFormatContext = ptr::null_mut();
         // SAFETY: raw is a valid out-param; curl is valid for the call.
-        let ret = unsafe {
-            sys::avformat_open_input(&mut raw, curl.as_ptr(), ptr::null(), ptr::null_mut())
-        };
+        let ret = unsafe { sys::avformat_open_input(&mut raw, curl.as_ptr(), ptr::null(), ptr::null_mut()) };
         if ret < 0 {
             return Err(Error::OpenInput(url.to_owned()));
         }
@@ -118,14 +116,17 @@ impl InputFormatContext {
     /// Index of the best stream of `kind`, if any.
     pub(crate) fn best_stream(&self, kind: StreamKind) -> Option<usize> {
         // SAFETY: ctx is valid; passing no decoder out-param.
-        let ret = unsafe {
-            sys::av_find_best_stream(self.ctx(), kind.to_av(), -1, -1, ptr::null_mut(), 0)
-        };
-        if ret < 0 {
-            None
-        } else {
-            Some(ret as usize)
-        }
+        let ret = unsafe { sys::av_find_best_stream(self.ctx(), kind.to_av(), -1, -1, ptr::null_mut(), 0) };
+        if ret < 0 { None } else { Some(ret as usize) }
+    }
+
+    /// Seek within `stream_index` so that reading resumes at the keyframe at or before `ts`
+    /// (in that stream's time base). Decoders must be flushed afterwards, then decoded forward
+    /// to reach the exact target frame. Bracketing `max_ts` at `ts` guarantees we land on or
+    /// before the target rather than overshooting.
+    pub(crate) fn seek(&mut self, stream_index: usize, ts: i64) -> Result<()> {
+        // SAFETY: ctx is valid; the stream index is validated by the caller.
+        check(unsafe { sys::avformat_seek_file(self.ctx(), stream_index as i32, i64::MIN, ts, ts, 0) })
     }
 
     /// Read the next packet into `pkt`. Returns `Ok(false)` at end of input.
@@ -164,14 +165,7 @@ impl OutputFormatContext {
         let curl = cstring(url)?;
         let mut raw: *mut sys::AVFormatContext = ptr::null_mut();
         // SAFETY: raw is a valid out-param; format inferred from the filename.
-        let ret = unsafe {
-            sys::avformat_alloc_output_context2(
-                &mut raw,
-                ptr::null(),
-                ptr::null(),
-                curl.as_ptr(),
-            )
-        };
+        let ret = unsafe { sys::avformat_alloc_output_context2(&mut raw, ptr::null(), ptr::null(), curl.as_ptr()) };
         if ret < 0 || raw.is_null() {
             return Err(Error::CreateOutput(url.to_owned()));
         }
@@ -187,13 +181,7 @@ impl OutputFormatContext {
         };
         if needs_file {
             // SAFETY: pb is a valid out-param slot; curl valid for the call.
-            let r = unsafe {
-                sys::avio_open(
-                    &mut (*ctx.ctx()).pb,
-                    curl.as_ptr(),
-                    sys::AVIO_FLAG_WRITE as i32,
-                )
-            };
+            let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
             if r < 0 {
                 return Err(Error::CreateOutput(url.to_owned()));
             }

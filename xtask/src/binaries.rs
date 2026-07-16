@@ -64,9 +64,7 @@ pub fn locate_binaries(version: &str) -> PathBuf {
         return cache_dir;
     }
 
-    let url = format!(
-        "https://github.com/vegidio/binaries-ffmpeg/releases/download/{version}/{archive}"
-    );
+    let url = format!("https://github.com/vegidio/binaries-ffmpeg/releases/download/{version}/{archive}");
     eprintln!("xtask: downloading {url}");
     let bytes = download(&url);
     extract_zip(&bytes, &cache_dir);
@@ -81,8 +79,7 @@ fn download(url: &str) -> Vec<u8> {
         .into_reader();
 
     let mut bytes = Vec::new();
-    io::copy(&mut reader, &mut bytes)
-        .unwrap_or_else(|e| panic!("xtask: failed to read response body from {url}: {e}"));
+    io::copy(&mut reader, &mut bytes).unwrap_or_else(|e| panic!("xtask: failed to read response body from {url}: {e}"));
     bytes
 }
 
@@ -104,8 +101,8 @@ fn extract_zip(bytes: &[u8], dest: &Path) {
         if let Some(parent) = out_path.parent() {
             fs::create_dir_all(parent).unwrap();
         }
-        let mut out_file = fs::File::create(&out_path)
-            .unwrap_or_else(|e| panic!("xtask: cannot create {}: {e}", out_path.display()));
+        let mut out_file =
+            fs::File::create(&out_path).unwrap_or_else(|e| panic!("xtask: cannot create {}: {e}", out_path.display()));
         io::copy(&mut entry, &mut out_file).expect("xtask: failed to extract file");
     }
 }

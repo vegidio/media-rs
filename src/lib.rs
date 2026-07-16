@@ -19,6 +19,7 @@ pub mod types;
 mod raw;
 
 pub mod codec;
+pub mod extract;
 pub mod filter;
 pub mod format;
 pub mod frame;
@@ -29,12 +30,16 @@ pub mod probe;
 pub mod transcode;
 
 pub use codec::{Decoder, VideoEncoder};
-pub use log::Level;
+pub use extract::{
+    ExtractReport, ExtractedFrame, FrameExtractor, ImageFormat, Interval, NamingScheme, Output, Resolution,
+    SampledFrames, extract_frames,
+};
 pub use format::{MediaReader, MediaWriter};
 pub use frame::Frame;
+pub use log::Level;
 pub use packet::Packet;
-pub use probe::{probe, MediaInfo, StreamInfo};
-pub use transcode::{transcode, Transcoder, VideoConfig};
+pub use probe::{MediaInfo, StreamInfo, probe};
+pub use transcode::{Transcoder, VideoConfig, transcode};
 
 pub use error::{Error, Result};
 

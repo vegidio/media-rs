@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::raw::codec_context::{drain_received, find_decoder, CodecContext};
+use crate::raw::codec_context::{CodecContext, drain_received, find_decoder};
 use crate::raw::frame::RawFrame;
 use crate::sys;
 
@@ -19,10 +19,7 @@ pub struct Decoder {
 
 impl Decoder {
     /// Build a decoder for `codec_id`, configured from a stream's parameters.
-    pub(crate) fn open(
-        codec_id: sys::AVCodecID,
-        par: *const sys::AVCodecParameters,
-    ) -> Result<Self> {
+    pub(crate) fn open(codec_id: sys::AVCodecID, par: *const sys::AVCodecParameters) -> Result<Self> {
         crate::log::ensure_init();
         let codec = find_decoder(codec_id);
         if codec.is_null() {
@@ -67,6 +64,12 @@ impl Decoder {
     /// The decoder's output pixel format (video streams).
     pub fn pixel_format(&self) -> crate::types::pixel_format::PixelFormat {
         crate::types::pixel_format::PixelFormat::from_av(self.ctx.pix_fmt())
+    }
+
+    /// Discard the decoder's buffered state. Call this after seeking the underlying reader so
+    /// that frames decoded before the seek don't leak into subsequent output.
+    pub fn reset(&mut self) {
+        self.ctx.flush_buffers();
     }
 
     pub(crate) fn codec_ctx(&self) -> &CodecContext {

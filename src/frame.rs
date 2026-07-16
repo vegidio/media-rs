@@ -51,11 +51,7 @@ impl Frame {
     /// (`None` if unknown).
     pub fn pts(&self) -> Option<i64> {
         let pts = self.raw.pts();
-        if pts == i64::MIN {
-            None
-        } else {
-            Some(pts)
-        }
+        if pts == i64::MIN { None } else { Some(pts) }
     }
 
     /// Set the presentation timestamp. Set this in the target encoder's time base before
@@ -68,10 +64,6 @@ impl Frame {
     /// this over [`pts`](Self::pts) when re-encoding.
     pub fn best_effort_timestamp(&self) -> Option<i64> {
         let ts = self.raw.best_effort_timestamp();
-        if ts == i64::MIN {
-            None
-        } else {
-            Some(ts)
-        }
+        if ts == i64::MIN { None } else { Some(ts) }
     }
 }

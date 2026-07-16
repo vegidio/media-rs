@@ -88,9 +88,7 @@ fn download_and_extract() -> PathBuf {
         return cache_dir;
     }
 
-    let url = format!(
-        "https://github.com/vegidio/binaries-ffmpeg/releases/download/{version}/{archive}"
-    );
+    let url = format!("https://github.com/vegidio/binaries-ffmpeg/releases/download/{version}/{archive}");
     eprintln!("media-rs: downloading {url}");
 
     let bytes = download(&url);
@@ -217,7 +215,8 @@ fn discover_link_order(lib_dir: &Path) -> Vec<String> {
             let stem = if msvc {
                 // `<name>.lib` / `<name>.Lib` — keep the stem as-is (no `lib`-prefix strip).
                 let ext = path.extension()?.to_str()?;
-                ext.eq_ignore_ascii_case("lib").then(|| &name[..name.len() - ext.len() - 1])?
+                ext.eq_ignore_ascii_case("lib")
+                    .then(|| &name[..name.len() - ext.len() - 1])?
             } else {
                 name.strip_prefix("lib")?.strip_suffix(".a")?
             };
@@ -301,9 +300,7 @@ fn emit_system_libs(target_os: &str) {
             //    libc's `NEEDED`; it must precede the trailing `-lc` to take effect.
             if env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("aarch64") {
                 println!("cargo:rustc-link-arg=-Wl,--copy-dt-needed-entries");
-                for lib in [
-                    "stdc++", "m", "z", "pthread", "dl", "gcc", "gcc_s", "util", "rt", "c",
-                ] {
+                for lib in ["stdc++", "m", "z", "pthread", "dl", "gcc", "gcc_s", "util", "rt", "c"] {
                     println!("cargo:rustc-link-arg=-l{lib}");
                 }
             }
@@ -320,19 +317,43 @@ fn emit_system_libs(target_os: &str) {
             // and grouped by the consumer that needs it.
             for lib in [
                 // crypto: bcrypt (rng), openssl (libcrypto/libssl) cert + schannel
-                "bcrypt", "crypt32", "secur32",
+                "bcrypt",
+                "crypt32",
+                "secur32",
                 // sockets / networking: ws2_32 (+ srt/zmq pull in iphlpapi)
-                "ws2_32", "iphlpapi",
+                "ws2_32",
+                "iphlpapi",
                 // COM / general Win32
-                "ole32", "oleaut32", "uuid", "user32", "gdi32", "advapi32", "shell32",
-                "shlwapi", "psapi",
+                "ole32",
+                "oleaut32",
+                "uuid",
+                "user32",
+                "gdi32",
+                "advapi32",
+                "shell32",
+                "shlwapi",
+                "psapi",
                 // avdevice capture: DirectShow + Media Foundation + Video-for-Windows
-                "strmiids", "mfplat", "mfuuid", "mf", "mfreadwrite", "vfw32", "ksuser",
+                "strmiids",
+                "mfplat",
+                "mfuuid",
+                "mf",
+                "mfreadwrite",
+                "vfw32",
+                "ksuser",
                 "wmcodecdspuuid",
                 // hardware accel (d3d / dxva)
-                "d3d9", "d3d11", "dxgi", "dxva2", "dxguid",
+                "d3d9",
+                "d3d11",
+                "dxgi",
+                "dxva2",
+                "dxguid",
                 // SDL2 (avdevice sdl output)
-                "winmm", "setupapi", "version", "imm32", "cfgmgr32",
+                "winmm",
+                "setupapi",
+                "version",
+                "imm32",
+                "cfgmgr32",
                 // abseil symbolize
                 "dbghelp",
             ] {

@@ -24,11 +24,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // For anything not covered by the typed builders, drop down to a raw filter string:
     let _raw = FilterChain::raw("scale=1280:720,unsharp=5:5:1.0");
 
-    let summary = transcode(INPUT)
-        .to(OUTPUT)
-        .drop_audio()
-        .video_filter(chain)
-        .run()?;
+    let summary = transcode(INPUT).to(OUTPUT).drop_audio().video_filter(chain).run()?;
 
     println!(
         "Wrote {OUTPUT}\n  {} frames, {:.2}s",
