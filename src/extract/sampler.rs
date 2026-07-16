@@ -27,11 +27,6 @@ pub(crate) fn duration_to_ts(d: Duration, tb: Rational) -> i64 {
     tb.ts_from_secs(d.as_secs_f64())
 }
 
-/// Convert a timestamp in `tb` to seconds.
-fn ts_to_secs(ts: i64, tb: Rational) -> f64 {
-    tb.secs_from_ts(ts)
-}
-
 /// The resolved sampling strategy.
 enum Plan {
     /// Fixed-step targets from `next`, advancing by `step_ts` while `< end_ts`. Lazy, so it
@@ -39,9 +34,17 @@ enum Plan {
     Step { step_ts: i64, next: i64, end_ts: i64 },
     /// A precomputed ascending list of target timestamps.
     Targets { targets: Vec<i64>, cursor: usize },
-    /// Every `n`-th decoded frame within `[start_ts, end_ts)`, decoded sequentially. The running
-    /// frame counter and one-shot seek flag live on [`SampledFrames`], not here.
-    EveryN { n: u64, start_ts: i64, end_ts: i64 },
+    /// Every `n`-th decoded frame within `[start_ts, end_ts)`, decoded sequentially. `frame_no`
+    /// is the running decoded-frame counter and `sought` the one-shot "seeked to range start"
+    /// flag — both only meaningful for this variant, so they live here rather than on the
+    /// shared [`SampledFrames`].
+    EveryN {
+        n: u64,
+        start_ts: i64,
+        end_ts: i64,
+        frame_no: u64,
+        sought: bool,
+    },
 }
 
 impl Plan {
@@ -73,6 +76,8 @@ impl Plan {
                 n: (*n).max(1) as u64,
                 start_ts,
                 end_ts,
+                frame_no: 0,
+                sought: false,
             },
             Interval::Count(n) => Plan::Targets {
                 targets: count_targets(*n, start_secs, end_secs, tb),
@@ -156,7 +161,7 @@ impl FrameConverter {
             frame.height() as i32,
             frame.pixel_format(),
             time_base,
-            Rational::new(1, 1),
+            Rational::ONE,
             &chain,
         )?;
         Ok(Self { filter })
@@ -192,9 +197,6 @@ pub struct SampledFrames<'r> {
     eof: bool,
     current_ts: Option<i64>,
     next_index: u32,
-    /// `EveryN` running frame counter and one-shot "seeked to range start" flag.
-    every_n_frame_no: u64,
-    every_n_sought: bool,
     done: bool,
 }
 
@@ -228,8 +230,6 @@ impl<'r> SampledFrames<'r> {
             eof: false,
             current_ts: None,
             next_index: 0,
-            every_n_frame_no: 0,
-            every_n_sought: false,
             done: false,
         })
     }
@@ -281,7 +281,7 @@ impl<'r> SampledFrames<'r> {
         let (rgb, width, height) = self.converter.as_mut().unwrap().convert(frame)?;
         let index = self.next_index;
         self.next_index += 1;
-        let timestamp = Duration::from_secs_f64(ts_to_secs(ts, self.time_base).max(0.0));
+        let timestamp = Duration::from_secs_f64(self.time_base.secs_from_ts(ts).max(0.0));
         Ok(ExtractedFrame::new(index, timestamp, width, height, rgb))
     }
 
@@ -293,8 +293,8 @@ impl<'r> SampledFrames<'r> {
             None => return Ok(None),
         };
         let need_seek = match self.current_ts {
-            None => ts_to_secs(target, self.time_base) > SEEK_THRESHOLD_SECS,
-            Some(cur) => ts_to_secs(target - cur, self.time_base) > SEEK_THRESHOLD_SECS,
+            None => self.time_base.secs_from_ts(target) > SEEK_THRESHOLD_SECS,
+            Some(cur) => self.time_base.secs_from_ts(target - cur) > SEEK_THRESHOLD_SECS,
         };
         if need_seek {
             self.seek_to(target)?;
@@ -319,16 +319,23 @@ impl<'r> SampledFrames<'r> {
     /// Sequential sampling for `EveryNFrames`: decode in order within the range and emit every
     /// `n`-th frame.
     fn next_every_n(&mut self) -> Result<Option<ExtractedFrame>> {
+        // The immutable bounds; the running counter and seek flag are mutated in place on the
+        // plan below. The `_` arms are unreachable given `Iterator::next`'s dispatch, but stay
+        // lenient rather than panic on a future dispatch change.
         let (n, start_ts, end_ts) = match self.plan {
-            Plan::EveryN { n, start_ts, end_ts } => (n, start_ts, end_ts),
-            _ => unreachable!("next_every_n called for a non-EveryN plan"),
+            Plan::EveryN { n, start_ts, end_ts, .. } => (n, start_ts, end_ts),
+            _ => return Ok(None),
         };
         // Seek to the range start exactly once, before the first pull.
-        if !self.every_n_sought {
-            self.every_n_sought = true;
-            if ts_to_secs(start_ts, self.time_base) > SEEK_THRESHOLD_SECS {
-                self.seek_to(start_ts)?;
+        let seek_now = match &mut self.plan {
+            Plan::EveryN { sought, .. } if !*sought => {
+                *sought = true;
+                true
             }
+            _ => false,
+        };
+        if seek_now && self.time_base.secs_from_ts(start_ts) > SEEK_THRESHOLD_SECS {
+            self.seek_to(start_ts)?;
         }
         loop {
             match self.next_frame()? {
@@ -340,8 +347,15 @@ impl<'r> SampledFrames<'r> {
                     if ts >= end_ts {
                         return Ok(None);
                     }
-                    let emit = self.every_n_frame_no.is_multiple_of(n);
-                    self.every_n_frame_no += 1;
+                    // Read-then-advance the running frame counter held in the plan.
+                    let emit = match &mut self.plan {
+                        Plan::EveryN { frame_no, .. } => {
+                            let emit = frame_no.is_multiple_of(n);
+                            *frame_no += 1;
+                            emit
+                        }
+                        _ => false,
+                    };
                     if emit {
                         return Ok(Some(self.make_extracted(frame, ts)?));
                     }
@@ -461,5 +475,43 @@ mod tests {
     fn non_positive_step_yields_no_frames() {
         assert!(targets(Interval::EverySeconds(0.0), None, 10.0).is_empty());
         assert!(targets(Interval::Fps(0.0), None, 10.0).is_empty());
+    }
+
+    #[test]
+    fn every_n_frames_resolves_to_an_everyn_plan() {
+        // `EveryNFrames` decodes sequentially, so it resolves to an `EveryN` plan (not a
+        // target list) with its counter/seek flag initialised and the range as `[start, end)`.
+        match Plan::resolve(
+            &Interval::EveryNFrames(3),
+            Some((Duration::from_secs(2), Duration::from_secs(6))),
+            10.0,
+            TB,
+        ) {
+            Plan::EveryN {
+                n,
+                start_ts,
+                end_ts,
+                frame_no,
+                sought,
+            } => {
+                assert_eq!(n, 3);
+                assert_eq!(start_ts, 2000);
+                // Range end is inclusive, so it is nudged one tick past 6000.
+                assert_eq!(end_ts, 6001);
+                assert_eq!(frame_no, 0);
+                assert!(!sought);
+            }
+            _ => panic!("expected an EveryN plan"),
+        }
+    }
+
+    #[test]
+    fn every_n_frames_clamps_zero_to_one() {
+        // `EveryNFrames(0)` would emit every frame; it is clamped to 1 rather than dividing by
+        // zero when testing `frame_no % n`.
+        match Plan::resolve(&Interval::EveryNFrames(0), None, 10.0, TB) {
+            Plan::EveryN { n, .. } => assert_eq!(n, 1),
+            _ => panic!("expected an EveryN plan"),
+        }
     }
 }

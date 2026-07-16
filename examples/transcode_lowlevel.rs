@@ -26,11 +26,13 @@ fn drain_encoder(
         Some(f) => encoder.encode(f)?,
         None => encoder.flush()?,
     };
+
     for pkt in iter {
         let mut pkt = pkt?;
         pkt.set_stream_index(out_idx);
         writer.write_packet(&mut pkt)?;
     }
+
     Ok(())
 }
 

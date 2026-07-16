@@ -27,6 +27,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if packet.stream_index() != vidx {
             continue; // skip audio / other streams
         }
+
         for frame in decoder.decode(&packet)? {
             let frame = frame?;
             if frames == 0 {
@@ -38,6 +39,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                     frame.best_effort_timestamp()
                 );
             }
+
             frames += 1;
         }
     }

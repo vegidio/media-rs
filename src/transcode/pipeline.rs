@@ -25,11 +25,6 @@ pub(crate) struct TranscodeOptions {
     pub filter: FilterChain,
 }
 
-/// Convert a time in seconds to a timestamp in `tb`.
-fn secs_to_ts(secs: f64, tb: Rational) -> i64 {
-    tb.ts_from_secs(secs)
-}
-
 /// Encode one (already filtered) frame and mux the resulting packets.
 fn encode_and_mux(
     encoder: &mut VideoEncoder,
@@ -78,6 +73,141 @@ fn frame_secs(frame: &Frame, tb: Rational) -> f64 {
     tb.secs_from_ts(frame.best_ts())
 }
 
+/// The configured video half of a transcode: the decoder/encoder pair, the optional filter
+/// graph, the output stream index, and the source (video) time base.
+struct VideoStage {
+    decoder: Decoder,
+    encoder: VideoEncoder,
+    vfilter: Option<VideoFilter>,
+    out_vidx: usize,
+    v_tb: Rational,
+}
+
+/// Build the decoder, effective filter graph, and encoder for video stream `vidx`, and add
+/// the output stream. The filter graph is built eagerly so the encoder is sized to the graph's
+/// *actual* output — the only correct dimension/format even for arbitrary user filters.
+fn setup_video(
+    opts: &TranscodeOptions,
+    reader: &mut MediaReader,
+    writer: &mut MediaWriter,
+    vidx: usize,
+) -> Result<VideoStage> {
+    let in_tb = reader.stream_time_base(vidx)?;
+    let avg_fr = reader.stream_avg_frame_rate(vidx)?;
+    let dec = reader.stream(vidx).decoder()?;
+
+    let cfg = opts.video.clone();
+    let codec = cfg.as_ref().map(|c| c.codec).unwrap_or(VideoCodec::H264);
+    let (in_w, in_h) = (dec.width() as i32, dec.height() as i32);
+    let in_pix = dec.pixel_format();
+    let (tw, th) = cfg
+        .as_ref()
+        .and_then(|c| c.resolution)
+        .map(|(w, h)| (w as i32, h as i32))
+        .unwrap_or((in_w, in_h));
+
+    // Compose the effective filter chain: user filters, plus an auto scale when the
+    // requested resolution differs from the input.
+    let mut chain = opts.filter.clone();
+    if (tw, th) != (in_w, in_h) {
+        let mut stages = vec![format!("scale={tw}:{th}")];
+        if !opts.filter.is_empty() {
+            stages.push(opts.filter.description());
+        }
+        chain = FilterChain::raw(stages.join(","));
+    }
+
+    let mut vfilter = None;
+    let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
+        (in_w, in_h, in_pix)
+    } else {
+        let f = VideoFilter::new(in_w, in_h, in_pix, in_tb, Rational::ONE, &chain)?;
+        let dims = (f.output_width(), f.output_height(), f.output_pixel_format());
+        vfilter = Some(f);
+        dims
+    };
+
+    let fr = cfg
+        .as_ref()
+        .and_then(|c| c.framerate)
+        .or_else(|| (avg_fr.num > 0 && avg_fr.den > 0).then_some(Framerate(avg_fr)))
+        .unwrap_or(Framerate::fps(25));
+
+    let mut eb = VideoEncoder::builder()
+        .codec(codec)
+        .resolution(enc_w as u32, enc_h as u32)
+        .pixel_format(enc_pix)
+        .framerate(fr)
+        .time_base(in_tb)
+        .global_header(writer.wants_global_header());
+    if let Some(c) = &cfg {
+        if let Some(b) = c.bitrate {
+            eb = eb.bitrate(b);
+        }
+        if let Some(p) = c.preset {
+            eb = eb.preset(p);
+        }
+        if let Some(p) = c.profile {
+            eb = eb.profile(p);
+        }
+    }
+    let encoder = eb.build()?;
+    let out_vidx = writer.add_stream_from_encoder(&encoder)?;
+
+    Ok(VideoStage {
+        decoder: dec,
+        encoder,
+        vfilter,
+        out_vidx,
+        v_tb: in_tb,
+    })
+}
+
+/// Drain the video tail at end of input: flush the decoder → filter → encoder, muxing every
+/// frame/packet that falls inside the trim window.
+fn flush_video(
+    stage: &mut VideoStage,
+    writer: &mut MediaWriter,
+    trim_start_ts: i64,
+    in_trim: impl Fn(f64) -> bool,
+    frames: &mut u64,
+) -> Result<()> {
+    let (v_tb, out_vidx) = (stage.v_tb, stage.out_vidx);
+
+    // Collect the decoder-flush frames first so the decoder's mutable borrow ends before we
+    // hand each frame to the filter/encoder.
+    let mut tail = Vec::new();
+    for frame in stage.decoder.flush()? {
+        tail.push(frame?);
+    }
+    for frame in tail {
+        if !in_trim(frame_secs(&frame, v_tb)) {
+            continue;
+        }
+        process_video_frame(
+            frame,
+            &mut stage.vfilter,
+            &mut stage.encoder,
+            writer,
+            out_vidx,
+            trim_start_ts,
+            frames,
+        )?;
+    }
+    if let Some(vf) = stage.vfilter.as_mut() {
+        for frame in vf.flush()? {
+            encode_and_mux(&mut stage.encoder, writer, out_vidx, frame, trim_start_ts, frames)?;
+        }
+    }
+    // Flush the encoder itself.
+    for pkt in stage.encoder.flush()? {
+        let mut pkt = pkt?;
+        pkt.set_stream_index(out_vidx);
+        writer.write_packet(&mut pkt)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary> {
     let mut reader = MediaReader::open(&opts.input)?;
     let total_secs = reader.duration_secs();
@@ -101,83 +231,14 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
     let mut writer = MediaWriter::create(&opts.output)?;
 
     // --- video setup -------------------------------------------------------------------
-    let mut decoder: Option<Decoder> = None;
-    let mut encoder: Option<VideoEncoder> = None;
-    let mut vfilter: Option<VideoFilter> = None;
-    let mut out_vidx = 0usize;
-    let mut v_tb = Rational::new(1, 1);
-
-    if let Some(vidx) = video_idx {
-        let in_tb = reader.stream_time_base(vidx)?;
-        v_tb = in_tb;
-        let avg_fr = reader.stream_avg_frame_rate(vidx)?;
-        let dec = reader.stream(vidx).decoder()?;
-
-        let cfg = opts.video.clone();
-        let codec = cfg.as_ref().map(|c| c.codec).unwrap_or(VideoCodec::H264);
-        let (in_w, in_h) = (dec.width() as i32, dec.height() as i32);
-        let in_pix = dec.pixel_format();
-        let (tw, th) = cfg
-            .as_ref()
-            .and_then(|c| c.resolution)
-            .map(|(w, h)| (w as i32, h as i32))
-            .unwrap_or((in_w, in_h));
-
-        // Compose the effective filter chain: user filters, plus an auto scale when the
-        // requested resolution differs from the input.
-        let mut chain = opts.filter.clone();
-        if (tw, th) != (in_w, in_h) {
-            let mut stages = vec![format!("scale={tw}:{th}")];
-            if !opts.filter.is_empty() {
-                stages.push(opts.filter.description());
-            }
-            chain = FilterChain::raw(stages.join(","));
-        }
-
-        // Build the filter graph eagerly so the encoder is sized to the graph's actual
-        // output, which is the only correct dimension/format even for arbitrary user filters.
-        let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
-            (in_w, in_h, in_pix)
-        } else {
-            let f = VideoFilter::new(in_w, in_h, in_pix, in_tb, Rational::new(1, 1), &chain)?;
-            let dims = (f.output_width(), f.output_height(), f.output_pixel_format());
-            vfilter = Some(f);
-            dims
-        };
-
-        let fr = cfg
-            .as_ref()
-            .and_then(|c| c.framerate)
-            .or_else(|| (avg_fr.num > 0 && avg_fr.den > 0).then_some(Framerate(avg_fr)))
-            .unwrap_or(Framerate::fps(25));
-
-        let mut eb = VideoEncoder::builder()
-            .codec(codec)
-            .resolution(enc_w as u32, enc_h as u32)
-            .pixel_format(enc_pix)
-            .framerate(fr)
-            .time_base(in_tb)
-            .global_header(writer.wants_global_header());
-        if let Some(c) = &cfg {
-            if let Some(b) = c.bitrate {
-                eb = eb.bitrate(b);
-            }
-            if let Some(p) = c.preset {
-                eb = eb.preset(p);
-            }
-            if let Some(p) = c.profile {
-                eb = eb.profile(p);
-            }
-        }
-        let enc = eb.build()?;
-        out_vidx = writer.add_stream_from_encoder(&enc)?;
-        decoder = Some(dec);
-        encoder = Some(enc);
-    }
+    let mut video = match video_idx {
+        Some(vidx) => Some(setup_video(opts, &mut reader, &mut writer, vidx)?),
+        None => None,
+    };
 
     // --- audio setup (stream copy) -----------------------------------------------------
     let mut out_aidx = None;
-    let mut a_tb = Rational::new(1, 1);
+    let mut a_tb = Rational::ONE;
     if let Some(aidx) = audio_idx {
         a_tb = reader.stream_time_base(aidx)?;
         out_aidx = Some(writer.add_stream_copy(&reader, aidx)?);
@@ -186,9 +247,10 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
     writer.write_header()?;
 
     // --- trim bounds -------------------------------------------------------------------
+    let v_tb = video.as_ref().map(|s| s.v_tb).unwrap_or(Rational::ONE);
     let (trim_start, trim_end) = opts.trim.unwrap_or((0.0, f64::INFINITY));
-    let v_start_ts = secs_to_ts(trim_start, v_tb);
-    let a_start_ts = secs_to_ts(trim_start, a_tb);
+    let v_start_ts = v_tb.ts_from_secs(trim_start);
+    let a_start_ts = a_tb.ts_from_secs(trim_start);
     let a_tb_f64 = a_tb.as_f64();
     let in_trim = |secs: f64| secs >= trim_start && secs <= trim_end;
 
@@ -201,15 +263,22 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
         let sidx = packet.stream_index();
 
         if Some(sidx) == video_idx {
-            let dec = decoder.as_mut().unwrap();
-            let enc = encoder.as_mut().unwrap();
-            for frame in dec.decode(&packet)? {
+            let stage = video.as_mut().unwrap();
+            for frame in stage.decoder.decode(&packet)? {
                 let frame = frame?;
-                let secs = frame_secs(&frame, v_tb);
+                let secs = frame_secs(&frame, stage.v_tb);
                 if !in_trim(secs) {
                     continue;
                 }
-                process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;
+                process_video_frame(
+                    frame,
+                    &mut stage.vfilter,
+                    &mut stage.encoder,
+                    &mut writer,
+                    stage.out_vidx,
+                    v_start_ts,
+                    &mut frames,
+                )?;
                 on_progress(Progress::new(
                     (secs - trim_start).max(0.0),
                     total_secs - trim_start.min(total_secs),
@@ -231,28 +300,8 @@ pub(crate) fn run(opts: &TranscodeOptions, mut on_progress: impl FnMut(Progress)
     }
 
     // --- flush video: decoder → filter → encoder ---------------------------------------
-    if let (Some(dec), Some(enc)) = (decoder.as_mut(), encoder.as_mut()) {
-        let mut tail = Vec::new();
-        for frame in dec.flush()? {
-            tail.push(frame?);
-        }
-        for frame in tail {
-            if !in_trim(frame_secs(&frame, v_tb)) {
-                continue;
-            }
-            process_video_frame(frame, &mut vfilter, enc, &mut writer, out_vidx, v_start_ts, &mut frames)?;
-        }
-        if let Some(vf) = vfilter.as_mut() {
-            for frame in vf.flush()? {
-                encode_and_mux(enc, &mut writer, out_vidx, frame, v_start_ts, &mut frames)?;
-            }
-        }
-        // Flush the encoder itself.
-        for pkt in enc.flush()? {
-            let mut pkt = pkt?;
-            pkt.set_stream_index(out_vidx);
-            writer.write_packet(&mut pkt)?;
-        }
+    if let Some(stage) = video.as_mut() {
+        flush_video(stage, &mut writer, v_start_ts, in_trim, &mut frames)?;
     }
 
     writer.write_trailer()?;

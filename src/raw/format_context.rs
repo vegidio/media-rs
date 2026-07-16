@@ -7,7 +7,7 @@
 use super::codec_context::CodecContext;
 use super::packet::RawPacket;
 use super::util::non_null;
-use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check};
+use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check, strerror};
 use crate::sys;
 use crate::types::rational::Rational;
 use crate::types::stream_kind::StreamKind;
@@ -16,6 +16,13 @@ use std::ptr::{self, NonNull};
 
 fn cstring(path: &str) -> Result<CString> {
     CString::new(path).map_err(|_| Error::InvalidPath)
+}
+
+/// Combine a URL with FFmpeg's decoded reason for a failing return code, so open/create
+/// errors distinguish "no such file" from "invalid data" from "permission denied" instead of
+/// collapsing to the bare path.
+fn with_reason(url: &str, code: i32) -> String {
+    format!("{url} ({})", strerror(code))
 }
 
 /// An owned demuxer context with stream info already probed.
@@ -31,7 +38,7 @@ impl InputFormatContext {
         // SAFETY: raw is a valid out-param; curl is valid for the call.
         let ret = unsafe { sys::avformat_open_input(&mut raw, curl.as_ptr(), ptr::null(), ptr::null_mut()) };
         if ret < 0 {
-            return Err(Error::OpenInput(url.to_owned()));
+            return Err(Error::OpenInput(with_reason(url, ret)));
         }
         let ptr = non_null(raw, "AVFormatContext").map_err(|_| Error::OpenInput(url.to_owned()))?;
         let mut ctx = Self { ptr };
@@ -167,7 +174,7 @@ impl OutputFormatContext {
         // SAFETY: raw is a valid out-param; format inferred from the filename.
         let ret = unsafe { sys::avformat_alloc_output_context2(&mut raw, ptr::null(), ptr::null(), curl.as_ptr()) };
         if ret < 0 || raw.is_null() {
-            return Err(Error::CreateOutput(url.to_owned()));
+            return Err(Error::CreateOutput(with_reason(url, ret)));
         }
         let mut ctx = Self {
             ptr: non_null(raw, "AVFormatContext")?,
@@ -183,7 +190,7 @@ impl OutputFormatContext {
             // SAFETY: pb is a valid out-param slot; curl valid for the call.
             let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
             if r < 0 {
-                return Err(Error::CreateOutput(url.to_owned()));
+                return Err(Error::CreateOutput(with_reason(url, r)));
             }
             ctx.avio_opened = true;
         }

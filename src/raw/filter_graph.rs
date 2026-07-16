@@ -104,7 +104,16 @@ impl VideoFilterGraph {
         // can release them.
         unsafe {
             let outputs = non_null(sys::avfilter_inout_alloc(), "AVFilterInOut")?;
-            let inputs = non_null(sys::avfilter_inout_alloc(), "AVFilterInOut")?;
+            let inputs = match non_null(sys::avfilter_inout_alloc(), "AVFilterInOut") {
+                Ok(i) => i,
+                // The first node allocated but the second didn't; free the first (it has no
+                // Drop guard) before propagating so we don't leak it.
+                Err(e) => {
+                    let mut outputs_p = outputs.as_ptr();
+                    sys::avfilter_inout_free(&mut outputs_p);
+                    return Err(e);
+                }
+            };
 
             (*outputs.as_ptr()).name = sys::av_strdup(in_name.as_ptr());
             (*outputs.as_ptr()).filter_ctx = this.src;

@@ -15,6 +15,9 @@ pub struct Rational {
 }
 
 impl Rational {
+    /// The rational `1/1`. Handy as a square (1:1) pixel aspect ratio or a unit time base.
+    pub const ONE: Rational = Rational::new(1, 1);
+
     /// Create a rational `num / den`.
     pub const fn new(num: i32, den: i32) -> Self {
         Self { num, den }

@@ -18,6 +18,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .every(Duration::from_secs(1))
         .to_dir(OUT_DIR)
         .run()?;
+
     println!(
         "Tier 1: wrote {} frames to {OUT_DIR} in {:?}",
         report.frame_count(),
@@ -33,7 +34,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .to_memory()
         .build()?
         .run()?;
+
     println!("Tier 2: {} in-memory frames:", report.frame_count());
+
     for frame in report.frames() {
         let (w, h) = frame.dimensions();
         println!("  frame {} @ {:?} — {w}x{h}", frame.index(), frame.timestamp());
@@ -48,12 +51,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         ]))
         .to_callback(|frame| {
             let jpeg = frame.encode(ImageFormat::Jpeg { quality: 85 })?;
+
             println!(
                 "Callback: frame {} @ {:?} → {} JPEG bytes",
                 frame.index(),
                 frame.timestamp(),
                 jpeg.len()
             );
+
             Ok(())
         })
         .build()?
@@ -74,12 +79,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let mut reader = MediaReader::open(INPUT)?;
     let vidx = reader.best_stream(StreamKind::Video)?;
     let mut kept = 0;
+
     for frame in reader.stream(vidx).sampled_at(Interval::Count(3))? {
         let frame = frame?;
         let (w, h) = frame.dimensions();
         println!("Tier 3: frame {} is {w}x{h}", frame.index());
         kept += 1;
     }
+
     println!("Tier 3: iterated {kept} frames");
 
     Ok(())

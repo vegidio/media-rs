@@ -124,6 +124,41 @@ fn tier3_iterator_can_stop_early() {
     assert_eq!(count, 2);
 }
 
+/// `EveryNFrames` decodes sequentially and emits every n-th decoded frame, exercising the
+/// `next_every_n` path (its one-shot seek and in-plan counter) end to end.
+#[test]
+fn every_n_frames_emits_sequentially_indexed_frames() {
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+
+    // Every 10th decoded frame, in memory so we can inspect indices and pixels.
+    let report = FrameExtractor::builder()
+        .input(&input)
+        .interval(Interval::EveryNFrames(10))
+        .resolution(Resolution::Fixed(64, 36))
+        .to_memory()
+        .build()
+        .unwrap()
+        .run()
+        .unwrap();
+
+    let frames = report.frames();
+    assert!(!frames.is_empty(), "expected at least one sampled frame");
+    let mut last_ts = -1.0_f64;
+    for (i, frame) in frames.iter().enumerate() {
+        // Indices are the running emit count: 0, 1, 2, … regardless of the 10-frame stride.
+        assert_eq!(frame.index() as usize, i);
+        assert_eq!(frame.dimensions(), (64, 36));
+        assert_eq!(frame.to_rgb_bytes().len(), 64 * 36 * 3);
+        // Emitted frames advance monotonically in time.
+        let t = frame.timestamp().as_secs_f64();
+        assert!(t >= last_ts, "timestamps must not go backwards ({t} < {last_ts})");
+        last_ts = t;
+    }
+}
+
 /// A range restricts extraction to the requested window.
 #[test]
 fn range_limits_the_window() {

@@ -33,5 +33,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "Wrote {OUTPUT}\n  {} frames, {:.2}s (640x360 H.264)",
         summary.frames, summary.duration_secs
     );
+
     Ok(())
 }

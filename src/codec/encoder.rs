@@ -77,8 +77,8 @@ impl Iterator for EncodeIter<'_> {
 /// Builder for a [`VideoEncoder`].
 pub struct VideoEncoderBuilder {
     codec: Option<VideoCodec>,
-    width: Option<i32>,
-    height: Option<i32>,
+    width: Option<u32>,
+    height: Option<u32>,
     pix_fmt: Option<PixelFormat>,
     framerate: Option<Framerate>,
     time_base: Option<Rational>,
@@ -116,10 +116,11 @@ impl VideoEncoderBuilder {
         self
     }
 
-    /// Output resolution in pixels.
+    /// Output resolution in pixels. Kept as `u32` until `build()`, which converts to the
+    /// encoder's `i32` and rejects out-of-range values as [`Error::UnsupportedResolution`].
     pub fn resolution(mut self, width: u32, height: u32) -> Self {
-        self.width = Some(width as i32);
-        self.height = Some(height as i32);
+        self.width = Some(width);
+        self.height = Some(height);
         self
     }
 
@@ -127,8 +128,8 @@ impl VideoEncoderBuilder {
     /// to set up a transcode that keeps the input's geometry.
     pub fn from_decoder(mut self, decoder: &crate::codec::decoder::Decoder) -> Self {
         let ctx = decoder.codec_ctx();
-        self.width.get_or_insert(ctx.width());
-        self.height.get_or_insert(ctx.height());
+        self.width.get_or_insert(ctx.width().max(0) as u32);
+        self.height.get_or_insert(ctx.height().max(0) as u32);
         self.pix_fmt.get_or_insert(PixelFormat::from_av(ctx.pix_fmt()));
         let fr = ctx.framerate();
         if self.framerate.is_none() && fr.num > 0 && fr.den > 0 {
@@ -176,7 +177,8 @@ impl VideoEncoderBuilder {
 
     /// Keyframe interval (group-of-pictures size).
     pub fn gop_size(mut self, gop_size: u32) -> Self {
-        self.gop_size = Some(gop_size as i32);
+        // Saturate so an absurd value can't wrap to a negative GOP size.
+        self.gop_size = Some(i32::try_from(gop_size).unwrap_or(i32::MAX));
         self
     }
 
@@ -198,6 +200,14 @@ impl VideoEncoderBuilder {
         let height = self
             .height
             .ok_or(Error::InvalidConfig("video encoder requires a resolution"))?;
+        // The encoder wants `i32`; a `0` or an out-of-`i32`-range dimension is not encodable.
+        // Report the requested values (saturated for display) rather than a wrapped number.
+        let (Ok(width), Ok(height)) = (i32::try_from(width), i32::try_from(height)) else {
+            return Err(Error::UnsupportedResolution {
+                width: width.min(i32::MAX as u32) as i32,
+                height: height.min(i32::MAX as u32) as i32,
+            });
+        };
         if width <= 0 || height <= 0 {
             return Err(Error::UnsupportedResolution { width, height });
         }
@@ -237,5 +247,39 @@ impl VideoEncoderBuilder {
             recv: RawPacket::alloc()?,
             time_base,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Resolution validation runs before any codec lookup, so these assert the typed error
+    // without needing a real encoder.
+    #[test]
+    fn zero_resolution_is_unsupported() {
+        // `matches!` on the `Result` avoids needing `Debug` on the `Ok` (encoder) type.
+        let result = VideoEncoder::builder().codec(VideoCodec::H264).resolution(0, 720).build();
+        assert!(matches!(
+            result,
+            Err(Error::UnsupportedResolution { width: 0, height: 720 })
+        ));
+    }
+
+    #[test]
+    fn out_of_i32_range_resolution_is_unsupported_not_wrapped() {
+        // A `u32` above `i32::MAX` must not wrap through to a bogus (possibly negative)
+        // dimension; it is reported as unsupported with a saturated width.
+        let result = VideoEncoder::builder()
+            .codec(VideoCodec::H264)
+            .resolution(u32::MAX, 480)
+            .build();
+        assert!(matches!(
+            result,
+            Err(Error::UnsupportedResolution {
+                width: i32::MAX,
+                height: 480
+            })
+        ));
     }
 }

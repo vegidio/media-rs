@@ -40,6 +40,49 @@ fn drop_audio_yields_no_audio_stream() {
 }
 
 #[test]
+fn audio_is_stream_copied_into_the_output() {
+    // Uses the one sample that carries an audio track; skips gracefully otherwise.
+    let Some(input) = common::audio_sample() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    // Sanity-check the fixture actually has audio, else the test proves nothing.
+    if probe(&input).unwrap().audio().is_none() {
+        return;
+    }
+    let out = common::temp("media_rs_audiocopy.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    // Default transcode re-encodes video and stream-copies audio.
+    transcode(&input).to(&out).run().unwrap();
+
+    let info = probe(&out).unwrap();
+    assert!(info.video().is_some(), "video missing from output");
+    assert!(info.audio().is_some(), "audio was not stream-copied into the output");
+    let _ = std::fs::remove_file(&out);
+}
+
+#[test]
+fn drop_video_yields_audio_only_output() {
+    let Some(input) = common::audio_sample() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    if probe(&input).unwrap().audio().is_none() {
+        return;
+    }
+    let out = common::temp("media_rs_audioonly.m4a");
+    let _ = std::fs::remove_file(&out);
+
+    transcode(&input).to(&out).drop_video().run().unwrap();
+
+    let info = probe(&out).unwrap();
+    assert!(info.audio().is_some(), "audio missing from audio-only output");
+    assert!(info.video().is_none(), "video stream was not dropped");
+    let _ = std::fs::remove_file(&out);
+}
+
+#[test]
 fn builder_scale_changes_resolution() {
     let Some(input) = common::sample_videos().into_iter().next() else {
         return;

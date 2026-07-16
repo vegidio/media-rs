@@ -7,6 +7,10 @@ use rust_sak::image::{EncodeOptions, ImageFormat as RsakFormat, PngCompression, 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+/// Quality used for JPEG when a caller doesn't specify one (via `Default` or extension
+/// inference). Kept in one place so the two entry points can't drift apart.
+const DEFAULT_JPEG_QUALITY: u8 = 90;
+
 /// How to choose which frames to extract.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Interval {
@@ -37,7 +41,9 @@ pub enum ImageFormat {
 
 impl Default for ImageFormat {
     fn default() -> Self {
-        ImageFormat::Jpeg { quality: 90 }
+        ImageFormat::Jpeg {
+            quality: DEFAULT_JPEG_QUALITY,
+        }
     }
 }
 
@@ -54,7 +60,9 @@ impl ImageFormat {
     /// defaults to quality 90.
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext.to_ascii_lowercase().as_str() {
-            "jpg" | "jpeg" => Some(ImageFormat::Jpeg { quality: 90 }),
+            "jpg" | "jpeg" => Some(ImageFormat::Jpeg {
+                quality: DEFAULT_JPEG_QUALITY,
+            }),
             "png" => Some(ImageFormat::Png),
             _ => None,
         }
