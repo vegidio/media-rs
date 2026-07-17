@@ -1,94 +1,177 @@
 # media-rs
 
-Rust bindings to [FFmpeg](https://ffmpeg.org) — `libavcodec`, `libavformat`, `libavutil`, `libavfilter`, `libavdevice`, `libswscale`, `libswresample` and `libpostproc` — via **statically linked** libraries.
+A Rust library to encode, decode and process audio/video using [FFmpeg](https://ffmpeg.org), via statically linked libraries.
 
 The crate links the prebuilt static FFmpeg binaries published at [`vegidio/binaries-ffmpeg`](https://github.com/vegidio/binaries-ffmpeg) and ships **pre-generated, committed** raw FFI bindings — no build-time `bindgen`/`libclang`, no system FFmpeg dependency and no `pkg-config` required.
 
-📖 **[Documentation site →](https://vegidio.github.io/media-rs/)** — guides and a full API reference.
+## ⬇️ Installation
 
-> **Status:** a safe, idiomatic Rust API built on the raw [`sys`] bindings is available — reading/probing media, decoding, video encoding, filtering, and transcoding — with the common entry points re-exported from `media::prelude`. Still missing: audio re-encoding, an `async` feature, and per-platform hardware guardrails. The crate name is `media-rs` and the library is imported as `media`.
+This library can be installed using Cargo. To do that, run the following command in your project's root directory:
 
-## Supported targets
+```bash
+cargo add media-rs
+```
+
+The crate links as `media`, so you import it with `use media;` regardless of the package name.
+
+> [!NOTE]
+> The first build downloads the prebuilt static binaries for your platform, so an internet connection is required (see [Troubleshooting](#-troubleshooting) for offline builds).
+
+### Supported targets
 
 Binaries are available for six platform/architecture combinations:
 
 |         | x64 | arm64 |
 |---------|-----|-------|
-| macOS   | ✓   | ✓     |
-| Linux   | ✓   | ✓     |
-| Windows | ✓   | ✓     |
+| macOS   | ✓  | ✓    |
+| Linux   | ✓  | ✓    |
+| Windows | ✓  | ✓    |
 
-> Windows builds use the **MSVC** toolchain (`*-pc-windows-msvc`); the static archives are MSVC `.lib` files (vcpkg `*-static-md`: static libraries, dynamic UCRT).
+> Windows builds use the **MSVC** toolchain (`*-pc-windows-msvc`). The set of bundled codecs and dependencies differs per target (for example, NVENC and QSV ship on Windows x64 but not arm64; VAAPI is Linux-only).
 
-The set of **bundled codecs and dependencies differs per target** (for example, NVENC, QSV and OpenGL ship on Windows x64 but not Windows arm64; VAAPI is Linux-only). The bindings cover the full portable FFmpeg API on every platform; the forthcoming Rust API will add guardrails that report when a feature is selected on a platform whose binaries don't provide it.
+## 🤖 Usage
 
-## How the build works
+Here are some examples of how to work with media files using this library. These snippets don't have any error handling for the sake of simplicity, but you should always check for errors in production code.
 
-1. `build.rs` downloads `static_<os>_<arch>.zip` for the current target from the pinned `binaries-ffmpeg` release and caches it under `OUT_DIR`.
-2. It discovers and links every static library in the archive's `lib/` directory (`lib*.a` on macOS/Linux, `*.lib` on MSVC Windows) — FFmpeg core libraries first in dependency order, then the bundled third-party deps. GNU linkers wrap the set in a `--start-group` link group to resolve circular refs; the multi-pass macOS `ld64` and Windows `link.exe` need no group.
+> [!TIP]
+> The complete documentation, with a detailed explanation of how each API works, is available at **[vegidio.github.io/media-rs](https://vegidio.github.io/media-rs/)**.
 
-That's it — **no `bindgen`/`libclang` is required to build the crate.** The FFI bindings ([`src/sys/bindings.rs`](src/sys/bindings.rs)) are pre-generated and committed; see [Bindings](#bindings).
+#### Probing
 
-### Offline / custom builds
+Inspect a file's container and stream metadata without decoding any frames:
 
-Set `MEDIA_BINARIES_DIR` to a directory containing `include/` and `lib/` subdirectories laid out like the release archives to skip the download and link against your own build:
+```rust
+use media::prelude::*;
 
-```sh
-MEDIA_BINARIES_DIR=/path/to/ffmpeg cargo build
+let info = probe("/path/to/video.mp4").unwrap();
+println!("Duration: {:.2}s", info.duration().as_secs_f64());
+
+if let Some(video) = info.video() {
+    println!("Video: {}x{}", video.width, video.height);
+}
 ```
 
-## Bindings
+#### Transcoding
 
-The FFI bindings are **pre-generated and committed** at [`src/sys/bindings.rs`](src/sys/bindings.rs), so building the crate needs no `bindgen`/`libclang`. They are produced by the dev-only [`xtask`](xtask/) crate and the **"Generate bindings"** GitHub Actions workflow, not by `build.rs`.
+The one-liner transcode infers the output container and codecs from the file extension:
 
-Why committed rather than generated per build: no single machine has every hardware SDK (e.g. a macOS dev can't produce the Windows/Linux hwaccel bindings). FFmpeg's hardware headers come in two families — the `libavcodec/*` hwaccel headers and the `libavutil/hwcontext_*.h` headers — and each `#include`s an external OS/SDK header (`<d3d11.h>`, `<va/va.h>`, `<VideoToolbox/…>`, `<cuda.h>`, …) that exists only on the matching platform. So [`wrapper.h`](wrapper.h) gates each block on `__has_include(<its-sdk-header>)`; the workflow runs `xtask generate` on a macOS + Linux + Windows matrix (each with its SDKs installed), then `xtask merge` unions the three. Because bindgen output is pure Rust, every platform's structs are included **unconditionally** — you can reference `AVD3D11VADeviceContext` on macOS; the matching functions only fail to *link* if actually called on the wrong OS (the forthcoming guardrails will prevent that).
+```rust
+use media::prelude::*;
 
-### Regenerating
+let summary = transcode("/path/to/input.mp4").to("/path/to/output.webm").run().unwrap();
+println!("Wrote {} frames in {:.2}s", summary.frames, summary.duration_secs);
+```
 
-Run the **"Generate bindings"** workflow from the repo's **Actions** tab ("Run workflow"), or with `gh workflow run bindings.yml`; it commits the refreshed `src/sys/bindings.rs` to `main`. For the host OS only, you can also run `cargo run -p xtask -- generate`.
+#### Transcoding with custom settings
 
-> **libpostproc:** the current `binaries-ffmpeg` `26.6.3` static archives do **not** ship `libpostproc` (no `libpostproc.a`/headers), despite the upstream README listing it; the build skips it automatically and will pick it up if a later release includes it.
+Use the builder to take full control over the output video:
 
-## Examples
+```rust
+use media::prelude::*;
 
-Runnable, single-feature examples live in [`examples/`](examples/) — one per public capability, from the one-liner `transcode()` up to the frame-level pipeline. Run any of them with:
+let video = VideoConfig::builder()
+    .codec(VideoCodec::H264)
+    .resolution(640, 360)
+    .bitrate(Bitrate::mbps(2))
+    .framerate(Framerate::fps(30))
+    .preset(H264Preset::Fast)
+    .profile(H264Profile::High)
+    .build()
+    .unwrap();
 
-```sh
-cargo run --example version              # linked FFmpeg version
-cargo run --example raw_ffi              # media::sys raw FFI escape hatch
-cargo run --example probe                # inspect streams without decoding
-cargo run --example logging              # FFmpeg log verbosity control
-cargo run --example transcode_oneliner   # transcode(input).to(output).run()
+let summary = Transcoder::builder()
+    .input("/path/to/input.mp4")
+    .output("/path/to/output.mp4")
+    .video(video)
+    .drop_audio()
+    .build()
+    .unwrap()
+    .run()
+    .unwrap();
+```
+
+#### Extracting frames
+
+Extract still images from a video — here, one JPEG per second into a directory:
+
+```rust
+use media::prelude::*;
+use std::time::Duration;
+
+let report = extract_frames("/path/to/video.mp4")
+    .every(Duration::from_secs(1))
+    .to_dir("/path/to/frames")
+    .run()
+    .unwrap();
+
+println!("Wrote {} frames in {:?}", report.frame_count(), report.elapsed());
+```
+
+#### Remuxing
+
+Change a file's container without re-encoding, by copying every stream through verbatim:
+
+```rust
+use media::prelude::*;
+
+let mut reader = MediaReader::open("/path/to/input.mp4").unwrap();
+let mut writer = MediaWriter::create("/path/to/output.mkv").unwrap();
+
+let mut out_index = Vec::new();
+for i in 0..reader.stream_count() {
+    out_index.push(writer.add_stream_copy(&reader, i).unwrap());
+}
+
+writer.write_header().unwrap();
+for packet in reader.packets() {
+    let mut packet = packet.unwrap();
+    packet.set_stream_index(out_index[packet.stream_index()]);
+    writer.write_packet(&mut packet).unwrap();
+}
+writer.write_trailer().unwrap();
+```
+
+#### Runnable examples
+
+The [`examples/`](examples) directory has standalone programs covering each part of the API, runnable out of the box against the bundled assets:
+
+```bash
+cargo run --example probe                    # inspect streams without decoding
+cargo run --example transcode_oneliner       # transcode(input).to(output).run()
+cargo run --example transcode_builder        # full VideoConfig builder (H.264)
+cargo run --example transcode_codecs         # H.265 / VP9 / AV1 into matching containers
 cargo run --example transcode_drop_streams   # keep only video / only audio
-cargo run --example transcode_trim       # keep a time range
-cargo run --example transcode_builder    # full VideoConfig builder (H.264)
-cargo run --example transcode_codecs     # H.265 / VP9 / AV1 into matching containers
-cargo run --example transcode_progress   # progress callback
-cargo run --example filters              # FilterChain (scale/fps/denoise/color)
-cargo run --example remux                # stream-copy to a new container (no re-encode)
-cargo run --example extract_frames       # extract stills across all three tiers
-cargo run --example extract_sampling     # Fps / EveryNFrames intervals + custom naming
-cargo run --example extract_save         # save frames + raw RGB pixel access
-cargo run --example decode_frames        # MediaReader + Decoder (Tier 3 read)
-cargo run --example seek                 # seek to a timestamp before decoding
-cargo run --example transcode_lowlevel   # read → decode → encode → mux by hand
+cargo run --example transcode_trim           # keep a time range
+cargo run --example transcode_progress       # progress callback
+cargo run --example filters                  # FilterChain (scale/fps/denoise/color)
+cargo run --example remux                    # stream-copy to a new container (no re-encode)
+cargo run --example extract_frames           # extract stills across all three tiers
+cargo run --example extract_sampling         # Fps / EveryNFrames intervals + custom naming
+cargo run --example extract_save             # save frames + raw RGB pixel access
+cargo run --example decode_frames            # MediaReader + Decoder (Tier 3 read)
+cargo run --example seek                     # seek to a timestamp before decoding
+cargo run --example transcode_lowlevel       # read → decode → encode → mux by hand
+cargo run --example logging                  # FFmpeg log verbosity control
+cargo run --example raw_ffi                  # media::sys raw FFI escape hatch
+cargo run --example version                  # print the linked FFmpeg version
 ```
 
 They read from `assets/video*.mp4` and write outputs to `assets/temp_*` (git-ignored).
 
-## Testing & coverage
+## 💣 Troubleshooting
 
-Run the test suite with `cargo test`. It includes unit tests plus integration tests under [`tests/`](tests/) that exercise `assets/video*.mp4`; the integration tests skip cleanly when those assets are absent.
+### My build fails because it can't download the binaries
 
-Code coverage is measured with [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov). Generate a report locally with the helper script (it installs the tooling on first run):
+The first build fetches the prebuilt static libraries for your platform over the network. For offline or air-gapped builds, provide a directory containing `include/` and `lib/` subdirectories laid out like the release archives, and point the build at it with the `MEDIA_BINARIES_DIR` environment variable:
 
-```sh
-scripts/coverage.sh          # build and open an HTML report
-scripts/coverage.sh --lcov   # emit target/coverage/lcov.info instead
+```bash
+MEDIA_BINARIES_DIR=/path/to/extracted/libs cargo build
 ```
 
-Equivalent cargo aliases are configured in [`.cargo/config.toml`](.cargo/config.toml): `cargo cov` and `cargo cov-lcov`. Coverage is a local-only dev tool — there is no coverage CI workflow.
+## 📝 License
 
-## License
+**media-rs** is released under the Apache 2.0 License. See [LICENSE](LICENSE) for details.
 
-GPL-3.0 — the linked FFmpeg binaries are built with `--enable-gpl`.
+## 👨🏾‍💻 Author
+
+Vinicius Egidio ([vinicius.io](http://vinicius.io))

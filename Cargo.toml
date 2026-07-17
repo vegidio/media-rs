@@ -12,7 +12,7 @@ readme = "README.md"
 authors = ["Vinicius Egidio <me@vinicius.io>"]
 keywords = ["ffmpeg", "video", "audio", "codec", "media"]
 categories = ["multimedia", "external-ffi-bindings"]
-exclude = [".cargo/", ".github/", ".idea/", ".editorconfig", "rustfmt.toml", "wrapper.h", "assets/", "examples/", "scripts/", "xtask/"]
+exclude = [".cargo/", ".github/", ".idea/", ".editorconfig", "rustfmt.toml", "wrapper.h", "assets/", "docs/", "examples/", "scripts/", "xtask/"]
 
 [lib]
 name = "media"

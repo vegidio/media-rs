@@ -9,15 +9,15 @@ re-exported by the prelude.
 pub enum VideoCodec { H264, H265, Vp8, Vp9, Av1 }
 ```
 
-Encoders resolve **by name** to the external GPL libraries.
+Encoders resolve **by name** to the external libraries.
 
-| Variant | Encoder | Common container |
-|---------|---------|------------------|
-| `H264` | `libx264` | `.mp4` |
-| `H265` | `libx265` | `.mp4` |
-| `Vp8` | `libvpx` | `.webm` |
-| `Vp9` | `libvpx-vp9` | `.webm` |
-| `Av1` | `libsvtav1` | `.mkv` |
+| Variant | Encoder      | Common container |
+|---------|--------------|------------------|
+| `H264`  | `libx264`    | `.mp4`           |
+| `H265`  | `libx265`    | `.mp4`           |
+| `Vp8`   | `libvpx`     | `.webm`          |
+| `Vp9`   | `libvpx-vp9` | `.webm`          |
+| `Av1`   | `libsvtav1`  | `.mkv`           |
 
 Methods: `encoder_name(self) -> &'static str`, `codec_id(self) -> sys::AVCodecID`.
 

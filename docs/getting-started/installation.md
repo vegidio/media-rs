@@ -39,9 +39,9 @@ Prebuilt binaries are available for six platform/architecture combinations:
 
 |         | x64 | arm64 |
 |---------|:---:|:-----:|
-| macOS   |  ✓  |   ✓   |
-| Linux   |  ✓  |   ✓   |
-| Windows |  ✓  |   ✓   |
+| macOS   | ✓  |  ✓   |
+| Linux   | ✓  |  ✓   |
+| Windows | ✓  |  ✓   |
 
 !!! note "Windows uses MSVC"
     Windows builds use the **MSVC** toolchain (`*-pc-windows-msvc`); the static archives are
@@ -61,5 +61,4 @@ MEDIA_BINARIES_DIR=/path/to/ffmpeg cargo build
 
 ## License
 
-`media-rs` is **GPL-3.0** — the linked FFmpeg binaries are built with `--enable-gpl`. Make
-sure that is compatible with your project before depending on it.
+`media-rs` is **Apache 2.0**. Make sure that it is compatible with your project before depending on it.
