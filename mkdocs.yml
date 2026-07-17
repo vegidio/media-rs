@@ -1,0 +1,102 @@
+site_name: media-rs
+site_description: >-
+  Encode, decode and process audio/video with FFmpeg in Rust, via statically-linked
+  libraries.
+site_url: https://vegidio.github.io/media-rs/
+site_author: Vinicius Egidio
+
+repo_name: vegidio/media-rs
+repo_url: https://github.com/vegidio/media-rs
+edit_uri: edit/main/docs/
+
+copyright: >-
+  Licensed under GPL-3.0 — the linked FFmpeg binaries are built with <code>--enable-gpl</code>.
+
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home:
+      - index.md
+      - Getting Started:
+          - getting-started/installation.md
+          - getting-started/quickstart.md
+          - getting-started/concepts.md
+  - Guides:
+      - guides/index.md
+      - Probing media: guides/probing.md
+      - Transcoding: guides/transcoding.md
+      - Filters: guides/filters.md
+      - Frame extraction: guides/frame-extraction.md
+      - Remuxing: guides/remuxing.md
+      - Seeking: guides/seeking.md
+      - Low-level pipeline: guides/low-level.md
+      - Logging: guides/logging.md
+      - Raw FFI: guides/raw-ffi.md
+  - API Reference:
+      - reference/index.md
+      - Transcode: reference/transcode.md
+      - Frame extraction: reference/extract.md
+      - Format I/O: reference/format.md
+      - Codec: reference/codec.md
+      - Frame & Packet: reference/frame-packet.md
+      - Filters: reference/filter.md
+      - Probe: reference/probe.md
+      - Types: reference/types.md
+      - Logging: reference/logging.md
+      - Errors: reference/errors.md

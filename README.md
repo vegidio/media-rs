@@ -4,6 +4,8 @@ Rust bindings to [FFmpeg](https://ffmpeg.org) — `libavcodec`, `libavformat`, `
 
 The crate links the prebuilt static FFmpeg binaries published at [`vegidio/binaries-ffmpeg`](https://github.com/vegidio/binaries-ffmpeg) and ships **pre-generated, committed** raw FFI bindings — no build-time `bindgen`/`libclang`, no system FFmpeg dependency and no `pkg-config` required.
 
+📖 **[Documentation site →](https://vegidio.github.io/media-rs/)** — guides and a full API reference.
+
 > **Status:** a safe, idiomatic Rust API built on the raw [`sys`] bindings is available — reading/probing media, decoding, video encoding, filtering, and transcoding — with the common entry points re-exported from `media::prelude`. Still missing: audio re-encoding, an `async` feature, and per-platform hardware guardrails. The crate name is `media-rs` and the library is imported as `media`.
 
 ## Supported targets

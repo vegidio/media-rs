@@ -5,3 +5,6 @@
 
 # Output files written by the examples under examples/ (see assets/temp_* convention).
 /assets/temp_*
+
+# MkDocs build output (`mkdocs build`); the docs site is published from CI.
+/site/
