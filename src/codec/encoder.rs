@@ -5,6 +5,7 @@ use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::raw::codec_context::{CodecContext, drain_received, find_encoder_by_name};
 use crate::raw::packet::RawPacket;
+use crate::sys;
 use crate::types::codec::VideoCodec;
 use crate::types::pixel_format::PixelFormat;
 use crate::types::preset::H264Preset;
@@ -230,6 +231,13 @@ impl VideoEncoderBuilder {
         if self.global_header {
             ctx.set_global_header();
         }
+
+        // Encode multithreaded, mirroring the decoder. `0` sizes the pool to the CPU (for
+        // libx264/x265 it hands off to x264's own auto-threading); passing FRAME|SLICE — rather
+        // than SLICE alone — keeps x264 on frame threads, which its wrapper selects unless
+        // thread_type == FF_THREAD_SLICE exactly. Without this the encoder defaults to a single
+        // thread.
+        ctx.set_threading(0, (sys::FF_THREAD_FRAME | sys::FF_THREAD_SLICE) as i32);
 
         // preset/profile are x264/x265 private options.
         if matches!(codec, VideoCodec::H264 | VideoCodec::H265) {
