@@ -17,9 +17,7 @@ use std::time::Duration;
 /// # Ok::<(), media::Error>(())
 /// ```
 pub fn transcode(input: impl Into<String>) -> TranscodeJob {
-    TranscodeJob {
-        builder: TranscoderBuilder::default().input(input),
-    }
+    TranscodeJob { builder: TranscoderBuilder::default().input(input) }
 }
 
 /// A fluent one-liner transcode. Inherits codecs/geometry from the input and the output

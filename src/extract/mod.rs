@@ -182,19 +182,13 @@ impl FrameExtractorBuilder {
     pub fn build(self) -> Result<FrameExtractor> {
         Ok(FrameExtractor {
             opts: ExtractOptions {
-                input: self
-                    .input
-                    .ok_or(Error::InvalidConfig("frame extractor requires an input"))?,
-                interval: self
-                    .interval
-                    .ok_or(Error::InvalidConfig("frame extractor requires an interval"))?,
+                input: self.input.ok_or(Error::InvalidConfig("frame extractor requires an input"))?,
+                interval: self.interval.ok_or(Error::InvalidConfig("frame extractor requires an interval"))?,
                 format: self.format.unwrap_or_default(),
                 resolution: self.resolution.unwrap_or_default(),
                 naming: self.naming.unwrap_or_default(),
                 range: self.range,
-                output: self
-                    .output
-                    .ok_or(Error::InvalidConfig("frame extractor requires an output"))?,
+                output: self.output.ok_or(Error::InvalidConfig("frame extractor requires an output"))?,
             },
         })
     }

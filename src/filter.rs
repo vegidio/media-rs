@@ -44,12 +44,7 @@ pub struct ColorCorrect {
 
 impl Default for ColorCorrect {
     fn default() -> Self {
-        Self {
-            brightness: 0.0,
-            contrast: 1.0,
-            saturation: 1.0,
-            gamma: 1.0,
-        }
+        Self { brightness: 0.0, contrast: 1.0, saturation: 1.0, gamma: 1.0 }
     }
 }
 
@@ -100,9 +95,7 @@ impl FilterChain {
 
     /// A chain from a raw libavfilter string, e.g. `"scale=1280:720,unsharp=5:5:1.0"`.
     pub fn raw(description: impl Into<String>) -> Self {
-        Self {
-            stages: vec![description.into()],
-        }
+        Self { stages: vec![description.into()] }
     }
 
     /// Scale to `width`×`height`.
@@ -156,17 +149,8 @@ impl VideoFilter {
         sample_aspect_ratio: Rational,
         chain: &FilterChain,
     ) -> Result<Self> {
-        let input = VideoInput {
-            width,
-            height,
-            pix_fmt: pix_fmt.to_av(),
-            time_base,
-            sample_aspect_ratio,
-        };
-        Ok(Self {
-            graph: VideoFilterGraph::new(&input, &chain.description())?,
-            out: RawFrame::alloc()?,
-        })
+        let input = VideoInput { width, height, pix_fmt: pix_fmt.to_av(), time_base, sample_aspect_ratio };
+        Ok(Self { graph: VideoFilterGraph::new(&input, &chain.description())?, out: RawFrame::alloc()? })
     }
 
     /// The width of frames this filter emits.
@@ -226,38 +210,23 @@ mod tests {
 
     #[test]
     fn operators_compose_in_order_joined_by_commas() {
-        let chain = FilterChain::new()
-            .scale(640, 360)
-            .fps(30)
-            .denoise(DenoiseLevel::Moderate);
+        let chain = FilterChain::new().scale(640, 360).fps(30).denoise(DenoiseLevel::Moderate);
         assert_eq!(chain.description(), "scale=640:360,fps=30,hqdn3d=4:4:9:9");
     }
 
     #[test]
     fn denoise_levels_map_to_distinct_strengths() {
-        assert_eq!(
-            FilterChain::new().denoise(DenoiseLevel::Light).description(),
-            "hqdn3d=1.5:1.5:6:6"
-        );
-        assert_eq!(
-            FilterChain::new().denoise(DenoiseLevel::Heavy).description(),
-            "hqdn3d=8:8:12:12"
-        );
+        assert_eq!(FilterChain::new().denoise(DenoiseLevel::Light).description(), "hqdn3d=1.5:1.5:6:6");
+        assert_eq!(FilterChain::new().denoise(DenoiseLevel::Heavy).description(), "hqdn3d=8:8:12:12");
     }
 
     #[test]
     fn color_correct_emits_an_eq_filter_with_all_knobs() {
         // Defaults are identity; only the knobs touched should move away from them.
         let chain = FilterChain::new().color_correct(|c| c.brightness(0.1).contrast(1.2));
-        assert_eq!(
-            chain.description(),
-            "eq=brightness=0.1:contrast=1.2:saturation=1:gamma=1"
-        );
+        assert_eq!(chain.description(), "eq=brightness=0.1:contrast=1.2:saturation=1:gamma=1");
 
         let full = FilterChain::new().color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
-        assert_eq!(
-            full.description(),
-            "eq=brightness=-0.2:contrast=0.9:saturation=1.5:gamma=0.8"
-        );
+        assert_eq!(full.description(), "eq=brightness=-0.2:contrast=0.9:saturation=1.5:gamma=0.8");
     }
 }

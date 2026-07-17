@@ -14,10 +14,7 @@ pub fn run(out: Option<PathBuf>, version: &str) {
     let include = bin.join("include");
 
     // `wrapper.h` lives at the repository root, one level up from this xtask crate.
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("xtask: no parent dir")
-        .to_path_buf();
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().expect("xtask: no parent dir").to_path_buf();
     let wrapper = repo_root.join("wrapper.h");
 
     let bindings = bindgen::Builder::default()

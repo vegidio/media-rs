@@ -111,9 +111,7 @@ impl TranscoderBuilder {
         Ok(Transcoder {
             opts: TranscodeOptions {
                 input: self.input.ok_or(Error::InvalidConfig("transcoder requires an input"))?,
-                output: self
-                    .output
-                    .ok_or(Error::InvalidConfig("transcoder requires an output"))?,
+                output: self.output.ok_or(Error::InvalidConfig("transcoder requires an output"))?,
                 video: self.video,
                 drop_video: self.drop_video,
                 drop_audio: self.drop_audio,

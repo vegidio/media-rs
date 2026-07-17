@@ -26,10 +26,7 @@ pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo> {
             audio_codec: AudioCodec::from_codec_id(codec_id),
         });
     }
-    Ok(MediaInfo {
-        duration: Duration::from_secs_f64(reader.duration_secs().max(0.0)),
-        streams,
-    })
+    Ok(MediaInfo { duration: Duration::from_secs_f64(reader.duration_secs().max(0.0)), streams })
 }
 
 /// Container-level metadata returned by [`probe`].

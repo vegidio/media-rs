@@ -23,10 +23,7 @@ fn probe_missing_input_errors() {
 #[test]
 fn video_config_requires_a_codec() {
     let err = VideoConfig::builder().build().unwrap_err();
-    assert!(
-        matches!(err, Error::InvalidConfig(_)),
-        "expected InvalidConfig, got {err:?}"
-    );
+    assert!(matches!(err, Error::InvalidConfig(_)), "expected InvalidConfig, got {err:?}");
 }
 
 #[test]
@@ -53,10 +50,7 @@ fn best_stream_for_absent_audio_errors() {
     }
     let reader = MediaReader::open(video_only.to_str().unwrap()).unwrap();
     let err = reader.best_stream(StreamKind::Audio).unwrap_err();
-    assert!(
-        matches!(err, Error::NoAudioStream),
-        "expected NoAudioStream, got {err:?}"
-    );
+    assert!(matches!(err, Error::NoAudioStream), "expected NoAudioStream, got {err:?}");
 }
 
 #[test]
@@ -70,14 +64,7 @@ fn dropping_every_stream_errors() {
     let out = common::temp("media_rs_empty.mp4");
     let _ = std::fs::remove_file(&out);
 
-    let err = transcode(video_only.to_str().unwrap())
-        .to(&out)
-        .drop_video()
-        .run()
-        .unwrap_err();
-    assert!(
-        matches!(err, Error::InvalidConfig(_)),
-        "expected InvalidConfig, got {err:?}"
-    );
+    let err = transcode(video_only.to_str().unwrap()).to(&out).drop_video().run().unwrap_err();
+    assert!(matches!(err, Error::InvalidConfig(_)), "expected InvalidConfig, got {err:?}");
     let _ = std::fs::remove_file(&out);
 }

@@ -65,9 +65,8 @@ fn cmd_merge(args: &[String]) {
                 out = Some(PathBuf::from(expect_value(args, &mut i, "-o")));
             }
             spec => {
-                let (os, path) = spec
-                    .split_once('=')
-                    .unwrap_or_else(|| panic!("xtask merge: expected OS=FILE, got `{spec}`"));
+                let (os, path) =
+                    spec.split_once('=').unwrap_or_else(|| panic!("xtask merge: expected OS=FILE, got `{spec}`"));
                 inputs.push((os.to_string(), PathBuf::from(path)));
             }
         }
@@ -80,7 +79,5 @@ fn cmd_merge(args: &[String]) {
 
 fn expect_value(args: &[String], i: &mut usize, flag: &str) -> String {
     *i += 1;
-    args.get(*i)
-        .unwrap_or_else(|| panic!("xtask: {flag} requires a value"))
-        .clone()
+    args.get(*i).unwrap_or_else(|| panic!("xtask: {flag} requires a value")).clone()
 }

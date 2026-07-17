@@ -192,15 +192,9 @@ impl VideoEncoderBuilder {
     /// Validate the configuration, open the encoder, and return it.
     pub fn build(self) -> Result<VideoEncoder> {
         crate::log::ensure_init();
-        let codec = self
-            .codec
-            .ok_or(Error::InvalidConfig("video encoder requires a codec"))?;
-        let width = self
-            .width
-            .ok_or(Error::InvalidConfig("video encoder requires a resolution"))?;
-        let height = self
-            .height
-            .ok_or(Error::InvalidConfig("video encoder requires a resolution"))?;
+        let codec = self.codec.ok_or(Error::InvalidConfig("video encoder requires a codec"))?;
+        let width = self.width.ok_or(Error::InvalidConfig("video encoder requires a resolution"))?;
+        let height = self.height.ok_or(Error::InvalidConfig("video encoder requires a resolution"))?;
         // The encoder wants `i32`; a `0` or an out-of-`i32`-range dimension is not encodable.
         // Report the requested values (saturated for display) rather than a wrapped number.
         let (Ok(width), Ok(height)) = (i32::try_from(width), i32::try_from(height)) else {
@@ -250,11 +244,7 @@ impl VideoEncoderBuilder {
         }
 
         ctx.open()?;
-        Ok(VideoEncoder {
-            ctx,
-            recv: RawPacket::alloc()?,
-            time_base,
-        })
+        Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, time_base })
     }
 }
 
@@ -268,26 +258,14 @@ mod tests {
     fn zero_resolution_is_unsupported() {
         // `matches!` on the `Result` avoids needing `Debug` on the `Ok` (encoder) type.
         let result = VideoEncoder::builder().codec(VideoCodec::H264).resolution(0, 720).build();
-        assert!(matches!(
-            result,
-            Err(Error::UnsupportedResolution { width: 0, height: 720 })
-        ));
+        assert!(matches!(result, Err(Error::UnsupportedResolution { width: 0, height: 720 })));
     }
 
     #[test]
     fn out_of_i32_range_resolution_is_unsupported_not_wrapped() {
         // A `u32` above `i32::MAX` must not wrap through to a bogus (possibly negative)
         // dimension; it is reported as unsupported with a saturated width.
-        let result = VideoEncoder::builder()
-            .codec(VideoCodec::H264)
-            .resolution(u32::MAX, 480)
-            .build();
-        assert!(matches!(
-            result,
-            Err(Error::UnsupportedResolution {
-                width: i32::MAX,
-                height: 480
-            })
-        ));
+        let result = VideoEncoder::builder().codec(VideoCodec::H264).resolution(u32::MAX, 480).build();
+        assert!(matches!(result, Err(Error::UnsupportedResolution { width: i32::MAX, height: 480 })));
     }
 }

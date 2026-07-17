@@ -13,9 +13,6 @@ const OUTPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/temp_oneliner.
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let summary = transcode(INPUT).to(OUTPUT).run()?;
 
-    println!(
-        "Wrote {OUTPUT}\n  {} frames, {:.2}s",
-        summary.frames, summary.duration_secs
-    );
+    println!("Wrote {OUTPUT}\n  {} frames, {:.2}s", summary.frames, summary.duration_secs);
     Ok(())
 }

@@ -113,11 +113,7 @@ impl InputFormatContext {
     /// Total duration in seconds (estimated by the demuxer), or `0.0` if unknown.
     pub(crate) fn duration_secs(&self) -> f64 {
         let d = unsafe { (*self.ctx()).duration };
-        if d == AV_NOPTS_VALUE {
-            0.0
-        } else {
-            d as f64 / sys::AV_TIME_BASE as f64
-        }
+        if d == AV_NOPTS_VALUE { 0.0 } else { d as f64 / sys::AV_TIME_BASE as f64 }
     }
 
     /// Index of the best stream of `kind`, if any.
@@ -140,11 +136,7 @@ impl InputFormatContext {
     pub(crate) fn read_packet(&mut self, pkt: &mut RawPacket) -> Result<bool> {
         // SAFETY: ctx is valid; pkt is a valid owned packet.
         let ret = unsafe { sys::av_read_frame(self.ctx(), pkt.as_mut_ptr()) };
-        if ret == AVERROR_EOF {
-            Ok(false)
-        } else {
-            check(ret).map(|_| true)
-        }
+        if ret == AVERROR_EOF { Ok(false) } else { check(ret).map(|_| true) }
     }
 }
 
@@ -176,10 +168,7 @@ impl OutputFormatContext {
         if ret < 0 || raw.is_null() {
             return Err(Error::CreateOutput(with_reason(url, ret)));
         }
-        let mut ctx = Self {
-            ptr: non_null(raw, "AVFormatContext")?,
-            avio_opened: false,
-        };
+        let mut ctx = Self { ptr: non_null(raw, "AVFormatContext")?, avio_opened: false };
 
         // Open the file unless the muxer is file-less (e.g. a pipe/protocol format).
         let needs_file = unsafe {

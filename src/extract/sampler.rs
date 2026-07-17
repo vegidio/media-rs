@@ -38,13 +38,7 @@ enum Plan {
     /// is the running decoded-frame counter and `sought` the one-shot "seeked to range start"
     /// flag — both only meaningful for this variant, so they live here rather than on the
     /// shared [`SampledFrames`].
-    EveryN {
-        n: u64,
-        start_ts: i64,
-        end_ts: i64,
-        frame_no: u64,
-        sought: bool,
-    },
+    EveryN { n: u64, start_ts: i64, end_ts: i64, frame_no: u64, sought: bool },
 }
 
 impl Plan {
@@ -72,17 +66,10 @@ impl Plan {
         match interval {
             Interval::EverySeconds(step) => step_plan(*step, start_ts, end_ts, tb),
             Interval::Fps(fps) => step_plan(if *fps > 0.0 { 1.0 / *fps } else { 0.0 }, start_ts, end_ts, tb),
-            Interval::EveryNFrames(n) => Plan::EveryN {
-                n: (*n).max(1) as u64,
-                start_ts,
-                end_ts,
-                frame_no: 0,
-                sought: false,
-            },
-            Interval::Count(n) => Plan::Targets {
-                targets: count_targets(*n, start_secs, end_secs, tb),
-                cursor: 0,
-            },
+            Interval::EveryNFrames(n) => {
+                Plan::EveryN { n: (*n).max(1) as u64, start_ts, end_ts, frame_no: 0, sought: false }
+            }
+            Interval::Count(n) => Plan::Targets { targets: count_targets(*n, start_secs, end_secs, tb), cursor: 0 },
             Interval::Timestamps(list) => {
                 let mut targets: Vec<i64> = list.iter().map(|d| duration_to_ts(*d, tb)).collect();
                 targets.sort_unstable();
@@ -115,17 +102,10 @@ impl Plan {
 /// frames (rather than an infinite loop).
 fn step_plan(step_secs: f64, start_ts: i64, end_ts: i64, tb: Rational) -> Plan {
     if step_secs <= 0.0 {
-        return Plan::Targets {
-            targets: Vec::new(),
-            cursor: 0,
-        };
+        return Plan::Targets { targets: Vec::new(), cursor: 0 };
     }
     let step_ts = duration_to_ts(Duration::from_secs_f64(step_secs), tb).max(1);
-    Plan::Step {
-        step_ts,
-        next: start_ts,
-        end_ts,
-    }
+    Plan::Step { step_ts, next: start_ts, end_ts }
 }
 
 /// `n` timestamps evenly spread across `[start_secs, end_secs)` at the midpoints of `n` equal
@@ -401,11 +381,7 @@ mod tests {
     fn targets(interval: Interval, range: Option<(Duration, Duration)>, duration: f64) -> Vec<i64> {
         match Plan::resolve(&interval, range, duration, TB) {
             Plan::Targets { targets, .. } => targets,
-            Plan::Step {
-                step_ts,
-                mut next,
-                end_ts,
-            } => {
+            Plan::Step { step_ts, mut next, end_ts } => {
                 // Expand the lazy step plan for assertion.
                 let mut out = Vec::new();
                 while next < end_ts {
@@ -456,11 +432,7 @@ mod tests {
     #[test]
     fn range_clamps_the_sampling_window() {
         // Every second, but only within 3s..=6s → 3s, 4s, 5s, 6s.
-        let t = targets(
-            Interval::EverySeconds(1.0),
-            Some((Duration::from_secs(3), Duration::from_secs(6))),
-            10.0,
-        );
+        let t = targets(Interval::EverySeconds(1.0), Some((Duration::from_secs(3), Duration::from_secs(6))), 10.0);
         assert_eq!(t, vec![3000, 4000, 5000, 6000]);
     }
 
@@ -487,13 +459,7 @@ mod tests {
             10.0,
             TB,
         ) {
-            Plan::EveryN {
-                n,
-                start_ts,
-                end_ts,
-                frame_no,
-                sought,
-            } => {
+            Plan::EveryN { n, start_ts, end_ts, frame_no, sought } => {
                 assert_eq!(n, 3);
                 assert_eq!(start_ts, 2000);
                 // Range end is inclusive, so it is nudged one tick past 6000.

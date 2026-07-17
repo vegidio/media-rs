@@ -12,11 +12,7 @@ pub struct ExtractReport {
 
 impl ExtractReport {
     pub(crate) fn new(frame_count: u64, elapsed: Duration, frames: Vec<ExtractedFrame>) -> Self {
-        Self {
-            frame_count,
-            elapsed,
-            frames,
-        }
+        Self { frame_count, elapsed, frames }
     }
 
     /// How many frames were extracted.

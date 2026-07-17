@@ -77,9 +77,7 @@ impl VideoConfigBuilder {
     /// Validate and produce the [`VideoConfig`].
     pub fn build(self) -> Result<VideoConfig> {
         Ok(VideoConfig {
-            codec: self
-                .codec
-                .ok_or(Error::InvalidConfig("video config requires a codec"))?,
+            codec: self.codec.ok_or(Error::InvalidConfig("video config requires a codec"))?,
             resolution: self.resolution,
             bitrate: self.bitrate,
             framerate: self.framerate,

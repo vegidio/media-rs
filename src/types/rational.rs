@@ -25,21 +25,13 @@ impl Rational {
 
     /// Evaluate as an `f64` (`num / den`). Returns `0.0` for a zero denominator.
     pub fn as_f64(self) -> f64 {
-        if self.den == 0 {
-            0.0
-        } else {
-            self.num as f64 / self.den as f64
-        }
+        if self.den == 0 { 0.0 } else { self.num as f64 / self.den as f64 }
     }
 
     /// Convert a time in seconds to a timestamp in this time base, rounding to the nearest
     /// tick. Returns `0` for a zero numerator (an undefined time base).
     pub(crate) fn ts_from_secs(self, secs: f64) -> i64 {
-        if self.num == 0 {
-            0
-        } else {
-            (secs * self.den as f64 / self.num as f64).round() as i64
-        }
+        if self.num == 0 { 0 } else { (secs * self.den as f64 / self.num as f64).round() as i64 }
     }
 
     /// Convert a timestamp in this time base to seconds (the inverse of [`ts_from_secs`]).
@@ -48,10 +40,7 @@ impl Rational {
     }
 
     pub(crate) fn to_av(self) -> sys::AVRational {
-        sys::AVRational {
-            num: self.num,
-            den: self.den,
-        }
+        sys::AVRational { num: self.num, den: self.den }
     }
 
     pub(crate) fn from_av(r: sys::AVRational) -> Self {

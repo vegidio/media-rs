@@ -33,10 +33,7 @@ impl Decoder {
         // is decoded, e.g. dense frame sampling.
         ctx.set_threading(0, (sys::FF_THREAD_FRAME | sys::FF_THREAD_SLICE) as i32);
         ctx.open()?;
-        Ok(Self {
-            ctx,
-            recv: RawFrame::alloc()?,
-        })
+        Ok(Self { ctx, recv: RawFrame::alloc()? })
     }
 
     /// Submit a packet and return an iterator over the frames it produces.

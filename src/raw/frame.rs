@@ -15,9 +15,7 @@ impl RawFrame {
     pub(crate) fn alloc() -> Result<Self> {
         // SAFETY: av_frame_alloc allocates an AVFrame or returns null.
         let ptr = unsafe { sys::av_frame_alloc() };
-        Ok(Self {
-            ptr: non_null(ptr, "AVFrame")?,
-        })
+        Ok(Self { ptr: non_null(ptr, "AVFrame")? })
     }
 
     pub(crate) fn as_ptr(&self) -> *const sys::AVFrame {

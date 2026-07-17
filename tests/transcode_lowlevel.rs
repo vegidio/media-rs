@@ -15,11 +15,7 @@ fn drain_encoder(
     flush: bool,
     frame: Option<&Frame>,
 ) -> media::Result<()> {
-    let iter = if flush {
-        encoder.flush()?
-    } else {
-        encoder.encode(frame.unwrap())?
-    };
+    let iter = if flush { encoder.flush()? } else { encoder.encode(frame.unwrap())? };
     for pkt in iter {
         let mut pkt = pkt?;
         pkt.set_stream_index(out_idx);

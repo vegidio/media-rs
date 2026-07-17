@@ -14,16 +14,9 @@ const OUT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/temp_frames")
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // --- Tier 1: one JPEG per second into a directory ---------------------------------------
-    let report = extract_frames(INPUT)
-        .every(Duration::from_secs(1))
-        .to_dir(OUT_DIR)
-        .run()?;
+    let report = extract_frames(INPUT).every(Duration::from_secs(1)).to_dir(OUT_DIR).run()?;
 
-    println!(
-        "Tier 1: wrote {} frames to {OUT_DIR} in {:?}",
-        report.frame_count(),
-        report.elapsed()
-    );
+    println!("Tier 1: wrote {} frames to {OUT_DIR} in {:?}", report.frame_count(), report.elapsed());
 
     // --- Tier 2: exactly 5 PNGs evenly spread, scaled, kept in memory -----------------------
     let report = FrameExtractor::builder()
@@ -45,19 +38,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // --- Tier 2: exact timestamps, streamed out via a callback ------------------------------
     FrameExtractor::builder()
         .input(INPUT)
-        .interval(Interval::Timestamps(vec![
-            Duration::from_millis(500),
-            Duration::from_millis(1_500),
-        ]))
+        .interval(Interval::Timestamps(vec![Duration::from_millis(500), Duration::from_millis(1_500)]))
         .to_callback(|frame| {
             let jpeg = frame.encode(ImageFormat::Jpeg { quality: 85 })?;
 
-            println!(
-                "Callback: frame {} @ {:?} → {} JPEG bytes",
-                frame.index(),
-                frame.timestamp(),
-                jpeg.len()
-            );
+            println!("Callback: frame {} @ {:?} → {} JPEG bytes", frame.index(), frame.timestamp(), jpeg.len());
 
             Ok(())
         })

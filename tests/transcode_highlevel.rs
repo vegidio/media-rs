@@ -274,10 +274,7 @@ fn full_transcode_preserves_frame_count_and_duration() {
     // Duration is preserved (catches a truncated tail / mis-flush).
     let out_dur = probe(&out).unwrap().duration().as_secs_f64();
     let tol = (in_dur * 0.10).max(0.3);
-    assert!(
-        (out_dur - in_dur).abs() <= tol,
-        "output duration {out_dur} not within {tol} of source {in_dur}"
-    );
+    assert!((out_dur - in_dur).abs() <= tol, "output duration {out_dur} not within {tol} of source {in_dur}");
 
     let _ = std::fs::remove_file(&out);
 }
@@ -330,11 +327,7 @@ fn trim_with_audio_keeps_both_streams() {
     let _ = std::fs::remove_file(&out);
 
     // Trim ~1s, keeping BOTH streams (exercises video + audio gating together).
-    transcode(&input)
-        .to(&out)
-        .trim(Duration::from_secs(1)..=Duration::from_secs(2))
-        .run()
-        .unwrap();
+    transcode(&input).to(&out).trim(Duration::from_secs(1)..=Duration::from_secs(2)).run().unwrap();
 
     let info = probe(&out).unwrap();
     assert!(info.video().is_some(), "video missing after trim");
@@ -415,10 +408,7 @@ fn trim_midfile_window_frame_count_matches_source() {
         .run()
         .unwrap();
 
-    assert_eq!(
-        summary.frames, expected,
-        "mid-file trimmed frame count drifted from the source window"
-    );
+    assert_eq!(summary.frames, expected, "mid-file trimmed frame count drifted from the source window");
 
     let out_count = decoded_video_frames(&out);
     assert!(
@@ -482,7 +472,6 @@ fn typed_filters_apply_end_to_end() {
     let filter = FilterChain::new()
         .denoise(DenoiseLevel::Light)
         .color_correct(|c| c.brightness(0.05).saturation(1.1));
-
     let job = Transcoder::builder()
         .input(&input)
         .output(&out)

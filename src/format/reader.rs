@@ -35,9 +35,7 @@ impl MediaReader {
     /// Open `path` for reading and probe its stream layout.
     pub fn open(path: impl AsRef<str>) -> Result<Self> {
         crate::log::ensure_init();
-        Ok(Self {
-            input: InputFormatContext::open(path.as_ref())?,
-        })
+        Ok(Self { input: InputFormatContext::open(path.as_ref())? })
     }
 
     /// The number of streams in the file.
@@ -103,11 +101,7 @@ impl MediaReader {
     /// [`packets`](Self::packets), used by samplers that interleave reads with seeks.
     pub(crate) fn next_packet(&mut self) -> Result<Option<Packet>> {
         let mut raw = RawPacket::alloc()?;
-        if self.input.read_packet(&mut raw)? {
-            Ok(Some(Packet::from_raw(raw)))
-        } else {
-            Ok(None)
-        }
+        if self.input.read_packet(&mut raw)? { Ok(Some(Packet::from_raw(raw))) } else { Ok(None) }
     }
 
     /// Iterate over every packet in the file, in interleaved order.

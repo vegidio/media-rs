@@ -26,9 +26,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let summary = transcode(INPUT).to(OUTPUT).drop_audio().video_filter(chain).run()?;
 
-    println!(
-        "Wrote {OUTPUT}\n  {} frames, {:.2}s",
-        summary.frames, summary.duration_secs
-    );
+    println!("Wrote {OUTPUT}\n  {} frames, {:.2}s", summary.frames, summary.duration_secs);
     Ok(())
 }

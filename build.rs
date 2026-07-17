@@ -37,16 +37,8 @@ fn ffmpeg_version() -> &'static str {
 
 /// The eight FFmpeg core libraries, listed dependents-before-dependencies so that a single-pass linker resolves them.
 /// Any other `.a` found in `lib/` (third-party codecs and support libraries) is linked after these.
-const FFMPEG_CORE_LIBS: &[&str] = &[
-    "avdevice",
-    "avfilter",
-    "avformat",
-    "avcodec",
-    "postproc",
-    "swscale",
-    "swresample",
-    "avutil",
-];
+const FFMPEG_CORE_LIBS: &[&str] =
+    &["avdevice", "avfilter", "avformat", "avcodec", "postproc", "swscale", "swresample", "avutil"];
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -215,8 +207,7 @@ fn discover_link_order(lib_dir: &Path) -> Vec<String> {
             let stem = if msvc {
                 // `<name>.lib` / `<name>.Lib` — keep the stem as-is (no `lib`-prefix strip).
                 let ext = path.extension()?.to_str()?;
-                ext.eq_ignore_ascii_case("lib")
-                    .then(|| &name[..name.len() - ext.len() - 1])?
+                ext.eq_ignore_ascii_case("lib").then(|| &name[..name.len() - ext.len() - 1])?
             } else {
                 name.strip_prefix("lib")?.strip_suffix(".a")?
             };
@@ -313,8 +304,8 @@ fn emit_system_libs(target_os: &str) {
             // `+crt-static`: it would clash with the `-static-md` libs).
             //
             // FFmpeg and its bundled dependencies reference a range of Win32 import libraries that the OS provides.
-            // Over-listing is harmless — an unused `/DEFAULTLIB` adds nothing to the binary — so the set is generous
-            // and grouped by the consumer that needs it.
+            // Over-listing is harmless — an unused `/DEFAULTLIB` adds nothing to the binary — so the
+            // set is generous and grouped by the consumer that needs it.
             for lib in [
                 // crypto: bcrypt (rng), openssl (libcrypto/libssl) cert + schannel
                 "bcrypt",

@@ -33,9 +33,7 @@ fn get_filter(name: &str) -> Result<*const sys::AVFilter> {
     // SAFETY: pure lookup over static filter tables.
     let f = unsafe { sys::avfilter_get_by_name(cname.as_ptr()) };
     if f.is_null() {
-        Err(Error::InvalidConfig(
-            "required filter (buffer/buffersink) is unavailable",
-        ))
+        Err(Error::InvalidConfig("required filter (buffer/buffersink) is unavailable"))
     } else {
         Ok(f)
     }
@@ -49,11 +47,7 @@ impl VideoFilterGraph {
         let graph_ptr = unsafe { sys::avfilter_graph_alloc() };
         let graph = non_null(graph_ptr, "AVFilterGraph")?;
 
-        let sar = if input.sample_aspect_ratio.num == 0 {
-            Rational::new(1, 1)
-        } else {
-            input.sample_aspect_ratio
-        };
+        let sar = if input.sample_aspect_ratio.num == 0 { Rational::new(1, 1) } else { input.sample_aspect_ratio };
         let args = format!(
             "video_size={}x{}:pix_fmt={}:time_base={}/{}:pixel_aspect={}/{}",
             input.width,
@@ -65,11 +59,7 @@ impl VideoFilterGraph {
             sar.den.max(1),
         );
 
-        let mut this = Self {
-            graph,
-            src: ptr::null_mut(),
-            sink: ptr::null_mut(),
-        };
+        let mut this = Self { graph, src: ptr::null_mut(), sink: ptr::null_mut() };
 
         let buffer = get_filter("buffer")?;
         let buffersink = get_filter("buffersink")?;

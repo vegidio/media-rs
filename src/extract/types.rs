@@ -41,9 +41,7 @@ pub enum ImageFormat {
 
 impl Default for ImageFormat {
     fn default() -> Self {
-        ImageFormat::Jpeg {
-            quality: DEFAULT_JPEG_QUALITY,
-        }
+        ImageFormat::Jpeg { quality: DEFAULT_JPEG_QUALITY }
     }
 }
 
@@ -60,9 +58,7 @@ impl ImageFormat {
     /// defaults to quality 90.
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext.to_ascii_lowercase().as_str() {
-            "jpg" | "jpeg" => Some(ImageFormat::Jpeg {
-                quality: DEFAULT_JPEG_QUALITY,
-            }),
+            "jpg" | "jpeg" => Some(ImageFormat::Jpeg { quality: DEFAULT_JPEG_QUALITY }),
             "png" => Some(ImageFormat::Png),
             _ => None,
         }
@@ -70,10 +66,7 @@ impl ImageFormat {
 
     /// Infer a format from a path's extension.
     pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
-        path.as_ref()
-            .extension()
-            .and_then(|e| e.to_str())
-            .and_then(Self::from_extension)
+        path.as_ref().extension().and_then(|e| e.to_str()).and_then(Self::from_extension)
     }
 
     /// The matching `rust-sak` container format.
@@ -88,10 +81,9 @@ impl ImageFormat {
     pub(crate) fn rsak_options(self) -> EncodeOptions {
         match self {
             ImageFormat::Jpeg { quality } => EncodeOptions::Jpeg { quality },
-            ImageFormat::Png => EncodeOptions::Png {
-                compression: PngCompression::default(),
-                filter: PngFilter::default(),
-            },
+            ImageFormat::Png => {
+                EncodeOptions::Png { compression: PngCompression::default(), filter: PngFilter::default() }
+            }
         }
     }
 }
@@ -120,10 +112,7 @@ pub enum NamingScheme {
 
 impl Default for NamingScheme {
     fn default() -> Self {
-        NamingScheme::Sequential {
-            prefix: "frame".to_owned(),
-            padding: 4,
-        }
+        NamingScheme::Sequential { prefix: "frame".to_owned(), padding: 4 }
     }
 }
 
@@ -158,10 +147,7 @@ mod tests {
         let scheme = NamingScheme::default();
         assert_eq!(scheme.file_name(0, "jpg"), "frame_0000.jpg");
         assert_eq!(scheme.file_name(42, "png"), "frame_0042.png");
-        let wide = NamingScheme::Sequential {
-            prefix: "shot".to_owned(),
-            padding: 2,
-        };
+        let wide = NamingScheme::Sequential { prefix: "shot".to_owned(), padding: 2 };
         assert_eq!(wide.file_name(7, "jpg"), "shot_07.jpg");
         // An index exceeding the padding width is not truncated.
         assert_eq!(wide.file_name(1234, "jpg"), "shot_1234.jpg");
@@ -171,10 +157,7 @@ mod tests {
     fn image_format_extension_and_inference() {
         assert_eq!(ImageFormat::Jpeg { quality: 80 }.extension(), "jpg");
         assert_eq!(ImageFormat::Png.extension(), "png");
-        assert_eq!(
-            ImageFormat::from_extension("JPEG"),
-            Some(ImageFormat::Jpeg { quality: 90 })
-        );
+        assert_eq!(ImageFormat::from_extension("JPEG"), Some(ImageFormat::Jpeg { quality: 90 }));
         assert_eq!(ImageFormat::from_path("a/b/c.png"), Some(ImageFormat::Png));
         assert_eq!(ImageFormat::from_extension("gif"), None);
     }

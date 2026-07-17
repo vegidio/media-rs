@@ -53,9 +53,7 @@ impl ChannelLayout {
         // SAFETY: av_channel_layout_default fully initialises the zeroed struct in place.
         unsafe {
             sys::av_channel_layout_default(layout.as_mut_ptr(), nb_channels);
-            Self {
-                inner: layout.assume_init(),
-            }
+            Self { inner: layout.assume_init() }
         }
     }
 
@@ -65,9 +63,7 @@ impl ChannelLayout {
         // SAFETY: src points to a valid layout; av_channel_layout_copy initialises dst.
         unsafe {
             sys::av_channel_layout_copy(layout.as_mut_ptr(), src);
-            Self {
-                inner: layout.assume_init(),
-            }
+            Self { inner: layout.assume_init() }
         }
     }
 

@@ -60,11 +60,7 @@ pub(crate) fn find_encoder_by_name(name: &str) -> Result<*const sys::AVCodec> {
     let cname = CString::new(name).map_err(|_| Error::CodecUnavailable(name.to_owned()))?;
     // SAFETY: cname is a valid NUL-terminated string for the duration of the call.
     let codec = unsafe { sys::avcodec_find_encoder_by_name(cname.as_ptr()) };
-    if codec.is_null() {
-        Err(Error::CodecUnavailable(name.to_owned()))
-    } else {
-        Ok(codec)
-    }
+    if codec.is_null() { Err(Error::CodecUnavailable(name.to_owned())) } else { Ok(codec) }
 }
 
 /// An owned `AVCodecContext`. Freed with `avcodec_free_context` on drop.
@@ -78,10 +74,7 @@ impl CodecContext {
     pub(crate) fn alloc(codec: *const sys::AVCodec) -> Result<Self> {
         // SAFETY: avcodec_alloc_context3 accepts a codec pointer (or null) and allocates.
         let ptr = unsafe { sys::avcodec_alloc_context3(codec) };
-        Ok(Self {
-            ptr: non_null(ptr, "AVCodecContext")?,
-            codec,
-        })
+        Ok(Self { ptr: non_null(ptr, "AVCodecContext")?, codec })
     }
 
     #[inline]
@@ -182,12 +175,7 @@ impl CodecContext {
         let cval = CString::new(val).map_err(|_| Error::InvalidConfig("option value has NUL"))?;
         // SAFETY: ctx is a valid AVClass-bearing object; strings are valid for the call.
         check(unsafe {
-            sys::av_opt_set(
-                self.ctx().cast(),
-                ckey.as_ptr(),
-                cval.as_ptr(),
-                sys::AV_OPT_SEARCH_CHILDREN as i32,
-            )
+            sys::av_opt_set(self.ctx().cast(), ckey.as_ptr(), cval.as_ptr(), sys::AV_OPT_SEARCH_CHILDREN as i32)
         })
     }
 

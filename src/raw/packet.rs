@@ -16,9 +16,7 @@ impl RawPacket {
     pub(crate) fn alloc() -> Result<Self> {
         // SAFETY: av_packet_alloc allocates an AVPacket or returns null.
         let ptr = unsafe { sys::av_packet_alloc() };
-        Ok(Self {
-            ptr: non_null(ptr, "AVPacket")?,
-        })
+        Ok(Self { ptr: non_null(ptr, "AVPacket")? })
     }
 
     pub(crate) fn as_ptr(&self) -> *const sys::AVPacket {

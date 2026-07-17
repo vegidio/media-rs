@@ -14,12 +14,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let vidx = reader.best_stream(StreamKind::Video)?;
     let mut decoder = reader.stream(vidx).decoder()?;
 
-    println!(
-        "Decoding stream {vidx}: {}x{} {:?}",
-        decoder.width(),
-        decoder.height(),
-        decoder.pixel_format()
-    );
+    println!("Decoding stream {vidx}: {}x{} {:?}", decoder.width(), decoder.height(), decoder.pixel_format());
 
     let mut frames = 0_u64;
     for packet in reader.packets() {

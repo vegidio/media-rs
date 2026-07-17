@@ -22,9 +22,7 @@ use std::time::Duration;
 /// # Ok::<(), media::Error>(())
 /// ```
 pub fn extract_frames(input: impl Into<String>) -> ExtractJob {
-    ExtractJob {
-        builder: FrameExtractorBuilder::default().input(input),
-    }
+    ExtractJob { builder: FrameExtractorBuilder::default().input(input) }
 }
 
 /// A fluent one-liner frame extraction. Defaults to JPEG output; it is a thin facade over

@@ -106,10 +106,8 @@ static INIT: Once = Once::new();
 /// [`Level::Quiet`] is used. Subsequent calls are no-ops, so this is cheap to call from every public entry point.
 pub(crate) fn ensure_init() {
     INIT.call_once(|| {
-        let level = std::env::var(ENV_VAR)
-            .ok()
-            .and_then(|v| v.parse::<Level>().ok())
-            .unwrap_or(Level::Quiet);
+        let level = std::env::var(ENV_VAR).ok().and_then(|v| v.parse::<Level>().ok()).unwrap_or(Level::Quiet);
+
         apply(level);
     });
 }

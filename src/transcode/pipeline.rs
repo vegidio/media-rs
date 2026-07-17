@@ -163,13 +163,7 @@ fn setup_video(
     let encoder = eb.build()?;
     let out_vidx = writer.add_stream_from_encoder(&encoder)?;
 
-    Ok(VideoStage {
-        decoder: dec,
-        encoder,
-        vfilter,
-        out_vidx,
-        v_tb: in_tb,
-    })
+    Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb })
 }
 
 /// One item handed from the demux/decode producer to the encode/mux consumer.
@@ -204,9 +198,7 @@ fn run_consumer(
         match work {
             Work::Video { frame, secs } => {
                 // A video frame can only arrive when the video stage (encoder) was configured.
-                let enc = encoder
-                    .as_mut()
-                    .ok_or(Error::InvalidConfig("video frame with no encoder configured"))?;
+                let enc = encoder.as_mut().ok_or(Error::InvalidConfig("video frame with no encoder configured"))?;
                 let ov = out_vidx.unwrap();
                 process_video_frame(frame, &mut vfilter, enc, writer, ov, v_start_ts, &mut frames)?;
                 on_progress(Progress::new((secs - trim_start).max(0.0), span, frames, started));
@@ -239,22 +231,12 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
     let mut reader = MediaReader::open(&opts.input)?;
     let total_secs = reader.duration_secs();
 
-    let video_idx = if opts.drop_video {
-        None
-    } else {
-        reader.best_stream(StreamKind::Video).ok()
-    };
+    let video_idx = if opts.drop_video { None } else { reader.best_stream(StreamKind::Video).ok() };
 
-    let audio_idx = if opts.drop_audio {
-        None
-    } else {
-        reader.best_stream(StreamKind::Audio).ok()
-    };
+    let audio_idx = if opts.drop_audio { None } else { reader.best_stream(StreamKind::Audio).ok() };
 
     if video_idx.is_none() && audio_idx.is_none() {
-        return Err(Error::InvalidConfig(
-            "nothing to transcode (both video and audio dropped or absent)",
-        ));
+        return Err(Error::InvalidConfig("nothing to transcode (both video and audio dropped or absent)"));
     }
 
     let mut writer = MediaWriter::create(&opts.output)?;
@@ -302,8 +284,8 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
         // Fast trim: instead of decoding and discarding everything before `trim_start`, seek to the keyframe at/just
         // before it and reset the decoder. `in_trim` still drops the frames between that keyframe and `trim_start`, so
-        // the emitted frames are unchanged — we just skip decoding the prefix. Seek failure (e.g. a non-seekable input)
-        // is non-fatal: we fall back to the linear scan, which is exactly the previous behaviour.
+        // the emitted frames are unchanged — we just skip decoding the prefix. Seek failure (e.g. a
+        // non-seekable input) is non-fatal: we fall back to the linear scan, exactly the previous behaviour.
         if trim_start > 0.0 {
             let seek_idx = video_idx.or(audio_idx).unwrap();
             if reader.seek(seek_idx, Duration::from_secs_f64(trim_start)).is_ok()
@@ -376,7 +358,15 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
     // --- consumer: filter + encode + mux (this thread) ---------------------------------
     let consumer_result = run_consumer(
-        rx, encoder, vfilter, &mut writer, out_vidx, v_start_ts, trim_start, total_secs, started,
+        rx,
+        encoder,
+        vfilter,
+        &mut writer,
+        out_vidx,
+        v_start_ts,
+        trim_start,
+        total_secs,
+        started,
         on_progress,
     );
 
@@ -387,17 +377,11 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
     match producer_result {
         Ok(inner) => inner?,
         Err(_) => {
-            return Err(Error::Internal {
-                code: 0,
-                message: "transcode producer thread panicked".to_owned(),
-            });
+            return Err(Error::Internal { code: 0, message: "transcode producer thread panicked".to_owned() });
         }
     }
 
     writer.write_trailer()?;
 
-    Ok(TranscodeSummary {
-        frames,
-        duration_secs: (total_secs - trim_start).max(0.0).min(total_secs),
-    })
+    Ok(TranscodeSummary { frames, duration_secs: (total_secs - trim_start).max(0.0).min(total_secs) })
 }

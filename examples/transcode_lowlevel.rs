@@ -92,13 +92,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Re-open the result to confirm it's a real, decodable file.
     let info = probe(OUTPUT)?;
     if let Some(v) = info.video() {
-        println!(
-            "Verified: {}x{} {:?}, {:.2}s",
-            v.width,
-            v.height,
-            v.video_codec,
-            info.duration().as_secs_f64()
-        );
+        println!("Verified: {}x{} {:?}, {:.2}s", v.width, v.height, v.video_codec, info.duration().as_secs_f64());
     }
     Ok(())
 }

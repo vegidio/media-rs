@@ -27,9 +27,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let _ = std::io::stdout().flush();
     })?;
 
-    println!(
-        "\nDone — wrote {OUTPUT} ({} frames, {:.2}s)",
-        summary.frames, summary.duration_secs
-    );
+    println!("\nDone — wrote {OUTPUT} ({} frames, {:.2}s)", summary.frames, summary.duration_secs);
     Ok(())
 }

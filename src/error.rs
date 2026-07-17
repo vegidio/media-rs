@@ -83,10 +83,7 @@ pub enum Error {
 impl Error {
     /// Build an [`Error::Internal`] from a raw FFmpeg return code, decoding its message.
     pub(crate) fn from_code(code: i32) -> Self {
-        Error::Internal {
-            code,
-            message: strerror(code),
-        }
+        Error::Internal { code, message: strerror(code) }
     }
 }
 

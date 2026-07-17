@@ -23,13 +23,7 @@ pub struct ExtractedFrame {
 
 impl ExtractedFrame {
     pub(crate) fn new(index: u32, timestamp: Duration, width: u32, height: u32, rgb: Vec<u8>) -> Self {
-        Self {
-            index,
-            timestamp,
-            width,
-            height,
-            rgb,
-        }
+        Self { index, timestamp, width, height, rgb }
     }
 
     /// This frame's zero-based position in the extraction run.

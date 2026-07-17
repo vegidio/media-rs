@@ -31,10 +31,7 @@ pub(crate) struct EncodePool {
 impl EncodePool {
     /// Spawn a pool that encodes every submitted frame as `format` and writes it to its path.
     pub(crate) fn new(format: ImageFormat) -> Self {
-        let count = thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
-            .min(MAX_WORKERS);
+        let count = thread::available_parallelism().map(|n| n.get()).unwrap_or(1).min(MAX_WORKERS);
 
         // Bounded so the decoder can't race far ahead of the encoders (backpressure + capped
         // memory): once the buffer fills, `submit` blocks until a worker frees a slot.
@@ -64,11 +61,7 @@ impl EncodePool {
             })
             .collect();
 
-        Self {
-            tx: Some(tx),
-            workers,
-            error,
-        }
+        Self { tx: Some(tx), workers, error }
     }
 
     /// Queue `frame` to be encoded and written to `path`. Returns early with the first worker
@@ -79,7 +72,7 @@ impl EncodePool {
         if self.tx.as_ref().unwrap().send((frame, path)).is_err() {
             self.take_error()?;
         }
-        
+
         Ok(())
     }
 

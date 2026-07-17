@@ -20,19 +20,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .profile(H264Profile::High)
         .build()?;
 
-    let job = Transcoder::builder()
-        .input(INPUT)
-        .output(OUTPUT)
-        .video(video)
-        .drop_audio()
-        .build()?;
+    let job = Transcoder::builder().input(INPUT).output(OUTPUT).video(video).drop_audio().build()?;
 
     let summary = job.run()?;
 
-    println!(
-        "Wrote {OUTPUT}\n  {} frames, {:.2}s (640x360 H.264)",
-        summary.frames, summary.duration_secs
-    );
+    println!("Wrote {OUTPUT}\n  {} frames, {:.2}s (640x360 H.264)", summary.frames, summary.duration_secs);
 
     Ok(())
 }

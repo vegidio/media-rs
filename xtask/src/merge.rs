@@ -110,16 +110,12 @@ pub fn run(inputs: &[(String, PathBuf)], out: &PathBuf) {
         // alone: a wrong-OS symbol only matters at link time, and the future API guards calls.
         if conflicting && !entry.is_foreign {
             let covered: Vec<String> =
-                entry
-                    .variants
-                    .iter()
-                    .flat_map(|v| v.oses.iter().cloned())
-                    .fold(Vec::new(), |mut acc, o| {
-                        if !acc.contains(&o) {
-                            acc.push(o);
-                        }
-                        acc
-                    });
+                entry.variants.iter().flat_map(|v| v.oses.iter().cloned()).fold(Vec::new(), |mut acc, o| {
+                    if !acc.contains(&o) {
+                        acc.push(o);
+                    }
+                    acc
+                });
             if all_oses.iter().any(|o| !covered.contains(o)) {
                 normal.push_str(&cfg_not_any(&covered));
                 normal.push('\n');
@@ -168,13 +164,7 @@ fn push(
 ) {
     if !map.contains_key(&key) {
         order.push(key.clone());
-        map.insert(
-            key.clone(),
-            Entry {
-                is_foreign,
-                variants: Vec::new(),
-            },
-        );
+        map.insert(key.clone(), Entry { is_foreign, variants: Vec::new() });
     }
     let entry = map.get_mut(&key).unwrap();
     match entry.variants.iter_mut().find(|v| v.tokens == tokens) {
@@ -183,10 +173,7 @@ fn push(
                 v.oses.push(os.to_string());
             }
         }
-        None => entry.variants.push(Variant {
-            tokens,
-            oses: vec![os.to_string()],
-        }),
+        None => entry.variants.push(Variant { tokens, oses: vec![os.to_string()] }),
     }
 }
 
@@ -224,17 +211,8 @@ fn item_key_tokens(item: &Item) -> (String, String) {
             // impl produced by several OSes still dedups. A same-signature/different-body
             // impl across OSes remains a detected conflict (and is cfg-gated).
             let ty = &i.self_ty;
-            let tr = i
-                .trait_
-                .as_ref()
-                .map(|(_, p, _)| quote!(#p).to_string())
-                .unwrap_or_default();
-            let wc = i
-                .generics
-                .where_clause
-                .as_ref()
-                .map(|w| quote!(#w).to_string())
-                .unwrap_or_default();
+            let tr = i.trait_.as_ref().map(|(_, p, _)| quote!(#p).to_string()).unwrap_or_default();
+            let wc = i.generics.where_clause.as_ref().map(|w| quote!(#w).to_string()).unwrap_or_default();
             let mut methods: Vec<String> = i
                 .items
                 .iter()

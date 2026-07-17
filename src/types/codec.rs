@@ -119,26 +119,14 @@ mod tests {
 
     #[test]
     fn video_codec_id_roundtrips() {
-        for c in [
-            VideoCodec::H264,
-            VideoCodec::H265,
-            VideoCodec::Vp8,
-            VideoCodec::Vp9,
-            VideoCodec::Av1,
-        ] {
+        for c in [VideoCodec::H264, VideoCodec::H265, VideoCodec::Vp8, VideoCodec::Vp9, VideoCodec::Av1] {
             assert_eq!(VideoCodec::from_codec_id(c.codec_id()), Some(c));
         }
     }
 
     #[test]
     fn audio_codec_id_roundtrips() {
-        for c in [
-            AudioCodec::Aac,
-            AudioCodec::Mp3,
-            AudioCodec::Opus,
-            AudioCodec::Vorbis,
-            AudioCodec::Flac,
-        ] {
+        for c in [AudioCodec::Aac, AudioCodec::Mp3, AudioCodec::Opus, AudioCodec::Vorbis, AudioCodec::Flac] {
             assert_eq!(AudioCodec::from_codec_id(c.codec_id()), Some(c));
         }
     }
