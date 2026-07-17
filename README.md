@@ -52,17 +52,24 @@ Run the **"Generate bindings"** workflow from the repo's **Actions** tab ("Run w
 Runnable, single-feature examples live in [`examples/`](examples/) — one per public capability, from the one-liner `transcode()` up to the frame-level pipeline. Run any of them with:
 
 ```sh
-cargo run --example version             # linked FFmpeg version
-cargo run --example probe               # inspect streams without decoding
-cargo run --example transcode_oneliner  # transcode(input).to(output).run()
-cargo run --example transcode_drop_streams  # keep only video / only audio
-cargo run --example transcode_trim      # keep a time range
-cargo run --example transcode_builder   # full VideoConfig builder
-cargo run --example transcode_progress  # progress callback
-cargo run --example filters             # FilterChain (scale/fps/denoise/color)
-cargo run --example decode_frames       # MediaReader + Decoder (Tier 3 read)
-cargo run --example transcode_lowlevel  # read → decode → encode → mux by hand
-cargo run --example logging             # FFmpeg log verbosity control
+cargo run --example version              # linked FFmpeg version
+cargo run --example raw_ffi              # media::sys raw FFI escape hatch
+cargo run --example probe                # inspect streams without decoding
+cargo run --example logging              # FFmpeg log verbosity control
+cargo run --example transcode_oneliner   # transcode(input).to(output).run()
+cargo run --example transcode_drop_streams   # keep only video / only audio
+cargo run --example transcode_trim       # keep a time range
+cargo run --example transcode_builder    # full VideoConfig builder (H.264)
+cargo run --example transcode_codecs     # H.265 / VP9 / AV1 into matching containers
+cargo run --example transcode_progress   # progress callback
+cargo run --example filters              # FilterChain (scale/fps/denoise/color)
+cargo run --example remux                # stream-copy to a new container (no re-encode)
+cargo run --example extract_frames       # extract stills across all three tiers
+cargo run --example extract_sampling     # Fps / EveryNFrames intervals + custom naming
+cargo run --example extract_save         # save frames + raw RGB pixel access
+cargo run --example decode_frames        # MediaReader + Decoder (Tier 3 read)
+cargo run --example seek                 # seek to a timestamp before decoding
+cargo run --example transcode_lowlevel   # read → decode → encode → mux by hand
 ```
 
 They read from `assets/video*.mp4` and write outputs to `assets/temp_*` (git-ignored).
