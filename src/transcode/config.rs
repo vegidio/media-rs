@@ -1,10 +1,13 @@
-//! Video output configuration for the [`Transcoder`](super::Transcoder).
+//! Output stream configuration for the [`Transcoder`](super::Transcoder).
 
 use crate::error::{Error, Result};
-use crate::types::codec::VideoCodec;
+use crate::types::audio::SampleRate;
+use crate::types::channel_layout::Channels;
+use crate::types::codec::{AudioCodec, VideoCodec};
 use crate::types::preset::H264Preset;
 use crate::types::profile::H264Profile;
 use crate::types::rational::{Bitrate, Framerate};
+use crate::types::sample_format::SampleFormat;
 
 /// How to encode the output video stream.
 ///
@@ -83,6 +86,79 @@ impl VideoConfigBuilder {
             framerate: self.framerate,
             preset: self.preset,
             profile: self.profile,
+        })
+    }
+}
+
+/// How to encode the output audio stream.
+///
+/// Anything left unset is inherited from the input (sample rate, channel layout) or the output
+/// container (codec). The sample format defaults to whatever the chosen encoder prefers.
+#[derive(Debug, Clone)]
+pub struct AudioConfig {
+    pub(crate) codec: AudioCodec,
+    pub(crate) bitrate: Option<Bitrate>,
+    pub(crate) sample_rate: Option<SampleRate>,
+    pub(crate) channels: Option<Channels>,
+    pub(crate) sample_format: Option<SampleFormat>,
+}
+
+impl AudioConfig {
+    /// Start configuring audio output with the given codec.
+    pub fn builder() -> AudioConfigBuilder {
+        AudioConfigBuilder::default()
+    }
+}
+
+/// Builder for [`AudioConfig`].
+#[derive(Debug, Clone, Default)]
+pub struct AudioConfigBuilder {
+    codec: Option<AudioCodec>,
+    bitrate: Option<Bitrate>,
+    sample_rate: Option<SampleRate>,
+    channels: Option<Channels>,
+    sample_format: Option<SampleFormat>,
+}
+
+impl AudioConfigBuilder {
+    /// The audio codec (required).
+    pub fn codec(mut self, codec: AudioCodec) -> Self {
+        self.codec = Some(codec);
+        self
+    }
+
+    /// Target bit rate (ignored by lossless codecs like FLAC).
+    pub fn bitrate(mut self, bitrate: Bitrate) -> Self {
+        self.bitrate = Some(bitrate);
+        self
+    }
+
+    /// Output sample rate (defaults to the input's).
+    pub fn sample_rate(mut self, sample_rate: SampleRate) -> Self {
+        self.sample_rate = Some(sample_rate);
+        self
+    }
+
+    /// Output channel configuration (defaults to the input's).
+    pub fn channels(mut self, channels: Channels) -> Self {
+        self.channels = Some(channels);
+        self
+    }
+
+    /// Sample format (defaults to the encoder's preferred format).
+    pub fn sample_format(mut self, sample_format: SampleFormat) -> Self {
+        self.sample_format = Some(sample_format);
+        self
+    }
+
+    /// Validate and produce the [`AudioConfig`].
+    pub fn build(self) -> Result<AudioConfig> {
+        Ok(AudioConfig {
+            codec: self.codec.ok_or(Error::InvalidConfig("audio config requires a codec"))?,
+            bitrate: self.bitrate,
+            sample_rate: self.sample_rate,
+            channels: self.channels,
+            sample_format: self.sample_format,
         })
     }
 }

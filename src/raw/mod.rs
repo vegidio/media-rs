@@ -5,9 +5,11 @@
 //! drop. Everything above this layer manipulates media through these types and never sees a
 //! raw pointer.
 
+pub(crate) mod audio_fifo;
 pub(crate) mod codec_context;
 pub(crate) mod filter_graph;
 pub(crate) mod format_context;
 pub(crate) mod frame;
 pub(crate) mod packet;
+pub(crate) mod resampler;
 mod util;

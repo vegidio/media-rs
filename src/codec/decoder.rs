@@ -68,6 +68,31 @@ impl Decoder {
         crate::types::pixel_format::PixelFormat::from_av(self.ctx.pix_fmt())
     }
 
+    /// The decoded sample rate in Hz (audio streams).
+    pub fn sample_rate(&self) -> u32 {
+        self.ctx.sample_rate().max(0) as u32
+    }
+
+    /// The decoder's output sample format (audio streams).
+    pub fn sample_format(&self) -> crate::types::sample_format::SampleFormat {
+        crate::types::sample_format::SampleFormat::from_av(self.ctx.sample_fmt())
+    }
+
+    /// The decoded channel configuration (audio streams).
+    pub fn channels(&self) -> crate::types::channel_layout::Channels {
+        use crate::types::channel_layout::Channels;
+        match self.ctx.ch_layout_owned().count() {
+            1 => Channels::Mono,
+            2 => Channels::Stereo,
+            n => Channels::Count(n.max(0) as u32),
+        }
+    }
+
+    /// The decoder's owned channel layout, for inheriting into an audio encoder/resampler.
+    pub(crate) fn ch_layout_owned(&self) -> crate::types::channel_layout::ChannelLayout {
+        self.ctx.ch_layout_owned()
+    }
+
     /// Discard the decoder's buffered state. Call this after seeking the underlying reader so
     /// that frames decoded before the seek don't leak into subsequent output.
     pub fn reset(&mut self) {

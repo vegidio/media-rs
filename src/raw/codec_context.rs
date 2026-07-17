@@ -142,9 +142,6 @@ impl CodecContext {
         }
     }
 
-    // Audio setters/getters below back the upcoming audio re-encode path; the current
-    // pipeline stream-copies audio, so they are not yet wired in.
-    #[allow(dead_code)]
     pub(crate) fn set_audio_format(
         &mut self,
         sample_rate: i32,
@@ -193,14 +190,50 @@ impl CodecContext {
         unsafe { (*self.ctx()).pix_fmt }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn sample_rate(&self) -> i32 {
         unsafe { (*self.ctx()).sample_rate }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn sample_fmt(&self) -> sys::AVSampleFormat {
         unsafe { (*self.ctx()).sample_fmt }
+    }
+
+    /// The encoder's required samples-per-frame, or `0` when the codec accepts variable-size
+    /// frames (e.g. FLAC, PCM). Valid only after [`open`](Self::open).
+    pub(crate) fn frame_size(&self) -> i32 {
+        unsafe { (*self.ctx()).frame_size }
+    }
+
+    /// `true` if the codec accepts a variable number of samples per frame.
+    pub(crate) fn accepts_variable_frame_size(&self) -> bool {
+        // SAFETY: codec is a valid static AVCodec pointer for this context's lifetime.
+        let caps = unsafe { (*self.codec).capabilities } as u32;
+        caps & sys::AV_CODEC_CAP_VARIABLE_FRAME_SIZE != 0
+    }
+
+    /// The sample formats this (encoder) codec accepts, newest FFmpeg-8 query API. An empty
+    /// vec means "unknown / all formats" — callers should fall back to a sensible default.
+    pub(crate) fn supported_sample_formats(&self) -> Vec<sys::AVSampleFormat> {
+        let mut out: *const std::os::raw::c_void = ptr::null();
+        let mut n: i32 = 0;
+        // SAFETY: ctx and codec are valid; out/n are valid out-params. On success `out` points
+        // to `n` AVSampleFormat values owned by FFmpeg (we only read them).
+        let ret = unsafe {
+            sys::avcodec_get_supported_config(
+                self.ctx(),
+                self.codec,
+                sys::AVCodecConfig_AV_CODEC_CONFIG_SAMPLE_FORMAT,
+                0,
+                &mut out,
+                &mut n,
+            )
+        };
+        if ret < 0 || out.is_null() || n <= 0 {
+            return Vec::new();
+        }
+        let fmts = out as *const sys::AVSampleFormat;
+        // SAFETY: `fmts` points to `n` valid AVSampleFormat entries.
+        (0..n as usize).map(|i| unsafe { *fmts.add(i) }).collect()
     }
 
     pub(crate) fn time_base(&self) -> Rational {
@@ -212,7 +245,6 @@ impl CodecContext {
     }
 
     /// Deep-copy this context's channel layout (for inheriting from a decoder).
-    #[allow(dead_code)]
     pub(crate) fn ch_layout_owned(&self) -> ChannelLayout {
         ChannelLayout::copy_from(unsafe { &(*self.ctx()).ch_layout })
     }

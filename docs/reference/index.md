@@ -15,8 +15,9 @@ use media::prelude::*;
 It brings in:
 
 - **Errors:** [`Error`](errors.md), [`Result`](errors.md)
-- **Transcode:** [`transcode`](transcode.md), [`Transcoder`](transcode.md#transcoder),
-  [`VideoConfig`](transcode.md#videoconfig), [`Progress`](transcode.md#progress),
+- **Transcode:** [`transcode`](transcode.md), [`transcode_audio`](transcode.md),
+  [`Transcoder`](transcode.md#transcoder), [`VideoConfig`](transcode.md#videoconfig),
+  [`AudioConfig`](audio.md#audioconfig), [`Progress`](transcode.md#progress),
   [`TranscodeSummary`](transcode.md#transcodesummary)
 - **Extract:** [`extract_frames`](extract.md), [`FrameExtractor`](extract.md#frameextractor),
   [`Interval`](extract.md#interval), [`ImageFormat`](extract.md#imageformat),
@@ -24,12 +25,15 @@ It brings in:
   [`Output`](extract.md#output), [`ExtractedFrame`](extract.md#extractedframe),
   [`ExtractReport`](extract.md#extractreport), [`SampledFrames`](extract.md#sampledframes)
 - **Format I/O:** [`MediaReader`](format.md#mediareader), [`MediaWriter`](format.md#mediawriter)
-- **Codec:** [`Decoder`](codec.md#decoder), [`VideoEncoder`](codec.md#videoencoder)
-- **Filters:** [`FilterChain`](filter.md#filterchain), [`DenoiseLevel`](filter.md#denoiselevel),
-  [`ColorCorrect`](filter.md#colorcorrect)
+- **Codec:** [`Decoder`](codec.md#decoder), [`VideoEncoder`](codec.md#videoencoder),
+  [`AudioEncoder`](audio.md#audioencoder), [`Resampler`](audio.md#resampler)
+- **Filters:** [`VideoFilterChain`](filter.md#videofilterchain),
+  [`AudioFilterChain`](audio.md#audiofilterchain), [`Decibels`](audio.md#decibels),
+  [`DenoiseLevel`](filter.md#denoiselevel), [`ColorCorrect`](filter.md#colorcorrect)
 - **Probe:** [`probe`](probe.md), [`MediaInfo`](probe.md#mediainfo),
   [`StreamInfo`](probe.md#streaminfo)
-- **Frame & Packet:** [`Frame`](frame-packet.md#frame), [`Packet`](frame-packet.md#packet)
+- **Frame & Packet:** [`Frame`](frame-packet.md#frame), [`Packet`](frame-packet.md#packet),
+  [`SampleBuffer`](audio.md#samplebuffer)
 - **Logging:** [`log`](logging.md) module, [`Level`](logging.md#level)
 - **Types:** [`VideoCodec`](types.md#videocodec), [`AudioCodec`](types.md#audiocodec),
   [`Bitrate`](types.md#bitrate), [`Framerate`](types.md#framerate),
@@ -42,12 +46,12 @@ It brings in:
 
 | Module | Contents | Reference |
 |--------|----------|-----------|
-| `media::transcode` | Transcoding API | [Transcode](transcode.md) |
+| `media::transcode` | Transcoding API | [Transcode](transcode.md), [Audio](audio.md) |
 | `media::extract` | Frame extraction | [Frame extraction](extract.md) |
 | `media::format` | `MediaReader` / `MediaWriter` | [Format I/O](format.md) |
-| `media::codec` | `Decoder` / `VideoEncoder` | [Codec](codec.md) |
-| `media::frame`, `media::packet` | `Frame`, `Packet` | [Frame & Packet](frame-packet.md) |
-| `media::filter` | `FilterChain` and friends | [Filters](filter.md) |
+| `media::codec` | `Decoder`, `VideoEncoder`, `AudioEncoder`, `Resampler` | [Codec](codec.md), [Audio](audio.md) |
+| `media::frame`, `media::packet` | `Frame`, `Packet`, `SampleBuffer` | [Frame & Packet](frame-packet.md) |
+| `media::filter` | `VideoFilterChain` / `AudioFilterChain` and friends | [Filters](filter.md), [Audio](audio.md) |
 | `media::probe` | `probe`, `MediaInfo` | [Probe](probe.md) |
 | `media::types` | Codecs, rates, formats | [Types](types.md) |
 | `media::log` | Log verbosity | [Logging](logging.md) |

@@ -1,16 +1,17 @@
-//! The shared transcode loop: demux → decode → (filter) → encode → mux, with audio
-//! stream-copied. Tiers 1 and 2 both drive this.
+//! The shared transcode loop: demux → decode → (filter) → encode → mux. Video and audio are
+//! each either re-encoded (decode → filter → encode) or stream-copied. Tiers 1 and 2 both
+//! drive this.
 
-use super::config::VideoConfig;
+use super::config::{AudioConfig, VideoConfig};
 use super::progress::{Progress, TranscodeSummary};
 use crate::codec::decoder::Decoder;
-use crate::codec::encoder::VideoEncoder;
+use crate::codec::encoder::{AudioEncoder, VideoEncoder};
 use crate::error::{Error, Result};
-use crate::filter::{FilterChain, VideoFilter};
+use crate::filter::{AudioFilter, AudioFilterChain, VideoFilter, VideoFilterChain};
 use crate::format::{MediaReader, MediaWriter};
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::types::codec::VideoCodec;
+use crate::types::codec::{AudioCodec, VideoCodec};
 use crate::types::rational::{Framerate, Rational};
 use crate::types::stream_kind::StreamKind;
 use std::sync::mpsc::{Receiver, sync_channel};
@@ -22,10 +23,12 @@ pub(crate) struct TranscodeOptions {
     pub input: String,
     pub output: String,
     pub video: Option<VideoConfig>,
+    pub audio: Option<AudioConfig>,
     pub drop_video: bool,
     pub drop_audio: bool,
     pub trim: Option<(f64, f64)>,
-    pub filter: FilterChain,
+    pub video_filter: VideoFilterChain,
+    pub audio_filter: AudioFilterChain,
 }
 
 /// Encode one (already filtered) frame and mux the resulting packets.
@@ -86,6 +89,13 @@ struct VideoStage {
     v_tb: Rational,
 }
 
+/// The video codec the transcode will actually encode with: the user's explicit choice, else
+/// the H.264 default. Resolved in one place so the pre-flight container guard and `setup_video`
+/// can never disagree.
+fn effective_video_codec(opts: &TranscodeOptions) -> VideoCodec {
+    opts.video.as_ref().map(|c| c.codec).unwrap_or(VideoCodec::H264)
+}
+
 /// Build the decoder, effective filter graph, and encoder for video stream `vidx`, and add
 /// the output stream. The filter graph is built eagerly so the encoder is sized to the graph's
 /// *actual* output — the only correct dimension/format even for arbitrary user filters.
@@ -100,7 +110,7 @@ fn setup_video(
     let dec = reader.stream(vidx).decoder()?;
 
     let cfg = opts.video.clone();
-    let codec = cfg.as_ref().map(|c| c.codec).unwrap_or(VideoCodec::H264);
+    let codec = effective_video_codec(opts);
     let (in_w, in_h) = (dec.width() as i32, dec.height() as i32);
     let in_pix = dec.pixel_format();
     let (tw, th) = cfg
@@ -111,16 +121,16 @@ fn setup_video(
 
     // Compose the effective filter chain: user filters, plus an auto-scale when the
     // requested resolution differs from the input.
-    let mut chain = opts.filter.clone();
+    let mut chain = opts.video_filter.clone();
 
     if (tw, th) != (in_w, in_h) {
         let mut stages = vec![format!("scale={tw}:{th}")];
 
-        if !opts.filter.is_empty() {
-            stages.push(opts.filter.description());
+        if !opts.video_filter.is_empty() {
+            stages.push(opts.video_filter.description());
         }
 
-        chain = FilterChain::raw(stages.join(","));
+        chain = VideoFilterChain::raw(stages.join(","));
     }
 
     let mut vfilter = None;
@@ -166,23 +176,124 @@ fn setup_video(
     Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb })
 }
 
+/// The configured audio half of a re-encoding transcode: decoder (producer side) + encoder and
+/// optional filter (consumer side), the output stream index, and the source time base.
+struct AudioStage {
+    decoder: Decoder,
+    encoder: AudioEncoder,
+    afilter: Option<AudioFilter>,
+    out_aidx: usize,
+}
+
+/// Decide which codec to *re-encode* audio to: the user's explicit choice, else the source
+/// codec when the container accepts it (a filter-only re-encode), else the container's default.
+fn resolve_audio_codec(opts: &TranscodeOptions, writer: &MediaWriter, src_codec_id: crate::sys::AVCodecID) -> Result<AudioCodec> {
+    if let Some(c) = opts.audio.as_ref().map(|c| c.codec) {
+        return Ok(c);
+    }
+    if writer.supports_codec(src_codec_id)
+        && let Some(c) = AudioCodec::from_codec_id(src_codec_id)
+    {
+        return Ok(c);
+    }
+    AudioCodec::from_codec_id(writer.default_audio_codec_id())
+        .ok_or(Error::InvalidConfig("cannot encode audio for this container; set .audio(...) with a supported codec"))
+}
+
+/// Build the decoder, encoder, and optional filter for audio stream `aidx`, and add the output
+/// stream. Used whenever audio must be re-encoded (a config/filter was given, or the source
+/// codec can't be stream-copied into the target container).
+fn setup_audio(
+    opts: &TranscodeOptions,
+    reader: &mut MediaReader,
+    writer: &mut MediaWriter,
+    aidx: usize,
+    codec: AudioCodec,
+) -> Result<AudioStage> {
+    let a_tb = reader.stream_time_base(aidx)?;
+    let dec = reader.stream(aidx).decoder()?;
+
+    let mut eb = AudioEncoder::builder().codec(codec).from_decoder(&dec).global_header(writer.wants_global_header());
+    if let Some(c) = &opts.audio {
+        if let Some(b) = c.bitrate {
+            eb = eb.bitrate(b);
+        }
+        if let Some(r) = c.sample_rate {
+            eb = eb.sample_rate(r);
+        }
+        if let Some(ch) = c.channels {
+            eb = eb.channels(ch);
+        }
+        if let Some(f) = c.sample_format {
+            eb = eb.sample_format(f);
+        }
+    }
+    let encoder = eb.build()?;
+
+    // The filter runs on the decoder's native format; its output frames feed the encoder, which
+    // resamples them to the encode format.
+    let afilter = if opts.audio_filter.is_empty() {
+        None
+    } else {
+        Some(AudioFilter::new(dec.sample_rate() as i32, dec.sample_format(), dec.ch_layout_owned(), a_tb, &opts.audio_filter)?)
+    };
+
+    let out_aidx = writer.add_stream_from_encoder(&encoder)?;
+    Ok(AudioStage { decoder: dec, encoder, afilter, out_aidx })
+}
+
 /// One item handed from the demux/decode producer to the encode/mux consumer.
 enum Work {
     /// A decoded, in-trim video frame plus its source-time position (seconds, for progress).
     Video { frame: Frame, secs: f64 },
-    /// An already trim-gated, timestamp-offset, remapped audio packet to mux verbatim.
+    /// A decoded, in-trim audio frame to re-encode, plus its source-time position.
+    AudioFrame { frame: Frame, secs: f64 },
+    /// An already trim-gated, timestamp-offset, remapped audio packet to mux verbatim (copy).
     Audio(Packet),
 }
 
+/// Stamp each encoded audio packet with its output stream index and mux it.
+fn mux_audio_packets(writer: &mut MediaWriter, packets: Vec<Packet>, out_aidx: usize) -> Result<()> {
+    for mut pkt in packets {
+        pkt.set_stream_index(out_aidx);
+        writer.write_packet(&mut pkt)?;
+    }
+    Ok(())
+}
+
+/// Filter (if configured) and encode one audio frame, muxing the resulting packets to
+/// `out_aidx`. The encoder assigns continuous, zero-based timestamps, so no trim offset is
+/// needed (trim-gated frames simply start the timeline at zero).
+fn encode_audio_frame(
+    frame: Frame,
+    afilter: &mut Option<AudioFilter>,
+    encoder: &mut AudioEncoder,
+    writer: &mut MediaWriter,
+    out_aidx: usize,
+) -> Result<()> {
+    match afilter {
+        Some(af) => {
+            for f in af.filter(frame)? {
+                mux_audio_packets(writer, encoder.encode(&f)?, out_aidx)?;
+            }
+        }
+        None => mux_audio_packets(writer, encoder.encode(&frame)?, out_aidx)?,
+    }
+    Ok(())
+}
+
 /// The encode/mux half of the pipeline: pull [`Work`] off the channel, filter+encode video and
-/// mux audio, then at end of stream flush the filter and encoder. Returns the encoded frame
-/// count for the summary. Runs on the caller thread so `on_progress` (a `FnMut`) never has to
-/// cross a thread boundary.
+/// audio (or mux copied audio), then at end of stream flush the filters and encoders. Returns
+/// the encoded video-frame count for the summary. Runs on the caller thread so `on_progress`
+/// (a `FnMut`) never has to cross a thread boundary.
 #[allow(clippy::too_many_arguments)]
 fn run_consumer(
     rx: Receiver<Work>,
     mut encoder: Option<VideoEncoder>,
     mut vfilter: Option<VideoFilter>,
+    mut audio_encoder: Option<AudioEncoder>,
+    mut afilter: Option<AudioFilter>,
+    out_aidx: Option<usize>,
     writer: &mut MediaWriter,
     out_vidx: Option<usize>,
     v_start_ts: i64,
@@ -193,6 +304,8 @@ fn run_consumer(
 ) -> Result<u64> {
     let mut frames = 0u64;
     let span = total_secs - trim_start.min(total_secs);
+    // With no video stream, audio drives progress instead.
+    let audio_drives_progress = out_vidx.is_none();
 
     for work in rx {
         match work {
@@ -203,11 +316,18 @@ fn run_consumer(
                 process_video_frame(frame, &mut vfilter, enc, writer, ov, v_start_ts, &mut frames)?;
                 on_progress(Progress::new((secs - trim_start).max(0.0), span, frames, started));
             }
+            Work::AudioFrame { frame, secs } => {
+                let enc = audio_encoder.as_mut().ok_or(Error::InvalidConfig("audio frame with no encoder configured"))?;
+                encode_audio_frame(frame, &mut afilter, enc, writer, out_aidx.unwrap())?;
+                if audio_drives_progress {
+                    on_progress(Progress::new((secs - trim_start).max(0.0), span, frames, started));
+                }
+            }
             Work::Audio(mut pkt) => writer.write_packet(&mut pkt)?,
         }
     }
 
-    // End of stream: flush the filter, then the encoder (video only).
+    // End of stream: flush the video filter+encoder…
     if let Some(enc) = encoder.as_mut() {
         let ov = out_vidx.unwrap();
 
@@ -222,6 +342,19 @@ fn run_consumer(
             pkt.set_stream_index(ov);
             writer.write_packet(&mut pkt)?;
         }
+    }
+
+    // …then the audio filter+encoder.
+    if let Some(enc) = audio_encoder.as_mut() {
+        let oa = out_aidx.unwrap();
+
+        if let Some(af) = afilter.as_mut() {
+            for frame in af.flush()? {
+                mux_audio_packets(writer, enc.encode(&frame)?, oa)?;
+            }
+        }
+
+        mux_audio_packets(writer, enc.flush()?, oa)?;
     }
 
     Ok(frames)
@@ -241,18 +374,44 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
     let mut writer = MediaWriter::create(&opts.output)?;
 
+    // Fail loudly rather than letting the muxer reject a video stream deep down: if the input
+    // has video (not dropped) but the container can't hold the codec we'd encode it as, stop
+    // now with actionable advice. (The MP3 muxer, for one, allows only cover-art images, not a
+    // real video codec.)
+    if video_idx.is_some() {
+        let video_codec = effective_video_codec(opts);
+        if !writer.supports_codec(video_codec.codec_id()) {
+            return Err(Error::InvalidConfig(
+                "output container does not support the video stream; call .drop_video() to drop it (or use a container/codec that supports video)",
+            ));
+        }
+    }
+
     // --- video setup -------------------------------------------------------------------
     let video = match video_idx {
         Some(vidx) => Some(setup_video(opts, &mut reader, &mut writer, vidx)?),
         None => None,
     };
 
-    // --- audio setup (stream copy) -----------------------------------------------------
+    // --- audio setup: re-encode when a config/filter was given or the source codec can't be
+    // copied into this container; otherwise stream-copy verbatim (fast, lossless). ----------
     let mut out_aidx = None;
     let mut a_tb = Rational::ONE;
+    let mut audio_stage: Option<AudioStage> = None;
     if let Some(aidx) = audio_idx {
         a_tb = reader.stream_time_base(aidx)?;
-        out_aidx = Some(writer.add_stream_copy(&reader, aidx)?);
+        let src_codec_id = reader.input().stream_codec_id(aidx)?;
+        let want_reencode = opts.audio.is_some() || !opts.audio_filter.is_empty();
+        let src_supported = writer.supports_codec(src_codec_id);
+
+        if want_reencode || !src_supported {
+            let codec = resolve_audio_codec(opts, &writer, src_codec_id)?;
+            let stage = setup_audio(opts, &mut reader, &mut writer, aidx, codec)?;
+            out_aidx = Some(stage.out_aidx);
+            audio_stage = Some(stage);
+        } else {
+            out_aidx = Some(writer.add_stream_copy(&reader, aidx)?);
+        }
     }
 
     writer.write_header()?;
@@ -266,32 +425,40 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
     let started = Instant::now();
 
-    // Split the video stage across the two pipeline halves: the decoder demuxes/decodes on the
-    // producer thread; the filter+encoder mux on the consumer (this) thread with the writer.
+    // Split each stage across the two pipeline halves: decoders demux/decode on the producer
+    // thread; the filters+encoders mux on the consumer (this) thread with the writer.
     let (decoder, encoder, vfilter, out_vidx) = match video {
         Some(s) => (Some(s.decoder), Some(s.encoder), s.vfilter, Some(s.out_vidx)),
         None => (None, None, None, None),
+    };
+    let (audio_decoder, audio_encoder, afilter) = match audio_stage {
+        Some(s) => (Some(s.decoder), Some(s.encoder), s.afilter),
+        None => (None, None, None),
     };
 
     // Bounded so the producer can't race far ahead of the encoder (backpressure + capped memory).
     let (tx, rx) = sync_channel::<Work>(8);
 
-    // --- producer: demux + decode (+ audio pass-through) -------------------------------
+    // --- producer: demux + decode (video and audio) ------------------------------------
     let producer = thread::spawn(move || -> Result<()> {
         let mut reader = reader;
         let mut decoder = decoder;
+        let mut audio_decoder = audio_decoder;
         let in_trim = |secs: f64| secs >= trim_start && secs <= trim_end;
 
         // Fast trim: instead of decoding and discarding everything before `trim_start`, seek to the keyframe at/just
-        // before it and reset the decoder. `in_trim` still drops the frames between that keyframe and `trim_start`, so
+        // before it and reset the decoders. `in_trim` still drops the frames between that keyframe and `trim_start`, so
         // the emitted frames are unchanged — we just skip decoding the prefix. Seek failure (e.g. a
         // non-seekable input) is non-fatal: we fall back to the linear scan, exactly the previous behaviour.
         if trim_start > 0.0 {
             let seek_idx = video_idx.or(audio_idx).unwrap();
-            if reader.seek(seek_idx, Duration::from_secs_f64(trim_start)).is_ok()
-                && let Some(dec) = decoder.as_mut()
-            {
-                dec.reset();
+            if reader.seek(seek_idx, Duration::from_secs_f64(trim_start)).is_ok() {
+                if let Some(dec) = decoder.as_mut() {
+                    dec.reset();
+                }
+                if let Some(dec) = audio_decoder.as_mut() {
+                    dec.reset();
+                }
             }
         }
 
@@ -316,40 +483,70 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
                     }
                 }
             } else if Some(sidx) == audio_idx {
-                // Stream copy: gate on trim, offset timestamps, remap to the output stream.
-                let mut packet = packet;
-                let secs = packet.pts() as f64 * a_tb_f64;
+                if let Some(dec) = audio_decoder.as_mut() {
+                    // Re-encode: decode, gate on trim, hand decoded frames to the consumer.
+                    for frame in dec.decode(&packet)? {
+                        let frame = frame?;
+                        let secs = frame_secs(&frame, a_tb);
+                        if !in_trim(secs) {
+                            continue;
+                        }
+                        if tx.send(Work::AudioFrame { frame, secs }).is_err() {
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    // Stream copy: gate on trim, offset timestamps, remap to the output stream.
+                    let mut packet = packet;
+                    let secs = packet.pts() as f64 * a_tb_f64;
 
-                if !in_trim(secs) {
-                    continue;
-                }
+                    if !in_trim(secs) {
+                        continue;
+                    }
 
-                packet.offset_timestamps(a_start_ts);
-                packet.set_stream_index(out_aidx.unwrap());
+                    packet.offset_timestamps(a_start_ts);
+                    packet.set_stream_index(out_aidx.unwrap());
 
-                if tx.send(Work::Audio(packet)).is_err() {
-                    return Ok(());
+                    if tx.send(Work::Audio(packet)).is_err() {
+                        return Ok(());
+                    }
                 }
             }
         }
 
-        // Flush the decoder tail; collect first so its mutable borrow ends before we send.
-        if let Some(dec) = decoder.as_mut() {
+        // Flush a decoder's buffered tail and forward its in-trim frames. Collect first so the decoder's mutable borrow
+        // ends before we send. Returns `false` if the consumer has hung up (channel closed), so the caller can stop.
+        let flush_tail = |dec: &mut Decoder, tb: Rational, wrap: fn(Frame, f64) -> Work| -> Result<bool> {
             let mut tail = Vec::new();
-
             for frame in dec.flush()? {
                 tail.push(frame?);
             }
 
             for frame in tail {
-                let secs = frame_secs(&frame, v_tb);
+                let secs = frame_secs(&frame, tb);
                 if !in_trim(secs) {
                     continue;
                 }
-                if tx.send(Work::Video { frame, secs }).is_err() {
-                    return Ok(());
+
+                if tx.send(wrap(frame, secs)).is_err() {
+                    return Ok(false);
                 }
             }
+
+            Ok(true)
+        };
+
+        if let Some(dec) = decoder.as_mut()
+            && !flush_tail(dec, v_tb, |frame, secs| Work::Video { frame, secs })?
+        {
+            return Ok(());
+        }
+
+        // Audio decoder tail (re-encode path only).
+        if let Some(dec) = audio_decoder.as_mut()
+            && !flush_tail(dec, a_tb, |frame, secs| Work::AudioFrame { frame, secs })?
+        {
+            return Ok(());
         }
 
         Ok(())
@@ -361,6 +558,9 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
         rx,
         encoder,
         vfilter,
+        audio_encoder,
+        afilter,
+        out_aidx,
         &mut writer,
         out_vidx,
         v_start_ts,

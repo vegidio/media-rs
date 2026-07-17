@@ -29,9 +29,10 @@ pub enum AudioCodec { Aac, Mp3, Opus, Vorbis, Flac }
 
 Methods: `encoder_name`, `codec_id`.
 
-!!! note "Foundations only"
-    Audio re-encoding isn't wired into the pipeline yet — transcoding **copies** audio. These
-    types exist for the upcoming audio path and for [probe](probe.md) results.
+!!! note "Used for audio encoding"
+    These types drive the [audio encoding API](../guides/audio.md) (`AudioConfig`,
+    `AudioEncoder`, `AudioFilterChain`, `Resampler`) as well as [probe](probe.md) results.
+    Transcoding still **copies** audio by default and re-encodes only when asked.
 
 ## `H264Preset`
 

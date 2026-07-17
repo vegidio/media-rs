@@ -3,7 +3,7 @@
 Module `media::filter`. Composable, typed video filters. See the
 [Filters guide](../guides/filters.md).
 
-## `FilterChain`
+## `VideoFilterChain`
 
 A chain of video filters. Empty by default; each operator appends a stage, and stages run in
 the order added.
@@ -37,7 +37,7 @@ Each maps to a tuned `hqdn3d` setting.
 ## `ColorCorrect`
 
 Color adjustment knobs (applied via the `eq` filter). Built with a closure inside
-`FilterChain::color_correct`. Each setter returns `Self`; only the knobs you touch move away
+`VideoFilterChain::color_correct`. Each setter returns `Self`; only the knobs you touch move away
 from their identity defaults.
 
 | Method | Identity | Description |
@@ -49,7 +49,7 @@ from their identity defaults.
 
 ```rust
 use media::prelude::*;
-let chain = FilterChain::new()
+let chain = VideoFilterChain::new()
     .color_correct(|cc| cc.brightness(0.05).contrast(1.1).saturation(1.2));
 # let _ = chain;
 ```

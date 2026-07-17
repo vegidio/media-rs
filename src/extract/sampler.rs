@@ -10,7 +10,7 @@ use crate::codec::decoder::Decoder;
 use crate::error::{Error, Result};
 use crate::extract::frame::ExtractedFrame;
 use crate::extract::types::{Interval, Resolution};
-use crate::filter::{FilterChain, VideoFilter};
+use crate::filter::{VideoFilterChain, VideoFilter};
 use crate::format::MediaReader;
 use crate::frame::Frame;
 use crate::types::pixel_format::PixelFormat;
@@ -133,8 +133,8 @@ struct FrameConverter {
 impl FrameConverter {
     fn new(frame: &Frame, resolution: Resolution, time_base: Rational) -> Result<Self> {
         let chain = match resolution {
-            Resolution::Original => FilterChain::raw("format=rgb24"),
-            Resolution::Fixed(w, h) => FilterChain::raw(format!("scale={w}:{h},format=rgb24")),
+            Resolution::Original => VideoFilterChain::raw("format=rgb24"),
+            Resolution::Fixed(w, h) => VideoFilterChain::raw(format!("scale={w}:{h},format=rgb24")),
         };
         let filter = VideoFilter::new(
             frame.width() as i32,

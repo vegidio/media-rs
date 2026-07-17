@@ -1,10 +1,5 @@
 //! Channel layouts.
 //!
-// `ChannelLayout` and the `Channels::to_layout` helper underpin the audio re-encode path
-// (the next increment); they are retained as completed, tested foundation even though the
-// current pipeline stream-copies audio.
-#![allow(dead_code)]
-//!
 //! FFmpeg 8 uses the modern [`sys::AVChannelLayout`] struct (not the legacy `u64` mask).
 //! Because a custom layout can own heap memory, the struct must never be byte-copied: it is
 //! initialised via `av_channel_layout_default`, duplicated via `av_channel_layout_copy`, and
@@ -74,6 +69,20 @@ impl ChannelLayout {
 
     pub(crate) fn as_ptr(&self) -> *const sys::AVChannelLayout {
         &self.inner
+    }
+
+    /// A libavfilter-friendly description of this layout (e.g. `"stereo"`, `"5.1"`), for the
+    /// `abuffer` source's `channel_layout` argument.
+    pub(crate) fn describe(&self) -> String {
+        let mut buf = [0 as std::os::raw::c_char; 64];
+        // SAFETY: inner is a valid layout; buf is a writable 64-byte scratch buffer.
+        let n = unsafe { sys::av_channel_layout_describe(&self.inner, buf.as_mut_ptr(), buf.len()) };
+        if n <= 0 {
+            // Fall back to a bare channel count, which abuffer also accepts.
+            return format!("{}c", self.inner.nb_channels.max(1));
+        }
+        // SAFETY: describe wrote a NUL-terminated string of `n-1` chars into buf.
+        unsafe { std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned() }
     }
 
     /// Deep-copy this layout into `dst` (which must be uninitialised/zeroed).

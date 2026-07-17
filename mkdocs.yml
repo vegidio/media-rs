@@ -81,6 +81,7 @@ nav:
       - guides/index.md
       - Probing media: guides/probing.md
       - Transcoding: guides/transcoding.md
+      - Audio: guides/audio.md
       - Filters: guides/filters.md
       - Frame extraction: guides/frame-extraction.md
       - Remuxing: guides/remuxing.md
@@ -91,6 +92,7 @@ nav:
   - API Reference:
       - reference/index.md
       - Transcode: reference/transcode.md
+      - Audio: reference/audio.md
       - Frame extraction: reference/extract.md
       - Format I/O: reference/format.md
       - Codec: reference/codec.md

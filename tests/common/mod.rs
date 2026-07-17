@@ -32,3 +32,11 @@ pub fn audio_sample() -> Option<PathBuf> {
     let p = asset("video2.mp4");
     p.exists().then_some(p)
 }
+
+/// The audio-only sample (`audio1.mp3`), or `None` when assets are absent. Used by tests that
+/// exercise the audio-only paths (format conversion, auto-encode) which the video-with-audio
+/// sample can't cover as cleanly.
+pub fn audio_only_sample() -> Option<PathBuf> {
+    let p = asset("audio1.mp3");
+    p.exists().then_some(p)
+}

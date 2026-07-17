@@ -29,17 +29,17 @@ pub mod prelude;
 pub mod probe;
 pub mod transcode;
 
-pub use codec::{Decoder, VideoEncoder};
+pub use codec::{AudioEncoder, Decoder, Resampler, VideoEncoder};
 pub use extract::{
     ExtractReport, ExtractedFrame, FrameExtractor, ImageFormat, Interval, NamingScheme, Output, Resolution,
     SampledFrames, extract_frames,
 };
 pub use format::{MediaReader, MediaWriter};
-pub use frame::Frame;
+pub use frame::{Frame, SampleBuffer};
 pub use log::Level;
 pub use packet::Packet;
 pub use probe::{MediaInfo, StreamInfo, probe};
-pub use transcode::{Transcoder, VideoConfig, transcode};
+pub use transcode::{AudioConfig, Transcoder, VideoConfig, transcode, transcode_audio};
 
 pub use error::{Error, Result};
 

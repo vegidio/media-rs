@@ -5,9 +5,11 @@ trim to a range, drop a stream, or apply filters. Transcoding follows the
 [three-tier API](../getting-started/concepts.md#the-three-tier-api): a one-liner, a builder,
 and (in a [separate guide](low-level.md)) the hand-wired pipeline.
 
-!!! note "Audio is copied, not re-encoded"
-    The transcode pipeline **stream-copies** audio through untouched. Video is re-encoded;
-    audio is not (yet). You can still [drop](#dropping-a-stream) either stream.
+!!! note "Audio is copied by default"
+    By default the transcode pipeline **stream-copies** audio through untouched (fast, lossless).
+    It re-encodes audio only when you ask it to — via `.audio(...)`, an audio filter, or one of
+    the `.audio_*` shortcuts — or when the source codec can't fit the target container. See the
+    [Audio guide](audio.md) for the full audio API, and [drop](#dropping-a-stream) either stream.
 
 ## The simplest transcode
 
@@ -191,13 +193,13 @@ println!("\nDone: {} frames", summary.frames);
 
 ## Applying filters
 
-Attach a [`FilterChain`](filters.md) with `.video_filter(...)` on any tier. See the
+Attach a [`VideoFilterChain`](filters.md) with `.video_filter(...)` on any tier. See the
 [Filters guide](filters.md) for the full builder.
 
 ```rust
 use media::prelude::*;
 # fn demo() -> media::Result<()> {
-let chain = FilterChain::new().scale(640, 360).fps(24);
+let chain = VideoFilterChain::new().scale(640, 360).fps(24);
 transcode("input.mp4").to("output.mp4").drop_audio().video_filter(chain).run()?;
 # Ok(()) }
 ```

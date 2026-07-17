@@ -3,6 +3,8 @@
 use super::util::non_null;
 use crate::error::{Result, check};
 use crate::sys;
+use crate::types::channel_layout::ChannelLayout;
+use std::os::raw::c_void;
 use std::ptr::NonNull;
 
 /// An owned `AVFrame`. Freed with `av_frame_free` on drop.
@@ -44,6 +46,61 @@ impl RawFrame {
 
     pub(crate) fn sample_rate(&self) -> i32 {
         unsafe { (*self.ptr.as_ptr()).sample_rate }
+    }
+
+    /// The number of audio channels (from the frame's channel layout).
+    pub(crate) fn channels(&self) -> i32 {
+        unsafe { (*self.ptr.as_ptr()).ch_layout.nb_channels }
+    }
+
+    /// Pointer to audio plane `index` (`extended_data[index]`), which handles >8 channels;
+    /// for ≤8 channels it aliases `data[index]`. Returns null if out of range.
+    pub(crate) fn plane_ptr(&self, index: usize) -> *mut u8 {
+        // SAFETY: extended_data is a valid array of at least `channels` (planar) or 1 (packed)
+        // plane pointers for an allocated audio frame.
+        unsafe {
+            let ed = (*self.ptr.as_ptr()).extended_data;
+            if ed.is_null() { std::ptr::null_mut() } else { *ed.add(index) }
+        }
+    }
+
+    /// The plane-pointer array (`extended_data`) as the `void**` that the audio FIFO's
+    /// read/write functions expect.
+    pub(crate) fn sample_planes_ptr(&self) -> *const *mut c_void {
+        unsafe { (*self.ptr.as_ptr()).extended_data as *const *mut c_void }
+    }
+
+    /// Deep-copy this (audio) frame's channel layout.
+    pub(crate) fn ch_layout_copy(&self) -> ChannelLayout {
+        ChannelLayout::copy_from(unsafe { &(*self.ptr.as_ptr()).ch_layout })
+    }
+
+    /// Allocate an audio frame with the given spec and backing sample buffers, ready to be
+    /// filled (e.g. by the FIFO or the resampler). `align = 0` lets FFmpeg choose.
+    pub(crate) fn new_audio(
+        sample_fmt: sys::AVSampleFormat,
+        ch_layout: &ChannelLayout,
+        sample_rate: i32,
+        nb_samples: i32,
+    ) -> Result<RawFrame> {
+        let mut frame = RawFrame::alloc()?;
+        // SAFETY: frame is a freshly allocated AVFrame; set the audio spec before requesting
+        // buffers so av_frame_get_buffer knows how much to allocate.
+        unsafe {
+            let f = frame.as_mut_ptr();
+            (*f).format = sample_fmt;
+            (*f).sample_rate = sample_rate;
+            (*f).nb_samples = nb_samples;
+            ch_layout.copy_into(&mut (*f).ch_layout);
+        }
+        check(unsafe { sys::av_frame_get_buffer(frame.as_mut_ptr(), 0) })?;
+        Ok(frame)
+    }
+
+    /// Override the reported sample count (after a FIFO read that returned fewer samples than
+    /// the frame's allocated capacity, so the encoder sees the true length).
+    pub(crate) fn set_nb_samples(&mut self, nb: i32) {
+        unsafe { (*self.ptr.as_ptr()).nb_samples = nb };
     }
 
     pub(crate) fn pts(&self) -> i64 {

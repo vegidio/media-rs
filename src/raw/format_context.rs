@@ -199,6 +199,22 @@ impl OutputFormatContext {
         }
     }
 
+    /// The container's default audio codec id (used when auto-encoding audio that can't be
+    /// stream-copied). `AV_CODEC_ID_NONE` if the container holds no audio.
+    pub(crate) fn default_audio_codec_id(&self) -> sys::AVCodecID {
+        // SAFETY: oformat is a valid static AVOutputFormat.
+        unsafe { (*(*self.ctx()).oformat).audio_codec }
+    }
+
+    /// `true` if this container accepts `codec_id` (e.g. can AAC go into this muxer?).
+    pub(crate) fn supports_codec(&self, codec_id: sys::AVCodecID) -> bool {
+        // SAFETY: oformat is valid; query_codec is a pure lookup. Returns 1 (yes), 0 (no), or
+        // <0 (unknown) — treat only an explicit 1 as supported.
+        let ret =
+            unsafe { sys::avformat_query_codec((*self.ctx()).oformat, codec_id, sys::FF_COMPLIANCE_NORMAL as i32) };
+        ret == 1
+    }
+
     /// Add an output stream that copies `par` verbatim (for stream-copy/remux). The codec
     /// tag is cleared so the target muxer assigns a compatible one.
     pub(crate) fn add_stream_copy(&mut self, par: *const sys::AVCodecParameters) -> Result<usize> {

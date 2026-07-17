@@ -9,7 +9,8 @@ walkthroughs.
 pub fn transcode(input: impl Into<String>) -> TranscodeJob
 ```
 
-Tier-1 entry point. Begins a one-liner transcode from `input`.
+Tier-1 entry point. Begins a one-liner transcode from `input`. A companion
+`transcode_audio(input)` is shorthand for `transcode(input).drop_video()`.
 
 ### `TranscodeJob`
 
@@ -19,12 +20,17 @@ A fluent facade over [`TranscoderBuilder`](#transcoder). Chain modifiers, then `
 |--------|-----------|-------------|
 | `to` | `to(output: impl Into<String>) -> Self` | Output file (required); container inferred from the extension. |
 | `video` | `video(config: VideoConfig) -> Self` | Override video encoding settings. |
-| `video_filter` | `video_filter(filter: FilterChain) -> Self` | Apply a [filter chain](filter.md). |
+| `video_filter` | `video_filter(filter: VideoFilterChain) -> Self` | Apply a [filter chain](filter.md). |
+| `audio` | `audio(config: AudioConfig) -> Self` | Override audio encoding with a full [`AudioConfig`](audio.md#audioconfig). |
+| `audio_filter` | `audio_filter(filter: AudioFilterChain) -> Self` | Apply an [audio filter chain](audio.md#audiofilterchain). |
 | `drop_video` | `drop_video() -> Self` | Drop the video stream. |
 | `drop_audio` | `drop_audio() -> Self` | Drop the audio stream. |
 | `trim` | `trim(range: RangeInclusive<Duration>) -> Self` | Keep only this time range. |
 | `run` | `run(self) -> Result<TranscodeSummary>` | Run to completion. |
 | `run_with_progress` | `run_with_progress(self, on_progress: impl FnMut(Progress)) -> Result<TranscodeSummary>` | Run, reporting [progress](#progress). |
+
+By default audio is **stream-copied**; the `audio`/`audio_filter` methods (or an incompatible
+target codec) trigger re-encoding. See the [Audio guide](../guides/audio.md).
 
 ## `Transcoder`
 
@@ -43,7 +49,9 @@ pub fn run_with_progress(&self, on_progress: impl FnMut(Progress)) -> Result<Tra
 | `input` | `input(path: impl Into<String>) -> Self` | Input file (**required**). |
 | `output` | `output(path: impl Into<String>) -> Self` | Output file (**required**). |
 | `video` | `video(config: VideoConfig) -> Self` | Video encoding config. Omit to inherit the input's geometry with H.264. |
-| `video_filter` | `video_filter(filter: FilterChain) -> Self` | Filter chain. |
+| `audio` | `audio(config: AudioConfig) -> Self` | Audio encoding config. Omit to stream-copy the input audio. |
+| `video_filter` | `video_filter(filter: VideoFilterChain) -> Self` | Filter chain. |
+| `audio_filter` | `audio_filter(filter: AudioFilterChain) -> Self` | Audio filter chain (forces re-encode). |
 | `drop_video` | `drop_video() -> Self` | Drop video. |
 | `drop_audio` | `drop_audio() -> Self` | Drop audio. |
 | `trim` | `trim(range: RangeInclusive<Duration>) -> Self` | Keep only this range, re-based to start at zero. |

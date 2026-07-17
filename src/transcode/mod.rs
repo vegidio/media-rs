@@ -6,13 +6,13 @@ pub mod progress;
 
 mod oneliner;
 
-pub use config::{VideoConfig, VideoConfigBuilder};
-pub use oneliner::{TranscodeJob, transcode};
+pub use config::{AudioConfig, AudioConfigBuilder, VideoConfig, VideoConfigBuilder};
+pub use oneliner::{TranscodeJob, transcode, transcode_audio};
 pub use progress::{Progress, TranscodeSummary};
 
 use crate::error::{Error, Result};
-use crate::filter::FilterChain;
-use config::VideoConfig as VConfig;
+use crate::filter::{AudioFilterChain, VideoFilterChain};
+use config::{AudioConfig as AConfig, VideoConfig as VConfig};
 use pipeline::TranscodeOptions;
 use std::ops::RangeInclusive;
 use std::time::Duration;
@@ -57,10 +57,12 @@ pub struct TranscoderBuilder {
     input: Option<String>,
     output: Option<String>,
     video: Option<VConfig>,
+    audio: Option<AConfig>,
     drop_video: bool,
     drop_audio: bool,
     trim: Option<(f64, f64)>,
-    filter: FilterChain,
+    video_filter: VideoFilterChain,
+    audio_filter: AudioFilterChain,
 }
 
 impl TranscoderBuilder {
@@ -79,6 +81,13 @@ impl TranscoderBuilder {
     /// How to encode the video stream. Omit to inherit the input's geometry with H.264.
     pub fn video(mut self, config: VideoConfig) -> Self {
         self.video = Some(config);
+        self
+    }
+
+    /// How to encode the audio stream. Omit to stream-copy the input audio (re-encoding only
+    /// when the source codec can't go into the target container).
+    pub fn audio(mut self, config: AudioConfig) -> Self {
+        self.audio = Some(config);
         self
     }
 
@@ -101,8 +110,14 @@ impl TranscoderBuilder {
     }
 
     /// Apply a video filter chain.
-    pub fn video_filter(mut self, filter: FilterChain) -> Self {
-        self.filter = filter;
+    pub fn video_filter(mut self, filter: VideoFilterChain) -> Self {
+        self.video_filter = filter;
+        self
+    }
+
+    /// Apply an audio filter chain. Setting one forces the audio stream to be re-encoded.
+    pub fn audio_filter(mut self, filter: AudioFilterChain) -> Self {
+        self.audio_filter = filter;
         self
     }
 
@@ -113,10 +128,12 @@ impl TranscoderBuilder {
                 input: self.input.ok_or(Error::InvalidConfig("transcoder requires an input"))?,
                 output: self.output.ok_or(Error::InvalidConfig("transcoder requires an output"))?,
                 video: self.video,
+                audio: self.audio,
                 drop_video: self.drop_video,
                 drop_audio: self.drop_audio,
                 trim: self.trim,
-                filter: self.filter,
+                video_filter: self.video_filter,
+                audio_filter: self.audio_filter,
             },
         })
     }

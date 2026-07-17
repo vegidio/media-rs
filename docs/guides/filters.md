@@ -2,7 +2,7 @@
 
 **Use when:** you want to transform video during a transcode — resize, force a frame rate,
 denoise, adjust color. `media-rs` gives you a typed, composable
-[`FilterChain`](../reference/filter.md#filterchain) so you rarely have to write raw
+[`VideoFilterChain`](../reference/filter.md#videofilterchain) so you rarely have to write raw
 libavfilter strings, with a `raw` escape hatch for everything else.
 
 ## Building a chain
@@ -12,8 +12,8 @@ Each operator appends a stage; stages run in the order you add them:
 ```rust
 use media::prelude::*;
 
-let chain = FilterChain::new()                 // (1)!
-    .scale(640, 360)                           // (2)!
+let chain = VideoFilterChain::new()             // (1)!
+    .scale(640, 360)                            // (2)!
     .fps(24)                                    // (3)!
     .denoise(DenoiseLevel::Moderate)            // (4)!
     .color_correct(|cc| {                       // (5)!
@@ -24,7 +24,7 @@ println!("filter graph: {}", chain.description()); // (6)!
 # Ok::<(), media::Error>(())
 ```
 
-1. `FilterChain::new()` starts an empty chain (a no-op until you add stages).
+1. `VideoFilterChain::new()` starts an empty chain (a no-op until you add stages).
 2. `scale(w, h)` resizes every frame. This is separate from `VideoConfig::resolution` — use
    whichever fits; setting a resolution on the encoder inserts a scale for you.
 3. `fps(24)` forces a constant output frame rate, duplicating or dropping frames as needed.
@@ -44,7 +44,7 @@ Pass the chain to `.video_filter(...)` on any transcode tier:
 ```rust
 use media::prelude::*;
 # fn demo() -> media::Result<()> {
-let chain = FilterChain::new().scale(640, 360).fps(24).denoise(DenoiseLevel::Light);
+let chain = VideoFilterChain::new().scale(640, 360).fps(24).denoise(DenoiseLevel::Light);
 
 let summary = transcode("input.mp4")
     .to("output.mp4")
@@ -65,11 +65,11 @@ For anything the typed builders don't cover, pass a libavfilter string straight 
 use media::prelude::*;
 
 // Scale, then sharpen with unsharp — unsharp has no typed builder, so use `raw`.
-let chain = FilterChain::raw("scale=1280:720,unsharp=5:5:1.0"); // (1)!
+let chain = VideoFilterChain::raw("scale=1280:720,unsharp=5:5:1.0"); // (1)!
 # let _ = chain;
 ```
 
-1. `FilterChain::raw(...)` uses the string verbatim as the entire graph. You're responsible
+1. `VideoFilterChain::raw(...)` uses the string verbatim as the entire graph. You're responsible
    for its correctness — it's passed to FFmpeg as-is.
 
 !!! tip "Typed and raw don't mix in one chain"
@@ -78,12 +78,12 @@ let chain = FilterChain::raw("scale=1280:720,unsharp=5:5:1.0"); // (1)!
 
 ## Color correction reference
 
-| Knob | Identity | Meaning |
-|------|:--------:|---------|
-| `brightness` | `0.0` | Additive shift, roughly `[-1.0, 1.0]`. |
-| `contrast` | `1.0` | Multiplier. |
-| `saturation` | `1.0` | Multiplier (`0.0` = grayscale). |
-| `gamma` | `1.0` | Gamma correction. |
+| Knob         | Identity | Meaning                                |
+|--------------|:--------:|----------------------------------------|
+| `brightness` |  `0.0`   | Additive shift, roughly `[-1.0, 1.0]`. |
+| `contrast`   |  `1.0`   | Multiplier.                            |
+| `saturation` |  `1.0`   | Multiplier (`0.0` = grayscale).        |
+| `gamma`      |  `1.0`   | Gamma correction.                      |
 
 ## See also
 

@@ -228,7 +228,7 @@ fn raw_filter_applies() {
         .input(&input)
         .output(&out)
         .drop_audio()
-        .video_filter(FilterChain::new().scale(640, 360))
+        .video_filter(VideoFilterChain::new().scale(640, 360))
         .build()
         .unwrap();
 
@@ -469,7 +469,7 @@ fn typed_filters_apply_end_to_end() {
     // Exercise the non-scale filter path through the real filter graph: denoise + colour
     // correction keep the frame geometry but run frames through `hqdn3d` and `eq`.
     let in_video = probe(&input).unwrap().video().cloned().unwrap();
-    let filter = FilterChain::new()
+    let filter = VideoFilterChain::new()
         .denoise(DenoiseLevel::Light)
         .color_correct(|c| c.brightness(0.05).saturation(1.1));
     let job = Transcoder::builder()

@@ -1,6 +1,6 @@
 //! Writing and muxing media: [`MediaWriter`].
 
-use crate::codec::encoder::VideoEncoder;
+use crate::codec::encoder::Encoder;
 use crate::error::{Error, Result};
 use crate::packet::Packet;
 use crate::raw::format_context::OutputFormatContext;
@@ -39,8 +39,9 @@ impl MediaWriter {
         })
     }
 
-    /// Add an output stream fed by `encoder`, returning its stream index.
-    pub fn add_stream_from_encoder(&mut self, encoder: &VideoEncoder) -> Result<usize> {
+    /// Add an output stream fed by `encoder` (a [`VideoEncoder`](crate::codec::VideoEncoder) or
+    /// [`AudioEncoder`](crate::codec::AudioEncoder)), returning its stream index.
+    pub fn add_stream_from_encoder<E: Encoder>(&mut self, encoder: &E) -> Result<usize> {
         let index = self.output.add_stream()?;
         self.output.set_stream_params(index, encoder.codec_ctx())?;
         debug_assert_eq!(index, self.source_tb.len());
@@ -59,9 +60,21 @@ impl MediaWriter {
     }
 
     /// `true` if the container wants codec extradata in its header (so encoders feeding it
-    /// should set the global-header flag — [`VideoEncoder`] does by default).
+    /// should set the global-header flag — [`VideoEncoder`](crate::codec::VideoEncoder) does by
+    /// default).
     pub fn wants_global_header(&self) -> bool {
         self.output.wants_global_header()
+    }
+
+    /// `true` if this container accepts the given codec id (for the stream-copy vs re-encode
+    /// decision, and the video-container guard).
+    pub(crate) fn supports_codec(&self, codec_id: crate::sys::AVCodecID) -> bool {
+        self.output.supports_codec(codec_id)
+    }
+
+    /// The container's default audio codec id (for auto-encoding audio that can't be copied).
+    pub(crate) fn default_audio_codec_id(&self) -> crate::sys::AVCodecID {
+        self.output.default_audio_codec_id()
     }
 
     /// Write the container header. Must be called once, after all streams are added and
