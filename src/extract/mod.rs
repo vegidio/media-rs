@@ -37,6 +37,7 @@ pub mod frame;
 pub mod report;
 pub(crate) mod sampler;
 
+mod encode_pool;
 mod oneliner;
 mod types;
 
@@ -220,6 +221,15 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
         std::fs::create_dir_all(dir).map_err(|e| Error::CreateOutput(format!("{}: {e}", dir.display())))?;
     }
 
+    // The directory sink encodes+writes each frame, which we push onto a worker pool so it
+    // overlaps decoding instead of stalling it. The other sinks do no per-frame encode work in
+    // this loop (in-memory just stores raw RGB; the callback is `FnMut` and must stay ordered
+    // on this thread), so they run inline.
+    let mut pool = match &output {
+        Output::Directory(_) => Some(encode_pool::EncodePool::new(opts.format)),
+        _ => None,
+    };
+
     let mut collected = Vec::new();
     let mut count: u64 = 0;
 
@@ -230,7 +240,8 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
         match &mut output {
             Output::Directory(dir) => {
                 let name = opts.naming.file_name(frame.index(), opts.format.extension());
-                frame.into_save_as(dir.join(name), opts.format)?;
+                let path = dir.join(name);
+                pool.as_ref().expect("directory output has a pool").submit(frame, path)?;
             }
             Output::InMemory => collected.push(frame),
             Output::Callback(cb) => cb(frame)?,
@@ -238,6 +249,11 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
 
         count += 1;
         on_progress(Progress::new((ts_secs - start_secs).max(0.0), span_secs, count, started));
+    }
+
+    // Drain the pool before reporting, so a write error surfaces and `elapsed()` covers it.
+    if let Some(pool) = pool.take() {
+        pool.finish()?;
     }
 
     Ok(ExtractReport::new(count, started.elapsed(), collected))

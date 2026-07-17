@@ -27,6 +27,11 @@ impl Decoder {
         }
         let mut ctx = CodecContext::alloc(codec)?;
         ctx.set_params(par)?;
+        // Decode multithreaded: `0` lets FFmpeg size the pool to the CPU, and allowing both
+        // frame- and slice-threading lets each codec pick whatever it supports (unsupported
+        // modes fall back to single-threaded). This is the dominant speedup when a whole stream
+        // is decoded, e.g. dense frame sampling.
+        ctx.set_threading(0, (sys::FF_THREAD_FRAME | sys::FF_THREAD_SLICE) as i32);
         ctx.open()?;
         Ok(Self {
             ctx,

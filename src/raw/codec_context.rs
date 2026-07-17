@@ -136,6 +136,19 @@ impl CodecContext {
         unsafe { (*self.ctx()).gop_size = gop };
     }
 
+    /// Request multithreaded decoding. `count` is the worker count (`0` = auto-detect from the
+    /// CPU); `thread_type` is a bitmask of `FF_THREAD_FRAME`/`FF_THREAD_SLICE`. Must be set
+    /// before [`open`]; decoders that don't support the requested mode fall back silently.
+    ///
+    /// [`open`]: Self::open
+    pub(crate) fn set_threading(&mut self, count: i32, thread_type: i32) {
+        // SAFETY: ctx is a valid, not-yet-opened context.
+        unsafe {
+            (*self.ctx()).thread_count = count;
+            (*self.ctx()).thread_type = thread_type;
+        }
+    }
+
     // Audio setters/getters below back the upcoming audio re-encode path; the current
     // pipeline stream-copies audio, so they are not yet wired in.
     #[allow(dead_code)]
