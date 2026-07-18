@@ -22,18 +22,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     for (codec, name) in targets {
         let output = format!("{DIR}{name}");
 
-        let video = VideoConfig::builder()
-            .codec(codec)
-            .bitrate(Bitrate::mbps(1))
-            .build()?;
+        let video = VideoConfig::builder().codec(codec).bitrate(Bitrate::mbps(1)).build()?;
 
-        let summary = Transcoder::builder()
-            .input(INPUT)
-            .output(&output)
-            .video(video)
-            .drop_audio()
-            .build()?
-            .run()?;
+        let summary = Transcoder::builder().input(INPUT).output(&output).video(video).drop_audio().build()?.run()?;
 
         println!("{codec:?}: wrote {name} — {} frames, {:.2}s", summary.frames, summary.duration_secs);
     }

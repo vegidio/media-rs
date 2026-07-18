@@ -12,12 +12,7 @@ const INPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/video1.mp4");
 const DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/");
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let report = FrameExtractor::builder()
-        .input(INPUT)
-        .interval(Interval::Count(3))
-        .to_memory()
-        .build()?
-        .run()?;
+    let report = FrameExtractor::builder().input(INPUT).interval(Interval::Count(3)).to_memory().build()?.run()?;
 
     // Take ownership of the in-memory frames so we can move them around freely.
     for frame in report.into_frames() {
@@ -29,7 +24,12 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         // Save straight to disk; the `.png` extension selects the encoder.
         frame.save(&path)?;
 
-        println!("frame {} @ {:?} — {w}x{h}, {} raw RGB bytes -> {path}", frame.index(), frame.timestamp(), bytes.len());
+        println!(
+            "frame {} @ {:?} — {w}x{h}, {} raw RGB bytes -> {path}",
+            frame.index(),
+            frame.timestamp(),
+            bytes.len()
+        );
     }
 
     Ok(())

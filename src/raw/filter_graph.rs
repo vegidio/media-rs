@@ -4,7 +4,7 @@
 //! graph is freed), so we hold them as borrowed pointers, not separate owners.
 
 use super::frame::RawFrame;
-use super::util::non_null;
+use super::util::{impl_ffi_drop, non_null};
 use crate::error::{Error, Result, check};
 use crate::raw::codec_context::Receive;
 use crate::sys;
@@ -79,7 +79,8 @@ fn link_and_config(
 
         let mut inputs_p = inputs.as_ptr();
         let mut outputs_p = outputs.as_ptr();
-        let parse = sys::avfilter_graph_parse_ptr(graph, cfilters.as_ptr(), &mut inputs_p, &mut outputs_p, ptr::null_mut());
+        let parse =
+            sys::avfilter_graph_parse_ptr(graph, cfilters.as_ptr(), &mut inputs_p, &mut outputs_p, ptr::null_mut());
         // parse_ptr leaves the lists for us to free regardless of success.
         sys::avfilter_inout_free(&mut inputs_p);
         sys::avfilter_inout_free(&mut outputs_p);
@@ -88,6 +89,49 @@ fn link_and_config(
         check(sys::avfilter_graph_config(graph, ptr::null_mut()))?;
     }
     Ok(())
+}
+
+/// Create the buffer source (`src_filter`, e.g. `"buffer"`/`"abuffer"`) and buffersink
+/// (`sink_filter`) contexts in an already-allocated `graph`, feeding the source `args`, then wire
+/// `filters` between them and configure. Both endpoints are owned by the graph (freed with it), so
+/// callers hold the returned pointers as borrows. Shared by the video and audio graph builders.
+fn create_endpoints_and_link(
+    graph: *mut sys::AVFilterGraph,
+    src_filter: &str,
+    sink_filter: &str,
+    args: &str,
+    filters: &str,
+) -> Result<(*mut sys::AVFilterContext, *mut sys::AVFilterContext)> {
+    let src_f = get_filter(src_filter)?;
+    let sink_f = get_filter(sink_filter)?;
+    let in_name = CString::new("in").unwrap();
+    let out_name = CString::new("out").unwrap();
+    let cargs = CString::new(args).map_err(|_| Error::InvalidConfig("filter args has NUL"))?;
+
+    let mut src: *mut sys::AVFilterContext = ptr::null_mut();
+    let mut sink: *mut sys::AVFilterContext = ptr::null_mut();
+    // SAFETY: graph is valid; the filters are valid static lookups; create_filter writes each
+    // context into src/sink.
+    unsafe {
+        check(sys::avfilter_graph_create_filter(
+            &mut src,
+            src_f,
+            in_name.as_ptr(),
+            cargs.as_ptr(),
+            ptr::null_mut(),
+            graph,
+        ))?;
+        check(sys::avfilter_graph_create_filter(
+            &mut sink,
+            sink_f,
+            out_name.as_ptr(),
+            ptr::null(),
+            ptr::null_mut(),
+            graph,
+        ))?;
+    }
+    link_and_config(graph, src, sink, filters)?;
+    Ok((src, sink))
 }
 
 impl VideoFilterGraph {
@@ -110,35 +154,9 @@ impl VideoFilterGraph {
             sar.den.max(1),
         );
 
+        // Build the owning Self first so an early `?` below frees the graph via Drop (no leak).
         let mut this = Self { graph, src: ptr::null_mut(), sink: ptr::null_mut() };
-
-        let buffer = get_filter("buffer")?;
-        let buffersink = get_filter("buffersink")?;
-        let in_name = CString::new("in").unwrap();
-        let out_name = CString::new("out").unwrap();
-        let cargs = CString::new(args).map_err(|_| Error::InvalidConfig("filter args has NUL"))?;
-
-        // SAFETY: all pointers valid; create_filter writes the context into src/sink.
-        unsafe {
-            check(sys::avfilter_graph_create_filter(
-                &mut this.src,
-                buffer,
-                in_name.as_ptr(),
-                cargs.as_ptr(),
-                ptr::null_mut(),
-                this.graph.as_ptr(),
-            ))?;
-            check(sys::avfilter_graph_create_filter(
-                &mut this.sink,
-                buffersink,
-                out_name.as_ptr(),
-                ptr::null(),
-                ptr::null_mut(),
-                this.graph.as_ptr(),
-            ))?;
-        }
-
-        link_and_config(this.graph.as_ptr(), this.src, this.sink, filters)?;
+        (this.src, this.sink) = create_endpoints_and_link(this.graph.as_ptr(), "buffer", "buffersink", &args, filters)?;
         Ok(this)
     }
 
@@ -172,13 +190,8 @@ impl VideoFilterGraph {
     }
 }
 
-impl Drop for VideoFilterGraph {
-    fn drop(&mut self) {
-        let mut ptr = self.graph.as_ptr();
-        // SAFETY: frees the graph and every filter context it owns (incl. src/sink).
-        unsafe { sys::avfilter_graph_free(&mut ptr) };
-    }
-}
+// Frees the graph and every filter context it owns (incl. src/sink).
+impl_ffi_drop!(VideoFilterGraph, graph, sys::avfilter_graph_free);
 
 // SAFETY: single owner of the graph; not internally synchronised, so Send-only.
 unsafe impl Send for VideoFilterGraph {}
@@ -215,35 +228,10 @@ impl AudioFilterGraph {
             input.time_base.den.max(1),
         );
 
+        // Build the owning Self first so an early `?` below frees the graph via Drop (no leak).
         let mut this = Self { graph, src: ptr::null_mut(), sink: ptr::null_mut() };
-
-        let abuffer = get_filter("abuffer")?;
-        let abuffersink = get_filter("abuffersink")?;
-        let in_name = CString::new("in").unwrap();
-        let out_name = CString::new("out").unwrap();
-        let cargs = CString::new(args).map_err(|_| Error::InvalidConfig("filter args has NUL"))?;
-
-        // SAFETY: all pointers valid; create_filter writes the context into src/sink.
-        unsafe {
-            check(sys::avfilter_graph_create_filter(
-                &mut this.src,
-                abuffer,
-                in_name.as_ptr(),
-                cargs.as_ptr(),
-                ptr::null_mut(),
-                this.graph.as_ptr(),
-            ))?;
-            check(sys::avfilter_graph_create_filter(
-                &mut this.sink,
-                abuffersink,
-                out_name.as_ptr(),
-                ptr::null(),
-                ptr::null_mut(),
-                this.graph.as_ptr(),
-            ))?;
-        }
-
-        link_and_config(this.graph.as_ptr(), this.src, this.sink, filters)?;
+        (this.src, this.sink) =
+            create_endpoints_and_link(this.graph.as_ptr(), "abuffer", "abuffersink", &args, filters)?;
         Ok(this)
     }
 
@@ -262,13 +250,8 @@ impl AudioFilterGraph {
     }
 }
 
-impl Drop for AudioFilterGraph {
-    fn drop(&mut self) {
-        let mut ptr = self.graph.as_ptr();
-        // SAFETY: frees the graph and every filter context it owns (incl. src/sink).
-        unsafe { sys::avfilter_graph_free(&mut ptr) };
-    }
-}
+// Frees the graph and every filter context it owns (incl. src/sink).
+impl_ffi_drop!(AudioFilterGraph, graph, sys::avfilter_graph_free);
 
 // SAFETY: single owner of the graph; not internally synchronised, so Send-only.
 unsafe impl Send for AudioFilterGraph {}

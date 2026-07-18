@@ -23,6 +23,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Clippy runs once on Linux x64 (the lints are platform-independent), keeping the per-platform
+  # test matrix focused on building and running. `-D warnings` makes any clippy lint a hard
+  # failure. (A `cargo fmt --check` gate is intentionally omitted: the repo is not yet fully
+  # rustfmt-clean under current stable — notably the examples use deliberate multi-line builder
+  # chains for readability — so enabling it would require a repo-wide reformat first.)
+  lint:
+    name: Lint (clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: lint
+
+      - name: Clippy
+        run: cargo clippy -p media-rs --all-features --all-targets -- -D warnings
+
   test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}

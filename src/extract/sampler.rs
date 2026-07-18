@@ -10,7 +10,7 @@ use crate::codec::decoder::Decoder;
 use crate::error::{Error, Result};
 use crate::extract::frame::ExtractedFrame;
 use crate::extract::types::{Interval, Resolution};
-use crate::filter::{VideoFilterChain, VideoFilter};
+use crate::filter::{VideoFilter, VideoFilterChain};
 use crate::format::MediaReader;
 use crate::frame::Frame;
 use crate::types::pixel_format::PixelFormat;

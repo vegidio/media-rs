@@ -10,7 +10,7 @@ repo_url: https://github.com/vegidio/media-rs
 edit_uri: edit/main/docs/
 
 copyright: >-
-  Licensed under GPL-3.0 — the linked FFmpeg binaries are built with <code>--enable-gpl</code>.
+  Licensed under Apache-2.0 — note the linked FFmpeg binaries are built with <code>--enable-gpl</code>.
 
 theme:
   name: material

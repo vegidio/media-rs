@@ -62,6 +62,15 @@ pub enum Error {
     #[error("invalid configuration: {0}")]
     InvalidConfig(&'static str),
 
+    /// An internal invariant was violated — a bug in this crate rather than caller error. If you
+    /// ever see one, please report it.
+    #[error("internal error (please report): {0}")]
+    Bug(&'static str),
+
+    /// A worker thread panicked while processing (e.g. the transcode demux/decode thread).
+    #[error("a worker thread panicked during processing")]
+    ThreadPanicked,
+
     /// A path contained an interior NUL byte and could not be passed to FFmpeg.
     #[error("path contains an interior NUL byte")]
     InvalidPath,

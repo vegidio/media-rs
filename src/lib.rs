@@ -10,6 +10,10 @@
 //! unconditionally — so no build-time `bindgen`/`libclang` is needed. On top of those raw
 //! [`sys`] bindings this crate provides a safe, idiomatic API; the entry points most users
 //! want are re-exported from the [`prelude`].
+#![warn(missing_docs)]
+// FFI guardrail: an `unsafe fn` body must still wrap its unsafe operations in an explicit
+// `unsafe {}` block, so the unsafe surface stays visible rather than blanket-covered.
+#![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod sys;
 

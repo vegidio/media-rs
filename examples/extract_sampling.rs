@@ -13,12 +13,7 @@ const OUT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/temp_named");
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Sample at a fixed 2 frames per second, regardless of the source rate.
-    let report = FrameExtractor::builder()
-        .input(INPUT)
-        .interval(Interval::Fps(2.0))
-        .to_memory()
-        .build()?
-        .run()?;
+    let report = FrameExtractor::builder().input(INPUT).interval(Interval::Fps(2.0)).to_memory().build()?.run()?;
 
     println!("Fps(2.0): {} frames", report.frame_count());
     for frame in report.frames() {

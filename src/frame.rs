@@ -50,8 +50,11 @@ pub enum SampleBuffer<'a> {
 /// SAFETY: `p` must be null or point to at least `count` valid `T`s for the returned lifetime,
 /// and callers must not create overlapping slices (audio planes are disjoint).
 unsafe fn slice_mut<'a, T>(p: *mut u8, count: usize) -> &'a mut [T] {
-    let (ptr, len) =
-        if p.is_null() { (std::ptr::NonNull::<T>::dangling().as_ptr(), 0) } else { (p as *mut T, count) };
+    let (ptr, len) = if p.is_null() {
+        (std::ptr::NonNull::<T>::dangling().as_ptr(), 0)
+    } else {
+        (p as *mut T, count)
+    };
     // SAFETY: a dangling-but-aligned pointer with len 0 is a valid empty slice; otherwise the
     // caller guarantees `count` valid, non-overlapping elements.
     unsafe { std::slice::from_raw_parts_mut(ptr, len) }

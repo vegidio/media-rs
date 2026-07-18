@@ -1,6 +1,6 @@
 //! RAII wrapper for `AVPacket`.
 
-use super::util::non_null;
+use super::util::{impl_ffi_drop, non_null};
 use crate::error::Result;
 use crate::sys;
 use crate::types::rational::Rational;
@@ -76,13 +76,7 @@ impl RawPacket {
     }
 }
 
-impl Drop for RawPacket {
-    fn drop(&mut self) {
-        let mut ptr = self.ptr.as_ptr();
-        // SAFETY: av_packet_free takes a pointer-to-pointer and nulls it; ptr is owned.
-        unsafe { sys::av_packet_free(&mut ptr) };
-    }
-}
+impl_ffi_drop!(RawPacket, ptr, sys::av_packet_free);
 
 // SAFETY: a RawPacket uniquely owns its AVPacket with no shared interior state.
 unsafe impl Send for RawPacket {}

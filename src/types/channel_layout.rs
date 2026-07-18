@@ -53,11 +53,17 @@ impl ChannelLayout {
     }
 
     /// Take ownership of an existing layout by deep-copying it.
+    ///
+    /// `av_channel_layout_copy` can only fail (`AVERROR(ENOMEM)`) for *custom* heap-mapped
+    /// layouts; the standard/native layouts this crate deals with never allocate, so a failure
+    /// here would indicate genuine memory exhaustion. We can't surface a `Result` (this backs
+    /// `Clone` and the infallible builder setters), so the code is asserted in debug builds.
     pub(crate) fn copy_from(src: *const sys::AVChannelLayout) -> Self {
         let mut layout = MaybeUninit::<sys::AVChannelLayout>::zeroed();
         // SAFETY: src points to a valid layout; av_channel_layout_copy initialises dst.
         unsafe {
-            sys::av_channel_layout_copy(layout.as_mut_ptr(), src);
+            let ret = sys::av_channel_layout_copy(layout.as_mut_ptr(), src);
+            debug_assert_eq!(ret, 0, "av_channel_layout_copy failed (out of memory)");
             Self { inner: layout.assume_init() }
         }
     }
@@ -85,11 +91,13 @@ impl ChannelLayout {
         unsafe { std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned() }
     }
 
-    /// Deep-copy this layout into `dst` (which must be uninitialised/zeroed).
+    /// Deep-copy this layout into `dst` (which must be uninitialised/zeroed). The copy can only
+    /// fail (`ENOMEM`) for custom heap-mapped layouts; see [`copy_from`](Self::copy_from).
     pub(crate) fn copy_into(&self, dst: *mut sys::AVChannelLayout) {
         // SAFETY: self.inner is a valid layout; dst is a writable AVChannelLayout slot.
         unsafe {
-            sys::av_channel_layout_copy(dst, &self.inner);
+            let ret = sys::av_channel_layout_copy(dst, &self.inner);
+            debug_assert_eq!(ret, 0, "av_channel_layout_copy failed (out of memory)");
         }
     }
 }

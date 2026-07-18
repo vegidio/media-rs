@@ -1,6 +1,6 @@
 //! RAII wrapper for `AVFrame`.
 
-use super::util::non_null;
+use super::util::{impl_ffi_drop, non_null};
 use crate::error::{Result, check};
 use crate::sys;
 use crate::types::channel_layout::ChannelLayout;
@@ -54,10 +54,24 @@ impl RawFrame {
     }
 
     /// Pointer to audio plane `index` (`extended_data[index]`), which handles >8 channels;
-    /// for ≤8 channels it aliases `data[index]`. Returns null if out of range.
+    /// for ≤8 channels it aliases `data[index]`. Returns null if `index` is past the frame's
+    /// real plane count — one plane per channel for planar formats, a single interleaved plane
+    /// for packed ones — or if the frame has no sample buffers.
     pub(crate) fn plane_ptr(&self, index: usize) -> *mut u8 {
-        // SAFETY: extended_data is a valid array of at least `channels` (planar) or 1 (packed)
-        // plane pointers for an allocated audio frame.
+        // SAFETY: `format` and `ch_layout` are plain fields of a valid AVFrame; is_planar is a
+        // pure classifier. A packed frame exposes a single interleaved plane regardless of count.
+        let planes = unsafe {
+            if sys::av_sample_fmt_is_planar((*self.ptr.as_ptr()).format) != 0 {
+                (*self.ptr.as_ptr()).ch_layout.nb_channels.max(0) as usize
+            } else {
+                1
+            }
+        };
+        if index >= planes {
+            return std::ptr::null_mut();
+        }
+        // SAFETY: extended_data holds at least `planes` valid plane pointers for an allocated
+        // audio frame, and `index < planes` was just checked.
         unsafe {
             let ed = (*self.ptr.as_ptr()).extended_data;
             if ed.is_null() { std::ptr::null_mut() } else { *ed.add(index) }
@@ -154,13 +168,7 @@ impl RawFrame {
     }
 }
 
-impl Drop for RawFrame {
-    fn drop(&mut self) {
-        let mut ptr = self.ptr.as_ptr();
-        // SAFETY: av_frame_free takes a pointer-to-pointer and nulls it; ptr is owned.
-        unsafe { sys::av_frame_free(&mut ptr) };
-    }
-}
+impl_ffi_drop!(RawFrame, ptr, sys::av_frame_free);
 
 // SAFETY: a RawFrame uniquely owns its AVFrame with no shared interior state.
 unsafe impl Send for RawFrame {}

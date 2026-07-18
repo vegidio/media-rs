@@ -140,11 +140,69 @@ impl VideoFilterChain {
     }
 }
 
+/// The push/pull surface shared by the video and audio filter graphs, so the run loop
+/// (`filter`/`flush`/`drain`) can be written once over either graph type.
+trait RunnableGraph {
+    fn push(&mut self, frame: Option<&mut RawFrame>) -> Result<()>;
+    fn pull(&mut self, frame: &mut RawFrame) -> Result<Receive>;
+}
+
+impl RunnableGraph for VideoFilterGraph {
+    fn push(&mut self, frame: Option<&mut RawFrame>) -> Result<()> {
+        self.push(frame)
+    }
+    fn pull(&mut self, frame: &mut RawFrame) -> Result<Receive> {
+        self.pull(frame)
+    }
+}
+
+impl RunnableGraph for AudioFilterGraph {
+    fn push(&mut self, frame: Option<&mut RawFrame>) -> Result<()> {
+        self.push(frame)
+    }
+    fn pull(&mut self, frame: &mut RawFrame) -> Result<Receive> {
+        self.pull(frame)
+    }
+}
+
+/// The generic run loop over a filter graph plus its reusable output frame. The video and audio
+/// filters both wrap one of these, so `filter`/`flush`/`drain` live in exactly one place.
+struct FilterRunner<G: RunnableGraph> {
+    graph: G,
+    out: RawFrame,
+}
+
+impl<G: RunnableGraph> FilterRunner<G> {
+    fn new(graph: G) -> Result<Self> {
+        Ok(Self { graph, out: RawFrame::alloc()? })
+    }
+
+    /// Push a frame and collect every frame the graph emits in response. Consumes the frame:
+    /// `av_buffersrc_add_frame` takes ownership of its reference.
+    fn filter(&mut self, mut frame: Frame) -> Result<Vec<Frame>> {
+        self.graph.push(Some(&mut frame.raw))?;
+        self.drain()
+    }
+
+    /// Signal end of stream and collect any remaining frames.
+    fn flush(&mut self) -> Result<Vec<Frame>> {
+        self.graph.push(None)?;
+        self.drain()
+    }
+
+    fn drain(&mut self) -> Result<Vec<Frame>> {
+        let mut out = Vec::new();
+        while let Receive::Got = self.graph.pull(&mut self.out)? {
+            out.push(Frame::from_raw(self.out.move_out()?));
+        }
+        Ok(out)
+    }
+}
+
 /// A built, runnable video filter graph for frames of a fixed input shape. Used internally
 /// by the transcode pipeline.
 pub(crate) struct VideoFilter {
-    graph: VideoFilterGraph,
-    out: RawFrame,
+    runner: FilterRunner<VideoFilterGraph>,
 }
 
 impl VideoFilter {
@@ -157,43 +215,32 @@ impl VideoFilter {
         chain: &VideoFilterChain,
     ) -> Result<Self> {
         let input = VideoInput { width, height, pix_fmt: pix_fmt.to_av(), time_base, sample_aspect_ratio };
-        Ok(Self { graph: VideoFilterGraph::new(&input, &chain.description())?, out: RawFrame::alloc()? })
+        Ok(Self { runner: FilterRunner::new(VideoFilterGraph::new(&input, &chain.description())?)? })
     }
 
     /// The width of frames this filter emits.
     pub(crate) fn output_width(&self) -> i32 {
-        self.graph.out_width()
+        self.runner.graph.out_width()
     }
 
     /// The height of frames this filter emits.
     pub(crate) fn output_height(&self) -> i32 {
-        self.graph.out_height()
+        self.runner.graph.out_height()
     }
 
     /// The pixel format of frames this filter emits.
     pub(crate) fn output_pixel_format(&self) -> PixelFormat {
-        PixelFormat::from_av(self.graph.out_pix_fmt())
+        PixelFormat::from_av(self.runner.graph.out_pix_fmt())
     }
 
-    /// Push a frame and collect every frame the graph emits in response. Consumes the
-    /// frame: `av_buffersrc_add_frame` takes ownership of its reference.
-    pub(crate) fn filter(&mut self, mut frame: Frame) -> Result<Vec<Frame>> {
-        self.graph.push(Some(&mut frame.raw))?;
-        self.drain()
+    /// Push a frame and collect every frame the graph emits in response.
+    pub(crate) fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
+        self.runner.filter(frame)
     }
 
     /// Signal end of stream and collect any remaining frames.
     pub(crate) fn flush(&mut self) -> Result<Vec<Frame>> {
-        self.graph.push(None)?;
-        self.drain()
-    }
-
-    fn drain(&mut self) -> Result<Vec<Frame>> {
-        let mut out = Vec::new();
-        while let Receive::Got = self.graph.pull(&mut self.out)? {
-            out.push(Frame::from_raw(self.out.move_out()?));
-        }
-        Ok(out)
+        self.runner.flush()
     }
 }
 
@@ -277,8 +324,7 @@ impl AudioFilterChain {
 /// A built, runnable audio filter graph for frames of a fixed input shape. Used internally by
 /// the transcode pipeline.
 pub(crate) struct AudioFilter {
-    graph: AudioFilterGraph,
-    out: RawFrame,
+    runner: FilterRunner<AudioFilterGraph>,
 }
 
 impl AudioFilter {
@@ -290,27 +336,17 @@ impl AudioFilter {
         chain: &AudioFilterChain,
     ) -> Result<Self> {
         let input = AudioInput { sample_rate, sample_fmt: sample_fmt.to_av(), ch_layout, time_base };
-        Ok(Self { graph: AudioFilterGraph::new(&input, &chain.description())?, out: RawFrame::alloc()? })
+        Ok(Self { runner: FilterRunner::new(AudioFilterGraph::new(&input, &chain.description())?)? })
     }
 
     /// Push a frame and collect every frame the graph emits in response.
-    pub(crate) fn filter(&mut self, mut frame: Frame) -> Result<Vec<Frame>> {
-        self.graph.push(Some(&mut frame.raw))?;
-        self.drain()
+    pub(crate) fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
+        self.runner.filter(frame)
     }
 
     /// Signal end of stream and collect any remaining frames.
     pub(crate) fn flush(&mut self) -> Result<Vec<Frame>> {
-        self.graph.push(None)?;
-        self.drain()
-    }
-
-    fn drain(&mut self) -> Result<Vec<Frame>> {
-        let mut out = Vec::new();
-        while let Receive::Got = self.graph.pull(&mut self.out)? {
-            out.push(Frame::from_raw(self.out.move_out()?));
-        }
-        Ok(out)
+        self.runner.flush()
     }
 }
 
@@ -350,7 +386,8 @@ mod tests {
         let chain = VideoFilterChain::new().color_correct(|c| c.brightness(0.1).contrast(1.2));
         assert_eq!(chain.description(), "eq=brightness=0.1:contrast=1.2:saturation=1:gamma=1");
 
-        let full = VideoFilterChain::new().color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
+        let full =
+            VideoFilterChain::new().color_correct(|c| c.brightness(-0.2).contrast(0.9).saturation(1.5).gamma(0.8));
         assert_eq!(full.description(), "eq=brightness=-0.2:contrast=0.9:saturation=1.5:gamma=0.8");
     }
 

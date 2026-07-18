@@ -216,6 +216,41 @@ fn trim_shortens_duration() {
 }
 
 #[test]
+fn trim_summary_duration_reflects_trimmed_span() {
+    // Regression guard for the trim-span math: `TranscodeSummary.duration_secs` (and the progress
+    // denominator) must report the *trimmed window*, not `total - trim_start` (which ignored
+    // `trim_end`). A 1s..=2s trim of a >=3s file should summarise ~1s, not ~(full - 1)s.
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input_path = input.to_str().unwrap().to_owned();
+    let full = probe(&input_path).unwrap().duration().as_secs_f64();
+
+    if full < 3.0 {
+        return; // too short to trim meaningfully
+    }
+
+    let out = common::temp("media_rs_trim_summary.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    let summary = transcode(&input_path)
+        .to(&out)
+        .drop_audio()
+        .trim(Duration::from_secs(1)..=Duration::from_secs(2))
+        .run()
+        .unwrap();
+
+    // The window is 1s. Generous slack for keyframe/rounding, but tight enough to reject the old
+    // `full - trim_start` behaviour, which for a >=3s file would report >= 2s.
+    assert!(
+        summary.duration_secs > 0.3 && summary.duration_secs < 2.0,
+        "summary.duration_secs {} not within the ~1s trimmed window (full={full})",
+        summary.duration_secs
+    );
+    let _ = std::fs::remove_file(&out);
+}
+
+#[test]
 fn raw_filter_applies() {
     let Some(input) = common::sample_videos().into_iter().next() else {
         return;

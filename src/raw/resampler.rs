@@ -6,7 +6,7 @@
 //! own internal FIFO, so a flush call (`None` input) drains any buffered tail.
 
 use super::frame::RawFrame;
-use super::util::non_null;
+use super::util::{impl_ffi_drop, non_null};
 use crate::error::{Error, Result, check};
 use crate::sys;
 use crate::types::channel_layout::ChannelLayout;
@@ -69,21 +69,17 @@ impl ResampleContext {
         let in_ptr = src.map_or(ptr::null(), |f| f.as_ptr());
         // SAFETY: ptr is valid; dst is a valid owned frame with output spec set; in_ptr is null
         // or a valid input frame.
-        check(unsafe { sys::swr_convert_frame(self.as_mut_ptr(), dst.as_mut_ptr(), in_ptr) })
-            .map_err(|e| match e {
-                Error::Internal { .. } => Error::Internal { code: 0, message: "audio resample failed".to_owned() },
-                other => other,
-            })
+        check(unsafe { sys::swr_convert_frame(self.as_mut_ptr(), dst.as_mut_ptr(), in_ptr) }).map_err(|e| match e {
+            // Keep the real AVERROR code/message (the actionable diagnostic), just add context.
+            Error::Internal { code, message } => {
+                Error::Internal { code, message: format!("audio resample failed: {message}") }
+            }
+            other => other,
+        })
     }
 }
 
-impl Drop for ResampleContext {
-    fn drop(&mut self) {
-        let mut ptr = self.ptr.as_ptr();
-        // SAFETY: swr_free takes a pointer-to-pointer and nulls it; ptr is owned.
-        unsafe { sys::swr_free(&mut ptr) };
-    }
-}
+impl_ffi_drop!(ResampleContext, ptr, sys::swr_free);
 
 // SAFETY: a ResampleContext uniquely owns its SwrContext with no shared interior state.
 unsafe impl Send for ResampleContext {}

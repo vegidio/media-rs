@@ -28,6 +28,8 @@ can give you something more actionable than a numeric code.
 | `CreateOutput(String)` | The output couldn't be created. |
 | `AllocFailed(&'static str)` | An allocation inside FFmpeg returned null. |
 | `InvalidConfig(&'static str)` | A builder/config was used incorrectly (missing required field, wrong call order). |
+| `Bug(&'static str)` | An internal invariant was violated — a bug in this crate, not caller error. Please report it. |
+| `ThreadPanicked` | A worker thread panicked during processing (e.g. the transcode demux/decode thread). |
 | `InvalidPath` | A path contained an interior NUL byte. |
 | `ImageEncode(String)` | Encoding a frame to an image, or writing it out, failed. |
 | `Internal { code: i32, message: String }` | A raw FFmpeg error code plus its decoded message. |

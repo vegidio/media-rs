@@ -18,6 +18,16 @@ use crate::types::profile::H264Profile;
 use crate::types::rational::{Bitrate, Framerate, Rational};
 use crate::types::sample_format::SampleFormat;
 
+/// Default keyframe interval (group-of-pictures size) when the caller doesn't set one.
+const DEFAULT_GOP_SIZE: i32 = 12;
+
+/// Default output frame rate when neither the caller nor a decoder supplies one.
+const DEFAULT_FRAMERATE_FPS: u32 = 25;
+
+/// Samples-per-frame fed to codecs that accept a variable frame size (FLAC, PCM), which report
+/// a `frame_size` of 0.
+const VARIABLE_FRAME_SIZE_CHUNK: i32 = 4096;
+
 /// Types that can back a muxer output stream — the video and audio encoders. Sealed: not
 /// implementable outside this crate. This is what lets
 /// [`MediaWriter::add_stream_from_encoder`](crate::format::MediaWriter::add_stream_from_encoder)
@@ -244,7 +254,7 @@ impl VideoEncoderBuilder {
         let pix_fmt = self.pix_fmt.unwrap_or(PixelFormat::Yuv420p);
         ctx.set_video_format(width, height, pix_fmt.to_av());
 
-        let framerate = self.framerate.unwrap_or(Framerate::fps(25));
+        let framerate = self.framerate.unwrap_or(Framerate::fps(DEFAULT_FRAMERATE_FPS));
         let time_base = self.time_base.unwrap_or_else(|| framerate.time_base());
         ctx.set_time_base(time_base);
         ctx.set_framerate(framerate.0);
@@ -252,7 +262,7 @@ impl VideoEncoderBuilder {
         if let Some(b) = self.bitrate {
             ctx.set_bit_rate(b.as_bps());
         }
-        ctx.set_gop_size(self.gop_size.unwrap_or(12));
+        ctx.set_gop_size(self.gop_size.unwrap_or(DEFAULT_GOP_SIZE));
         if self.global_header {
             ctx.set_global_header();
         }
@@ -360,7 +370,7 @@ impl AudioEncoder {
 
     /// Resample `frame` (or flush the resampler when `None`) and append the result to the FIFO.
     fn push_resampled(&mut self, frame: Option<&RawFrame>) -> Result<()> {
-        let resampler = self.resampler.as_mut().ok_or(Error::InvalidConfig("audio encoder has no input yet"))?;
+        let resampler = self.resampler.as_mut().ok_or(Error::Bug("audio encoder has no input yet"))?;
         let in_samples = frame.map_or(0, |f| f.nb_samples());
         let cap = resampler.out_samples(in_samples).max(1);
         let mut tmp = RawFrame::new_audio(self.out_fmt, &self.out_layout, self.out_rate, cap)?;
@@ -524,7 +534,11 @@ impl AudioEncoderBuilder {
 
         // After open the encoder reports its required samples-per-frame; variable-size codecs
         // (FLAC, PCM) report 0, so we feed them a fixed chunk.
-        let frame_size = if ctx.frame_size() > 0 && !ctx.accepts_variable_frame_size() { ctx.frame_size() } else { 4096 };
+        let frame_size = if ctx.frame_size() > 0 && !ctx.accepts_variable_frame_size() {
+            ctx.frame_size()
+        } else {
+            VARIABLE_FRAME_SIZE_CHUNK
+        };
 
         let fifo = AudioFifo::new(out_fmt, out_layout.count(), frame_size)?;
 

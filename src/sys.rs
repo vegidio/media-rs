@@ -12,6 +12,9 @@
 //! the crate's higher-level API guards against.
 
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case, dead_code)]
+// Generated FFI: thousands of public items with no doc comments, so opt this module out of the
+// crate-wide `missing_docs` warning (the module itself is documented above).
+#![allow(missing_docs)]
 // `bindgen` emits transmute-based bitfield accessors that newer rustc flags as redundant.
 #![allow(unnecessary_transmutes)]
 // Clippy lints that `bindgen` output trips: identity transmutes and `usize as isize` offsets

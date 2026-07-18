@@ -1,5 +1,6 @@
 //! Output stream configuration for the [`Transcoder`](super::Transcoder).
 
+use crate::codec::encoder::{AudioEncoderBuilder, VideoEncoderBuilder};
 use crate::error::{Error, Result};
 use crate::types::audio::SampleRate;
 use crate::types::channel_layout::Channels;
@@ -26,6 +27,23 @@ impl VideoConfig {
     /// Start configuring video output with the given codec.
     pub fn builder() -> VideoConfigBuilder {
         VideoConfigBuilder::default()
+    }
+
+    /// Apply this config's optional encoder knobs (bitrate/preset/profile) onto `builder`. The
+    /// codec, resolution and frame rate are handled by the pipeline (they interact with the
+    /// filter graph), so they're deliberately not applied here. Keeps the config's knowledge of
+    /// its own fields co-located instead of spelled out in the pipeline.
+    pub(crate) fn apply_to(&self, mut builder: VideoEncoderBuilder) -> VideoEncoderBuilder {
+        if let Some(b) = self.bitrate {
+            builder = builder.bitrate(b);
+        }
+        if let Some(p) = self.preset {
+            builder = builder.preset(p);
+        }
+        if let Some(p) = self.profile {
+            builder = builder.profile(p);
+        }
+        builder
     }
 }
 
@@ -107,6 +125,25 @@ impl AudioConfig {
     /// Start configuring audio output with the given codec.
     pub fn builder() -> AudioConfigBuilder {
         AudioConfigBuilder::default()
+    }
+
+    /// Apply this config's optional encoder knobs (bitrate/sample rate/channels/sample format)
+    /// onto `builder`. The codec is set by the pipeline; everything else the config owns is
+    /// applied here so the mapping lives with the config, not in the pipeline.
+    pub(crate) fn apply_to(&self, mut builder: AudioEncoderBuilder) -> AudioEncoderBuilder {
+        if let Some(b) = self.bitrate {
+            builder = builder.bitrate(b);
+        }
+        if let Some(r) = self.sample_rate {
+            builder = builder.sample_rate(r);
+        }
+        if let Some(ch) = self.channels {
+            builder = builder.channels(ch);
+        }
+        if let Some(f) = self.sample_format {
+            builder = builder.sample_format(f);
+        }
+        builder
     }
 }
 

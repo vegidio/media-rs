@@ -3,7 +3,7 @@
 
 use super::frame::RawFrame;
 use super::packet::RawPacket;
-use super::util::non_null;
+use super::util::{impl_ffi_drop, non_null};
 use crate::error::{AVERROR_EAGAIN, AVERROR_EOF, Error, Result, check};
 use crate::sys;
 use crate::types::channel_layout::ChannelLayout;
@@ -295,13 +295,7 @@ impl CodecContext {
     }
 }
 
-impl Drop for CodecContext {
-    fn drop(&mut self) {
-        let mut ptr = self.ptr.as_ptr();
-        // SAFETY: avcodec_free_context takes a pointer-to-pointer and nulls it.
-        unsafe { sys::avcodec_free_context(&mut ptr) };
-    }
-}
+impl_ffi_drop!(CodecContext, ptr, sys::avcodec_free_context);
 
 // SAFETY: a CodecContext uniquely owns its AVCodecContext; FFmpeg codec contexts are not
 // internally synchronised, so Send (move across threads) is sound but Sync is not.

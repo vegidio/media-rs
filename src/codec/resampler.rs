@@ -5,9 +5,9 @@ use crate::error::{Error, Result};
 use crate::frame::Frame;
 use crate::raw::frame::RawFrame;
 use crate::raw::resampler::ResampleContext;
+use crate::types::audio::SampleRate;
 use crate::types::channel_layout::{ChannelLayout, Channels};
 use crate::types::sample_format::SampleFormat;
-use crate::types::audio::SampleRate;
 
 /// A configured audio resampler for one fixed (input → output) format.
 ///
