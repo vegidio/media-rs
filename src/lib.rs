@@ -43,7 +43,7 @@ pub use frame::{Frame, SampleBuffer};
 pub use log::Level;
 pub use packet::Packet;
 pub use probe::{MediaInfo, StreamInfo, probe};
-pub use transcode::{AudioConfig, Transcoder, VideoConfig, transcode, transcode_audio};
+pub use transcode::{AudioConfig, Transcoder, VideoConfig, transcode};
 
 pub use error::{Error, Result};
 

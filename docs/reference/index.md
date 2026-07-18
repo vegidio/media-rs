@@ -15,7 +15,7 @@ use media::prelude::*;
 It brings in:
 
 - **Errors:** [`Error`](errors.md), [`Result`](errors.md)
-- **Transcode:** [`transcode`](transcode.md), [`transcode_audio`](transcode.md),
+- **Transcode:** [`transcode`](transcode.md),
   [`Transcoder`](transcode.md#transcoder), [`VideoConfig`](transcode.md#videoconfig),
   [`AudioConfig`](audio.md#audioconfig), [`Progress`](transcode.md#progress),
   [`TranscodeSummary`](transcode.md#transcodesummary)

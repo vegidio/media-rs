@@ -17,7 +17,7 @@ pub use crate::log::{self, Level};
 pub use crate::packet::Packet;
 pub use crate::probe::{MediaInfo, StreamInfo, probe};
 pub use crate::transcode::{
-    AudioConfig, Progress, TranscodeSummary, Transcoder, VideoConfig, transcode, transcode_audio,
+    AudioConfig, Progress, TranscodeSummary, Transcoder, VideoConfig, transcode,
 };
 
 pub use crate::types::{

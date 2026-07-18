@@ -20,19 +20,6 @@ pub fn transcode(input: impl Into<String>) -> TranscodeJob {
     TranscodeJob { builder: TranscoderBuilder::default().input(input) }
 }
 
-/// Begin an audio-only transcode from `input` — a shorthand for
-/// [`transcode(input)`](transcode)`.drop_video()`. Makes intent explicit when extracting audio
-/// from a video file (e.g. `movie.mp4` → `song.mp3`).
-///
-/// ```no_run
-/// use media::prelude::*;
-/// transcode_audio("movie.mp4").to("song.mp3").run()?;
-/// # Ok::<(), media::Error>(())
-/// ```
-pub fn transcode_audio(input: impl Into<String>) -> TranscodeJob {
-    transcode(input).drop_video()
-}
-
 /// A fluent one-liner transcode. Inherits codecs/geometry from the input and the output
 /// container by default; the methods here cover the common quick edits. It is a thin facade
 /// over [`TranscoderBuilder`].

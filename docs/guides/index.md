@@ -8,6 +8,7 @@ on the ideas in [Core concepts](../getting-started/concepts.md). Every snippet b
 |-------|----------------|
 | [Probing media](probing.md) | Read duration, streams and codecs without decoding. |
 | [Transcoding](transcoding.md) | Re-encode video across all three tiers; codecs, trim, drop streams, progress. |
+| [Audio](audio.md) | Convert formats, re-encode, resample and filter audio across all three tiers. |
 | [Filters](filters.md) | Scale, denoise and color-correct with a typed filter chain. |
 | [Frame extraction](frame-extraction.md) | Pull still images by time, count, fps or timestamps. |
 | [Remuxing](remuxing.md) | Change container with no re-encode (stream copy). |

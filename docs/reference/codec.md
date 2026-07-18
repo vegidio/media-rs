@@ -3,6 +3,10 @@
 Module `media::codec`. Frame-level decoding and encoding. See the
 [Low-level pipeline guide](../guides/low-level.md).
 
+This page covers video decoding (`Decoder`) and video encoding (`VideoEncoder`). The audio
+encoders — `AudioEncoder` and `Resampler`, also exported from `media::codec` — are documented
+in the [Audio reference](audio.md).
+
 ## `Decoder`
 
 A decoder bound to one input stream. Build one with

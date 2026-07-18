@@ -40,19 +40,17 @@ transcode("podcast.wav")
 4. `.sample_rate(...)` resamples to a new rate.
 5. `.channels(...)` down- or up-mixes (e.g. `Channels::Mono`).
 
-To extract audio from a video file, `transcode_audio(...)` is a shorthand for
-`transcode(...).drop_video()`:
+To extract audio from a video file, drop the video stream with `.drop_video()`:
 
 ```rust
 use media::prelude::*;
 # fn demo() -> media::Result<()> {
-transcode_audio("movie.mp4").to("song.mp3").run()?;    // (1)!
+transcode("movie.mp4").drop_video().to("song.mp3").run()?;    // (1)!
 # Ok(()) }
 ```
 
 1. Targeting an audio-only container with a video input **without** dropping video is an error
-   (`transcode("movie.mp4").to("song.mp3")` fails loudly) — `transcode_audio` makes the intent
-   explicit.
+   (`transcode("movie.mp4").to("song.mp3")` fails loudly), so `.drop_video()` is required here.
 
 ## Tier 2 — the builder
 

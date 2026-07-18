@@ -9,8 +9,8 @@ walkthroughs.
 pub fn transcode(input: impl Into<String>) -> TranscodeJob
 ```
 
-Tier-1 entry point. Begins a one-liner transcode from `input`. A companion
-`transcode_audio(input)` is shorthand for `transcode(input).drop_video()`.
+Tier-1 entry point. Begins a one-liner transcode from `input`. To transcode audio only, drop
+the video stream: `transcode(input).drop_video()`.
 
 ### `TranscodeJob`
 

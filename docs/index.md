@@ -53,6 +53,13 @@ the tier that fits — see [Core concepts](getting-started/concepts.md).
 
     [:octicons-arrow-right-24: Filters](guides/filters.md)
 
+-   :material-music: **Audio**
+
+    Re-encode, resample and filter audio — or stream-copy it untouched. A full three-tier
+    API mirroring video.
+
+    [:octicons-arrow-right-24: Audio](guides/audio.md)
+
 -   :material-swap-horizontal: **Remux**
 
     Change a file's container with no re-encoding — a fast, lossless stream copy.
@@ -71,12 +78,11 @@ the tier that fits — see [Core concepts](getting-started/concepts.md).
 ## Feature status
 
 A safe, idiomatic API built on the raw [`sys`](guides/raw-ffi.md) bindings is available:
-probing, decoding, **video** encoding, filtering, transcoding, remuxing and frame extraction.
+probing, decoding, **audio and video** encoding, filtering, resampling, transcoding, remuxing
+and frame extraction.
 
 !!! note "Not yet available"
-    Audio **re-encoding** (audio streams are copied through untouched), an `async` feature,
-    and per-platform hardware guardrails are not implemented yet. The audio-codec types exist
-    as typed foundations for that upcoming work.
+    An `async` feature and per-platform hardware guardrails are not implemented yet.
 
 ## Next steps
 

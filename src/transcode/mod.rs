@@ -7,7 +7,7 @@ pub mod progress;
 mod oneliner;
 
 pub use config::{AudioConfig, AudioConfigBuilder, VideoConfig, VideoConfigBuilder};
-pub use oneliner::{TranscodeJob, transcode, transcode_audio};
+pub use oneliner::{TranscodeJob, transcode};
 pub use progress::{Progress, TranscodeSummary};
 
 use crate::error::{Error, Result};
