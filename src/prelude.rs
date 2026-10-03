@@ -16,9 +16,7 @@ pub use crate::frame::{Frame, SampleBuffer};
 pub use crate::log::{self, Level};
 pub use crate::packet::Packet;
 pub use crate::probe::{MediaInfo, StreamInfo, probe};
-pub use crate::transcode::{
-    AudioConfig, Progress, TranscodeSummary, Transcoder, VideoConfig, transcode,
-};
+pub use crate::transcode::{AudioConfig, Progress, TranscodeSummary, Transcoder, VideoConfig, transcode};
 
 pub use crate::types::{
     AudioCodec, Bitrate, Channels, Framerate, H264Preset, H264Profile, PixelFormat, Rational, SampleFormat, SampleRate,
