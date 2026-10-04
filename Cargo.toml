@@ -22,7 +22,7 @@ thiserror = "2"
 # Image encoding for frame extraction. `rust-sak` (feature `image`) provides a simplified,
 # multi-format encoder over the `image` crate; `image` itself is used only to build the
 # in-memory `DynamicImage` from raw RGB bytes before handing it off to be encoded.
-rust-sak = { git = "https://github.com/vegidio/rust-sak", tag = "26.10.2", features = ["image"] }
+rust-sak = { git = "https://github.com/vegidio/rust-sak", tag = "26.10.3", features = ["image"] }
 image = { version = "0.25", default-features = false }
 
 # `build.rs` only downloads the prebuilt archive and emits link directives; the FFI
