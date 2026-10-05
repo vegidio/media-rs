@@ -39,6 +39,20 @@ fn probe_reports_the_average_frame_rate() {
 }
 
 #[test]
+fn probe_reports_a_fractional_frame_rate() {
+    // `ntsc.mp4` is 1 s of 64x64 `testsrc` at 30000/1001, which `ffprobe` reports as its `avg_frame_rate`.
+    let path = common::asset("ntsc.mp4");
+    if !path.exists() {
+        return;
+    }
+
+    let frame_rate = probe(path.to_str().unwrap()).unwrap().video().unwrap().frame_rate.unwrap();
+
+    assert_eq!(frame_rate, Framerate::ratio(30000, 1001));
+    assert!((frame_rate.as_f64() - 29.97).abs() < 0.01, "{frame_rate:?}");
+}
+
+#[test]
 fn decodes_frames_consistently() {
     for path in common::sample_videos() {
         let p = path.to_str().unwrap();
