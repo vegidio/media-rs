@@ -58,7 +58,10 @@ frames go.
 
     1. `Interval::Count(5)` extracts **exactly 5** frames, evenly spread across the duration.
     2. `ImageFormat::Png` (lossless) or `ImageFormat::Jpeg { quality }`.
-    3. `Resolution::Fixed(w, h)` scales every frame; the default is `Resolution::Original`.
+    3. `Resolution::Fixed(w, h)` scales every frame to exactly `w`×`h`, stretching it if the
+       aspect ratio differs. `Resolution::Fit(bound)` instead scales the longer edge to `bound`
+       and keeps the aspect ratio, never enlarging a frame that already fits — the one to use
+       for thumbnails. The default is `Resolution::Original`.
     4. `.to_memory()` keeps frames in RAM instead of writing files.
     5. `report.frames()` returns them as `&[ExtractedFrame]`. `frames()` is empty for the
        directory and callback outputs, which don't buffer.

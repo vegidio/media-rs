@@ -180,6 +180,9 @@ impl FrameExtractorBuilder {
 
     /// Validate and produce the [`FrameExtractor`].
     pub fn build(self) -> Result<FrameExtractor> {
+        if self.resolution == Some(Resolution::Fit(0)) {
+            return Err(Error::InvalidConfig("Resolution::Fit bound must be at least 1"));
+        }
         Ok(FrameExtractor {
             opts: ExtractOptions {
                 input: self.input.ok_or(Error::InvalidConfig("frame extractor requires an input"))?,

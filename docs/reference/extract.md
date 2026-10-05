@@ -89,8 +89,14 @@ Default: `Jpeg { quality: 90 }`.
 pub enum Resolution {
     Original,             // keep source dimensions (default)
     Fixed(u32, u32),      // scale every frame to width × height
+    Fit(u32),             // longer edge = bound, aspect ratio kept, never enlarged
 }
 ```
+
+`Fit(bound)` computes the target size from the stream's dimensions — the short edge rounded to
+the nearest pixel and at least 1 — and scales with Lanczos. A frame whose longer edge is already
+no larger than `bound` is passed through at its own size. A bound of `0` is refused by
+`build()` with `Error::InvalidConfig`.
 
 ## `NamingScheme`
 

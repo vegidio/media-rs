@@ -132,10 +132,7 @@ struct FrameConverter {
 
 impl FrameConverter {
     fn new(frame: &Frame, resolution: Resolution, time_base: Rational) -> Result<Self> {
-        let chain = match resolution {
-            Resolution::Original => VideoFilterChain::raw("format=rgb24"),
-            Resolution::Fixed(w, h) => VideoFilterChain::raw(format!("scale={w}:{h},format=rgb24")),
-        };
+        let chain = VideoFilterChain::raw(resolution.filter_description(frame.width(), frame.height()));
         let filter = VideoFilter::new(
             frame.width() as i32,
             frame.height() as i32,

@@ -1088,8 +1088,8 @@ dependencies = [
 
 [[package]]
 name = "rust-sak"
-version = "26.10.6"
-source = "git+https://github.com/vegidio/rust-sak?tag=26.10.6#bd19e2a3f75a29fdc425c0b5cd444f5a629248e6"
+version = "26.10.7"
+source = "git+https://github.com/vegidio/rust-sak?tag=26.10.7#da81365bc649da7c6ab6b7530001d42b11036632"
 dependencies = [
  "avif-rs",
  "heif-rs",

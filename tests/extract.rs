@@ -189,3 +189,63 @@ fn range_limits_the_window() {
         assert!((0.9..=2.1).contains(&t), "frame at {t}s outside the range");
     }
 }
+
+/// Extracts one in-memory frame from `asset` at `resolution` and returns its dimensions, or
+/// `None` when the assets are absent.
+fn one_frame_dimensions(asset: &str, resolution: Resolution) -> Option<(u32, u32)> {
+    let input = common::asset(asset);
+    if !input.exists() {
+        return None;
+    }
+
+    let report = FrameExtractor::builder()
+        .input(input.to_str().unwrap())
+        .interval(Interval::Timestamps(vec![Duration::ZERO]))
+        .resolution(resolution)
+        .to_memory()
+        .build()
+        .unwrap()
+        .run()
+        .unwrap();
+
+    let frame = &report.frames()[0];
+    assert_eq!(frame.to_rgb_bytes().len(), (frame.dimensions().0 * frame.dimensions().1 * 3) as usize);
+    Some(frame.dimensions())
+}
+
+/// `Fit` below the source size scales the longer edge to the bound and keeps the aspect ratio,
+/// for a landscape and a portrait stream.
+#[test]
+fn fit_scales_a_frame_down_to_the_bound() {
+    // video2.mp4 is 1280×720; video1.mp4 is 676×1280 (676 * 100 / 1280 = 52.8 → 53).
+    if let Some(dimensions) = one_frame_dimensions("video2.mp4", Resolution::Fit(320)) {
+        assert_eq!(dimensions, (320, 180));
+    }
+    if let Some(dimensions) = one_frame_dimensions("video1.mp4", Resolution::Fit(100)) {
+        assert_eq!(dimensions, (53, 100));
+    }
+}
+
+/// `Fit` above the source size passes the frame through at its own size — never enlarged.
+#[test]
+fn fit_never_enlarges_a_frame() {
+    if let Some(dimensions) = one_frame_dimensions("video2.mp4", Resolution::Fit(4096)) {
+        assert_eq!(dimensions, (1280, 720));
+    }
+    if let Some(dimensions) = one_frame_dimensions("video2.mp4", Resolution::Fit(1280)) {
+        assert_eq!(dimensions, (1280, 720));
+    }
+}
+
+/// A `Fit` bound of 0 is a misconfiguration, refused when the extractor is built.
+#[test]
+fn fit_zero_is_refused() {
+    let result = FrameExtractor::builder()
+        .input("unused.mp4")
+        .interval(Interval::Count(1))
+        .resolution(Resolution::Fit(0))
+        .to_memory()
+        .build();
+
+    assert!(matches!(result, Err(Error::InvalidConfig(_))));
+}

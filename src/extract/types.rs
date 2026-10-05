@@ -96,6 +96,44 @@ pub enum Resolution {
     Original,
     /// Scale every frame to exactly `width`×`height`.
     Fixed(u32, u32),
+    /// Scale every frame so its longer edge is `bound` pixels, keeping the aspect ratio. A frame
+    /// that already fits is passed through at its own size — never enlarged. The bound must be at
+    /// least 1.
+    Fit(u32),
+}
+
+impl Resolution {
+    /// The filter chain that converts a decoded `width`×`height` frame to packed RGB24 at this
+    /// resolution.
+    pub(crate) fn filter_description(self, width: u32, height: u32) -> String {
+        match self {
+            Resolution::Original => "format=rgb24".to_owned(),
+            Resolution::Fixed(w, h) => format!("scale={w}:{h},format=rgb24"),
+            Resolution::Fit(bound) => match fit_dimensions(width, height, bound) {
+                Some((w, h)) => format!("scale={w}:{h}:flags=lanczos,format=rgb24"),
+                None => "format=rgb24".to_owned(),
+            },
+        }
+    }
+}
+
+/// The size of a `width`×`height` frame scaled so its longer edge is `bound`, or `None` when it
+/// already fits. The short edge is rounded to the nearest pixel and is at least 1.
+fn fit_dimensions(width: u32, height: u32, bound: u32) -> Option<(u32, u32)> {
+    let longer = width.max(height);
+    if longer <= bound {
+        return None;
+    }
+
+    // In `u64` so the product can't overflow; the result is at most `bound`, so it fits a `u32`.
+    let short_edge =
+        |short: u32| ((u64::from(short) * u64::from(bound) + u64::from(longer) / 2) / u64::from(longer)) as u32;
+
+    Some(if width >= height {
+        (bound, short_edge(height).max(1))
+    } else {
+        (short_edge(width).max(1), bound)
+    })
 }
 
 /// How output files are named within the destination directory.
@@ -160,5 +198,34 @@ mod tests {
         assert_eq!(ImageFormat::from_extension("JPEG"), Some(ImageFormat::Jpeg { quality: 90 }));
         assert_eq!(ImageFormat::from_path("a/b/c.png"), Some(ImageFormat::Png));
         assert_eq!(ImageFormat::from_extension("gif"), None);
+    }
+
+    #[test]
+    fn fit_scales_the_longer_edge_to_the_bound() {
+        assert_eq!(fit_dimensions(1920, 1080, 320), Some((320, 180)));
+        assert_eq!(fit_dimensions(1080, 1920, 320), Some((180, 320)));
+        assert_eq!(fit_dimensions(1000, 1000, 256), Some((256, 256)));
+        // 676 * 100 / 1280 = 52.8, rounded to the nearest pixel.
+        assert_eq!(fit_dimensions(676, 1280, 100), Some((53, 100)));
+    }
+
+    #[test]
+    fn fit_never_enlarges() {
+        assert_eq!(fit_dimensions(1280, 720, 1280), None);
+        assert_eq!(fit_dimensions(1280, 720, 4096), None);
+    }
+
+    #[test]
+    fn fit_keeps_a_short_edge_of_at_least_one() {
+        assert_eq!(fit_dimensions(10_000, 1, 100), Some((100, 1)));
+        assert_eq!(fit_dimensions(3, 10_000, 16), Some((1, 16)));
+    }
+
+    #[test]
+    fn filter_description_per_resolution() {
+        assert_eq!(Resolution::Original.filter_description(1280, 720), "format=rgb24");
+        assert_eq!(Resolution::Fixed(64, 36).filter_description(1280, 720), "scale=64:36,format=rgb24");
+        assert_eq!(Resolution::Fit(320).filter_description(1280, 720), "scale=320:180:flags=lanczos,format=rgb24");
+        assert_eq!(Resolution::Fit(2000).filter_description(1280, 720), "format=rgb24");
     }
 }

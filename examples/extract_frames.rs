@@ -18,12 +18,12 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("Tier 1: wrote {} frames to {OUT_DIR} in {:?}", report.frame_count(), report.elapsed());
 
-    // --- Tier 2: exactly 5 PNGs evenly spread, scaled, kept in memory -----------------------
+    // --- Tier 2: exactly 5 PNGs evenly spread, fitted inside 320 px, kept in memory ---------
     let report = FrameExtractor::builder()
         .input(INPUT)
         .interval(Interval::Count(5))
         .format(ImageFormat::Png)
-        .resolution(Resolution::Fixed(320, 180))
+        .resolution(Resolution::Fit(320))
         .to_memory()
         .build()?
         .run()?;
