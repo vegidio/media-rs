@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "media-rs"
-version = "26.6.0"
+version = "26.10.2"
 dependencies = [
  "image",
  "rust-sak",
