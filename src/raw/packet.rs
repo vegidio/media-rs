@@ -43,6 +43,15 @@ impl RawPacket {
         unsafe { (*self.ptr.as_ptr()).dts }
     }
 
+    /// The packet's duration, in its time base; `0` when unknown.
+    pub(crate) fn duration(&self) -> i64 {
+        unsafe { (*self.ptr.as_ptr()).duration }
+    }
+
+    pub(crate) fn set_duration(&mut self, duration: i64) {
+        unsafe { (*self.ptr.as_ptr()).duration = duration };
+    }
+
     /// Shift pts/dts by `delta` (skipping the `AV_NOPTS_VALUE` sentinel).
     pub(crate) fn shift_timestamps(&mut self, delta: i64) {
         let p = self.ptr.as_ptr();

@@ -56,6 +56,9 @@ pub struct VideoEncoder {
     ctx: CodecContext,
     recv: RawPacket,
     time_base: Rational,
+    /// One frame at the configured frame rate, in [`time_base`](Self::time_base) ticks: the duration given to packets
+    /// the codec leaves without one.
+    frame_duration: i64,
 }
 
 impl VideoEncoder {
@@ -112,7 +115,14 @@ impl Iterator for EncodeIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let received = self.enc.ctx.receive_packet(&mut self.enc.recv);
-        drain_received(received, || Ok(Packet::from_raw(self.enc.recv.move_out()?)))
+        drain_received(received, || {
+            // libx264 emits packets without a duration. A muxer infers each one from the next packet's timestamp, but
+            // the last packet has no next one, so without this the output would end one frame early.
+            if self.enc.recv.duration() <= 0 {
+                self.enc.recv.set_duration(self.enc.frame_duration);
+            }
+            Ok(Packet::from_raw(self.enc.recv.move_out()?))
+        })
     }
 }
 
@@ -285,7 +295,13 @@ impl VideoEncoderBuilder {
         }
 
         ctx.open()?;
-        Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, time_base })
+        let frame_duration = if framerate.0.num > 0 && framerate.0.den > 0 && time_base.num > 0 {
+            // SAFETY: av_rescale_q is pure arithmetic, and neither rational has a zero denominator here.
+            unsafe { sys::av_rescale_q(1, framerate.time_base().to_av(), time_base.to_av()) }
+        } else {
+            0
+        };
+        Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, time_base, frame_duration })
     }
 }
 

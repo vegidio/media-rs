@@ -551,8 +551,7 @@ fn fps_filter_retimes_the_output() {
     let _ = std::fs::remove_file(&out);
     // 2s at 29.97 fps is about 60 frames, where the 24 fps source gives 48.
     assert!((58..=62).contains(&summary.frames), "{} frames", summary.frames);
-    // Loose: the muxed track ends one frame early, which skews the container's average by about a frame.
-    assert!((frame_rate - 29.97).abs() < 1.0, "frame rate {frame_rate}");
+    assert!((frame_rate - 29.97).abs() < 0.01, "frame rate {frame_rate}");
     assert!((duration - 2.0).abs() < 0.2, "duration {duration} not the ~2s trimmed window");
 }
 
@@ -580,4 +579,25 @@ fn setpts_filter_retimes_the_output() {
     let duration = probe(&out).unwrap().duration().as_secs_f64();
     let _ = std::fs::remove_file(&out);
     assert!((duration - 1.0).abs() < 0.2, "duration {duration} not half the 2s window");
+}
+
+#[test]
+fn transcode_keeps_the_last_frame_duration() {
+    // Regression guard: libx264 leaves packets without a duration, so the muxer ended the track at the last frame's
+    // start, one frame early, and the container's average frame rate read 4302/179 instead of 24/1.
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    let out = common::temp("media_rs_last_frame.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    transcode(&input).to(&out).drop_audio().run().unwrap();
+
+    let source = probe(&input).unwrap();
+    let output = probe(&out).unwrap();
+    let _ = std::fs::remove_file(&out);
+    assert_eq!(output.video().unwrap().frame_rate, source.video().unwrap().frame_rate);
+    let (src, dst) = (source.duration().as_secs_f64(), output.duration().as_secs_f64());
+    assert!((dst - src).abs() < 0.001, "output {dst}s, source {src}s");
 }
