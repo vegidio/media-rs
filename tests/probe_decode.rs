@@ -19,6 +19,26 @@ fn probe_reports_a_video_stream() {
 }
 
 #[test]
+fn probe_reports_the_average_frame_rate() {
+    // `ffprobe -show_entries stream=avg_frame_rate` gives 24/1 for every sample's video stream.
+    for path in common::sample_videos() {
+        let p = path.to_str().unwrap();
+        let info = probe(p).unwrap();
+        assert_eq!(info.video().unwrap().frame_rate, Some(Framerate::fps(24)), "{p}");
+    }
+
+    // ...and 0/0 for the audio streams.
+    if let Some(path) = common::audio_sample() {
+        let info = probe(path.to_str().unwrap()).unwrap();
+        assert_eq!(info.audio().unwrap().frame_rate, None);
+    }
+    if let Some(path) = common::audio_only_sample() {
+        let info = probe(path.to_str().unwrap()).unwrap();
+        assert!(info.streams().iter().all(|s| s.frame_rate.is_none()));
+    }
+}
+
+#[test]
 fn decodes_frames_consistently() {
     for path in common::sample_videos() {
         let p = path.to_str().unwrap();

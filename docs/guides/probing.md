@@ -40,7 +40,7 @@ if let Some(video) = info.video() { // (5)!
    best-effort and may be `0` for containers that don't record a duration.
 3. `streams()` returns a `&[StreamInfo]` — one entry per stream in the container, in order.
 4. `stream.kind` is a [`StreamKind`](../reference/types.md#streamkind). Match on it because
-   the fields that apply depend on the kind: `width`/`height`/`video_codec` for video,
+   the fields that apply depend on the kind: `width`/`height`/`video_codec`/`frame_rate` for video,
    `sample_rate`/`audio_codec` for audio.
 5. `video()` and `audio()` are convenience accessors returning the **first** stream of that
    kind as an `Option<&StreamInfo>`.
@@ -57,6 +57,7 @@ Every field is a plain public field — no getters:
 | `sample_rate` | `u32` | Hz (audio; `0` otherwise). |
 | `video_codec` | `Option<VideoCodec>` | `Some` if it's a recognised video codec. |
 | `audio_codec` | `Option<AudioCodec>` | `Some` if it's a recognised audio codec. |
+| `frame_rate` | `Option<Framerate>` | The container's average frame rate (video; `None` otherwise, or when the container declares none). `as_f64()` gives frames per second. |
 
 !!! note "Unknown codecs are `None`"
     `video_codec`/`audio_codec` are `Option`s because `media-rs` only enumerates a known set

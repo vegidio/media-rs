@@ -36,8 +36,12 @@ pub struct StreamInfo {
     pub sample_rate: u32,                 // Hz (audio; 0 otherwise)
     pub video_codec: Option<VideoCodec>,  // Some for a recognised video codec
     pub audio_codec: Option<AudioCodec>,  // Some for a recognised audio codec
+    pub frame_rate: Option<Framerate>,    // average frame rate (video; None otherwise or if undeclared)
 }
 ```
+
+`frame_rate` is the stream's *average* frame rate (FFmpeg's `avg_frame_rate`), which is what players show — not
+the timebase-derived base rate, which for a variable-rate phone video often reads 60 or 90000/1.
 
 The codec fields are `Option`s because only a known set of codecs is enumerated (see
 [Types](types.md)); an unrecognised codec still appears with its `kind` and dimensions but a

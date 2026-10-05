@@ -3,6 +3,7 @@
 use crate::error::Result;
 use crate::format::reader::MediaReader;
 use crate::types::codec::{AudioCodec, VideoCodec};
+use crate::types::rational::Framerate;
 use crate::types::stream_kind::StreamKind;
 use std::time::Duration;
 
@@ -16,6 +17,10 @@ pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo> {
         let (width, height) = reader.input().stream_dimensions(index)?;
         let sample_rate = reader.input().stream_sample_rate(index)?;
         let codec_id = reader.input().stream_codec_id(index)?;
+        // The average, not `r_frame_rate`: that is the timebase-derived base rate, which for a variable-rate phone
+        // video often reads 60 or 90000/1 where players show the average.
+        let avg = reader.input().stream_avg_frame_rate(index)?;
+        let frame_rate = (kind == StreamKind::Video && avg.num > 0 && avg.den > 0).then_some(Framerate(avg));
         streams.push(StreamInfo {
             index,
             kind,
@@ -24,6 +29,7 @@ pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo> {
             sample_rate: sample_rate.max(0) as u32,
             video_codec: VideoCodec::from_codec_id(codec_id),
             audio_codec: AudioCodec::from_codec_id(codec_id),
+            frame_rate,
         });
     }
     Ok(MediaInfo { duration: Duration::from_secs_f64(reader.duration_secs().max(0.0)), streams })
@@ -80,4 +86,7 @@ pub struct StreamInfo {
     pub video_codec: Option<VideoCodec>,
     /// The recognised audio codec, if this is an audio stream of a known type.
     pub audio_codec: Option<AudioCodec>,
+    /// The average frame rate the container declares (video; `None` otherwise, or when the container declares
+    /// none).
+    pub frame_rate: Option<Framerate>,
 }
