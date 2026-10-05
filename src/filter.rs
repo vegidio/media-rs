@@ -11,7 +11,7 @@ use crate::raw::filter_graph::{AudioFilterGraph, AudioInput, VideoFilterGraph, V
 use crate::raw::frame::RawFrame;
 use crate::types::channel_layout::ChannelLayout;
 use crate::types::pixel_format::PixelFormat;
-use crate::types::rational::Rational;
+use crate::types::rational::{Framerate, Rational};
 use crate::types::sample_format::SampleFormat;
 use std::time::Duration;
 
@@ -231,6 +231,17 @@ impl VideoFilter {
     /// The pixel format of frames this filter emits.
     pub(crate) fn output_pixel_format(&self) -> PixelFormat {
         PixelFormat::from_av(self.runner.graph.out_pix_fmt())
+    }
+
+    /// The time base of the timestamps on frames this filter emits.
+    pub(crate) fn output_time_base(&self) -> Rational {
+        self.runner.graph.out_time_base()
+    }
+
+    /// The frame rate of frames this filter emits, when the graph knows it.
+    pub(crate) fn output_frame_rate(&self) -> Option<Framerate> {
+        let fr = self.runner.graph.out_frame_rate();
+        (fr.num > 0 && fr.den > 0).then_some(Framerate(fr))
     }
 
     /// Push a frame and collect every frame the graph emits in response.

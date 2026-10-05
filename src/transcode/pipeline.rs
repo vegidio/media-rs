@@ -38,16 +38,16 @@ pub(crate) struct TranscodeOptions {
     pub audio_filter: AudioFilterChain,
 }
 
-/// Encode one (already filtered) frame and mux the resulting packets.
+/// Encode one frame whose presentation time is `ts`, in the encoder's time base, and mux the resulting packets.
 fn encode_and_mux(
     encoder: &mut VideoEncoder,
     writer: &mut MediaWriter,
     out_idx: usize,
     mut frame: Frame,
+    ts: i64,
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
-    let ts = frame.best_ts();
     frame.set_pts(ts - trim_start_ts);
     for pkt in encoder.encode(&frame)? {
         let mut pkt = pkt?;
@@ -58,11 +58,25 @@ fn encode_and_mux(
     Ok(())
 }
 
+/// Encode one frame the filter emitted. The filter sets `pts` itself, in its output time base, which is the encoder's;
+/// the frame's `best_effort_timestamp` is still the decoder's, copied from its source frame, so it is not used.
+fn encode_filtered(
+    encoder: &mut VideoEncoder,
+    writer: &mut MediaWriter,
+    out_idx: usize,
+    frame: Frame,
+    trim_start_ts: i64,
+    frames: &mut u64,
+) -> Result<()> {
+    let ts = frame.pts().ok_or(Error::Bug("the video filter emitted a frame without a pts"))?;
+    encode_and_mux(encoder, writer, out_idx, frame, ts, trim_start_ts, frames)
+}
+
 /// Run a frame (from decode or decoder-flush) through the optional filter, then encode it.
 /// The filter graph is built eagerly during setup, so `vfilter` is already populated when
 /// filtering is in effect.
 fn process_video_frame(
-    frame: Frame,
+    mut frame: Frame,
     vfilter: &mut Option<VideoFilter>,
     encoder: &mut VideoEncoder,
     writer: &mut MediaWriter,
@@ -70,11 +84,14 @@ fn process_video_frame(
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
+    let ts = frame.best_ts();
     match vfilter {
-        None => encode_and_mux(encoder, writer, out_idx, frame, trim_start_ts, frames),
+        None => encode_and_mux(encoder, writer, out_idx, frame, ts, trim_start_ts, frames),
         Some(vf) => {
+            // The filter times frames by `pts`, which a decoder may leave unset where its best-effort timestamp is not.
+            frame.set_pts(ts);
             for out in vf.filter(frame)? {
-                encode_and_mux(encoder, writer, out_idx, out, trim_start_ts, frames)?;
+                encode_filtered(encoder, writer, out_idx, out, trim_start_ts, frames)?;
             }
             Ok(())
         }
@@ -87,13 +104,16 @@ fn frame_secs(frame: &Frame, tb: Rational) -> f64 {
 }
 
 /// The configured video half of a transcode: the decoder/encoder pair, the optional filter
-/// graph, the output stream index, and the source (video) time base.
+/// graph, the output stream index, the source (video) time base, and the encoder's time base.
 struct VideoStage {
     decoder: Decoder,
     encoder: VideoEncoder,
     vfilter: Option<VideoFilter>,
     out_vidx: usize,
     v_tb: Rational,
+    /// The time base of the frames the encoder receives: the filter's output time base when filtering, which a filter
+    /// such as `fps` changes, else the source's.
+    enc_tb: Rational,
 }
 
 /// The video codec the transcode will actually encode with: the user's explicit choice, else
@@ -151,9 +171,12 @@ fn setup_video(
         dims
     };
 
+    let enc_tb = vfilter.as_ref().map_or(in_tb, VideoFilter::output_time_base);
+
     let fr = cfg
         .as_ref()
         .and_then(|c| c.framerate)
+        .or_else(|| vfilter.as_ref().and_then(VideoFilter::output_frame_rate))
         .or_else(|| (avg_fr.num > 0 && avg_fr.den > 0).then_some(Framerate(avg_fr)))
         .unwrap_or(Framerate::fps(DEFAULT_FRAMERATE_FPS));
 
@@ -162,7 +185,7 @@ fn setup_video(
         .resolution(enc_w as u32, enc_h as u32)
         .pixel_format(enc_pix)
         .framerate(fr)
-        .time_base(in_tb)
+        .time_base(enc_tb)
         .global_header(writer.wants_global_header());
 
     if let Some(c) = &cfg {
@@ -172,7 +195,7 @@ fn setup_video(
     let encoder = eb.build()?;
     let out_vidx = writer.add_stream_from_encoder(&encoder)?;
 
-    Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb })
+    Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb, enc_tb })
 }
 
 /// The configured audio half of a re-encoding transcode: decoder (producer side) + encoder and
@@ -302,7 +325,7 @@ struct AudioConsumer {
 
 /// Timing/offset context the consumer needs for pts adjustment and progress reporting.
 struct ConsumerCtx {
-    /// The video trim-start timestamp (source time base) subtracted from each frame's pts.
+    /// The video trim-start timestamp (encoder time base) subtracted from each frame's pts.
     v_start_ts: i64,
     /// The trim start in seconds, used to offset the progress position to zero.
     trim_start: f64,
@@ -360,7 +383,7 @@ fn run_consumer(
     if let Some(vc) = video.as_mut() {
         if let Some(vf) = vc.vfilter.as_mut() {
             for frame in vf.flush()? {
-                encode_and_mux(&mut vc.encoder, writer, vc.out_vidx, frame, v_start_ts, &mut frames)?;
+                encode_filtered(&mut vc.encoder, writer, vc.out_vidx, frame, v_start_ts, &mut frames)?;
             }
         }
 
@@ -589,8 +612,9 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
     // --- trim bounds -------------------------------------------------------------------
     let v_tb = video.as_ref().map(|s| s.v_tb).unwrap_or(Rational::ONE);
+    let enc_tb = video.as_ref().map(|s| s.enc_tb).unwrap_or(Rational::ONE);
     let (trim_start, trim_end) = opts.trim.unwrap_or((0.0, f64::INFINITY));
-    let v_start_ts = v_tb.ts_from_secs(trim_start);
+    let v_start_ts = enc_tb.ts_from_secs(trim_start);
     let a_start_ts = a_tb.ts_from_secs(trim_start);
     let a_tb_f64 = a_tb.as_f64();
 

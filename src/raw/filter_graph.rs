@@ -175,6 +175,16 @@ impl VideoFilterGraph {
         unsafe { sys::av_buffersink_get_format(self.sink) }
     }
 
+    /// The time base of the timestamps on frames the graph emits. Filters such as `fps` change it.
+    pub(crate) fn out_time_base(&self) -> Rational {
+        Rational::from(unsafe { sys::av_buffersink_get_time_base(self.sink) })
+    }
+
+    /// The frame rate of frames the graph emits; `0/1` when the graph doesn't know it.
+    pub(crate) fn out_frame_rate(&self) -> Rational {
+        Rational::from(unsafe { sys::av_buffersink_get_frame_rate(self.sink) })
+    }
+
     /// Push a frame into the graph (`None` signals end of stream).
     pub(crate) fn push(&mut self, frame: Option<&mut RawFrame>) -> Result<()> {
         let f = frame.map_or(ptr::null_mut(), |f| f.as_mut_ptr());

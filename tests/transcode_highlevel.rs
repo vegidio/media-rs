@@ -522,3 +522,62 @@ fn typed_filters_apply_end_to_end() {
     assert_eq!((v.width, v.height), (in_video.width, in_video.height));
     let _ = std::fs::remove_file(&out);
 }
+
+#[test]
+fn fps_filter_retimes_the_output() {
+    // Regression guard: frames out of `fps` carry the filter's own time base and `pts`. Encoding them by the decoder's
+    // stale `best_effort_timestamp` in the source time base made the muxer reject the duplicated frames.
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    let out = common::temp("media_rs_fps_filter.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    let summary = Transcoder::builder()
+        .input(&input)
+        .output(&out)
+        .drop_audio()
+        .trim(Duration::from_secs(1)..=Duration::from_secs(3))
+        .video_filter(VideoFilterChain::raw("fps=30000/1001"))
+        .build()
+        .unwrap()
+        .run()
+        .unwrap();
+
+    let info = probe(&out).unwrap();
+    let frame_rate = info.video().unwrap().frame_rate.unwrap().as_f64();
+    let duration = info.duration().as_secs_f64();
+    let _ = std::fs::remove_file(&out);
+    // 2s at 29.97 fps is about 60 frames, where the 24 fps source gives 48.
+    assert!((58..=62).contains(&summary.frames), "{} frames", summary.frames);
+    // Loose: the muxed track ends one frame early, which skews the container's average by about a frame.
+    assert!((frame_rate - 29.97).abs() < 1.0, "frame rate {frame_rate}");
+    assert!((duration - 2.0).abs() < 0.2, "duration {duration} not the ~2s trimmed window");
+}
+
+#[test]
+fn setpts_filter_retimes_the_output() {
+    // `setpts` only rewrites `pts`, so it was silently ignored while frames were timed by their best-effort timestamp.
+    let Some(input) = common::sample_videos().into_iter().next() else {
+        return;
+    };
+    let input = input.to_str().unwrap().to_owned();
+    let out = common::temp("media_rs_setpts_filter.mp4");
+    let _ = std::fs::remove_file(&out);
+
+    Transcoder::builder()
+        .input(&input)
+        .output(&out)
+        .drop_audio()
+        .trim(Duration::ZERO..=Duration::from_secs(2))
+        .video_filter(VideoFilterChain::raw("setpts=0.5*PTS"))
+        .build()
+        .unwrap()
+        .run()
+        .unwrap();
+
+    let duration = probe(&out).unwrap().duration().as_secs_f64();
+    let _ = std::fs::remove_file(&out);
+    assert!((duration - 1.0).abs() < 0.2, "duration {duration} not half the 2s window");
+}
