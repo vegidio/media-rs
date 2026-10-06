@@ -31,6 +31,7 @@ encoder, the input to a decoder or a muxer.
 | `set_stream_index` | `set_stream_index(&mut self, index: usize)` | Set the stream index (remapping input → output). |
 | `pts` | `i64` | Presentation timestamp, in the stream's time base. |
 | `dts` | `i64` | Decompression timestamp, in the stream's time base. |
+| `is_keyframe` | `bool` | Whether a decoder can start from this packet. Flush a fragmented MP4 writer before one to cut a fragment there. |
 | `rescale_ts` | `rescale_ts(&mut self, src: Rational, dst: Rational)` | Rescale timestamps between time bases. |
 | `clear_pos` | `clear_pos(&mut self)` | Reset the byte position so the muxer recomputes it. |
 | `offset_timestamps` | `offset_timestamps(&mut self, delta: i64)` | Shift pts/dts earlier by `delta` (re-basing trimmed streams). |

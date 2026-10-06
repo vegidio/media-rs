@@ -75,6 +75,17 @@ pub enum Error {
     #[error("path contains an interior NUL byte")]
     InvalidPath,
 
+    /// The muxer didn't recognise one or more options passed to
+    /// [`MediaWriterBuilder::option`](crate::format::MediaWriterBuilder::option). The string names them,
+    /// comma-separated.
+    #[error("the muxer didn't recognise the option(s): {0}")]
+    UnknownOption(String),
+
+    /// The writer given to [`MediaWriterBuilder::writer`](crate::format::MediaWriterBuilder::writer) failed or
+    /// panicked. Carries the writer's own error.
+    #[error("writing to the output failed: {0}")]
+    Write(#[source] std::io::Error),
+
     /// Encoding a decoded frame to an image (JPEG/PNG/…) or writing it out failed.
     #[error("image encoding failed: {0}")]
     ImageEncode(String),

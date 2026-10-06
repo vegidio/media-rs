@@ -6,12 +6,16 @@
 
 use super::codec_context::CodecContext;
 use super::packet::RawPacket;
-use super::util::non_null;
+use super::util::{bprint_to_string, non_null};
 use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check, strerror};
 use crate::sys;
 use crate::types::rational::Rational;
 use crate::types::stream_kind::StreamKind;
-use std::ffi::CString;
+use std::any::Any;
+use std::ffi::{CStr, CString};
+use std::io::{self, Write};
+use std::os::raw::{c_int, c_void};
+use std::panic::{self, AssertUnwindSafe};
 use std::ptr::{self, NonNull};
 
 fn cstring(path: &str) -> Result<CString> {
@@ -110,6 +114,35 @@ impl InputFormatContext {
         Ok(unsafe { (*par).sample_rate })
     }
 
+    /// FFmpeg's name for stream `index`'s codec (`h264`, `mpeg4`, `pcm_s16le`, …), for any codec id.
+    pub(crate) fn stream_codec_name(&self, index: usize) -> Result<String> {
+        let id = self.stream_codec_id(index)?;
+        // SAFETY: avcodec_get_name never returns null; it falls back to a static "unknown_codec".
+        Ok(unsafe { CStr::from_ptr(sys::avcodec_get_name(id)) }.to_string_lossy().into_owned())
+    }
+
+    /// The RFC 6381 codec string FFmpeg builds for stream `index` (`avc1.640028`, `mp4a.40.2`, …), or `None` when
+    /// it has none for the codec or its parameters are too incomplete to build one.
+    pub(crate) fn stream_codec_string(&self, index: usize) -> Result<Option<String>> {
+        let par = self.stream_codecpar(index)?;
+        let avg = self.stream_avg_frame_rate(index)?;
+        // `1/0` is av_mime_codec_str's documented "frame rate unknown".
+        let frame_rate = if self.stream_kind(index)? == StreamKind::Video && avg.num > 0 && avg.den > 0 {
+            avg
+        } else {
+            Rational::new(1, 0)
+        };
+        // SAFETY: par is the stream's live codecpar; bp is the live AVBPrint bprint_to_string hands over.
+        let text = bprint_to_string(|bp| unsafe { sys::av_mime_codec_str(par, frame_rate.to_av(), bp) });
+        Ok(text.ok().filter(|s| !s.is_empty()))
+    }
+
+    /// The demuxer's name, comma-separated when it serves several containers (`mov,mp4,m4a,3gp,3g2,mj2`).
+    pub(crate) fn format_name(&self) -> String {
+        // SAFETY: avformat_open_input set iformat to a static AVInputFormat, whose name is never null.
+        unsafe { CStr::from_ptr((*(*self.ctx()).iformat).name) }.to_string_lossy().into_owned()
+    }
+
     /// Total duration in seconds (estimated by the demuxer), or `0.0` if unknown.
     pub(crate) fn duration_secs(&self) -> f64 {
         let d = unsafe { (*self.ctx()).duration };
@@ -151,39 +184,168 @@ impl Drop for InputFormatContext {
 // SAFETY: a single owner with no shared interior state.
 unsafe impl Send for InputFormatContext {}
 
-/// An owned muxer context. Tracks whether it opened an AVIO file so drop can mirror it.
+/// Where an [`OutputFormatContext`] writes its bytes.
+pub(crate) enum OutputTarget {
+    /// A file or URL, opened by FFmpeg.
+    Path(String),
+    /// The caller's writer, behind a custom AVIO.
+    Writer(Box<dyn Write + Send>),
+}
+
+/// How an output context's AVIO is owned, which decides its teardown.
+enum OutputIo {
+    /// The muxer writes no file, or nothing was opened yet.
+    None,
+    /// FFmpeg opened a file with `avio_open`.
+    File,
+    /// A custom AVIO writing into a [`WriteSink`] that the context owns.
+    Sink(Box<WriteSink>),
+}
+
+/// The custom AVIO's `opaque`: the caller's writer, plus the first error it returned.
+struct WriteSink {
+    writer: Box<dyn Write + Send>,
+    /// The writer's first error, waiting to be returned as [`Error::Write`].
+    error: Option<io::Error>,
+    /// Set once the writer has failed, so later writes are refused without calling it again.
+    failed: bool,
+}
+
+/// The custom AVIO's buffer size: FFmpeg's own default for file AVIO.
+const SINK_BUFFER_SIZE: usize = 64 * 1024;
+
+/// `AVERROR(EIO)`: `EIO` is `5` on every target this crate builds for.
+const AVERROR_EIO: i32 = -5;
+
+/// The custom AVIO's write callback: hand `buf` to the sink's writer. A failed or panicking write is stored on
+/// the sink and reported to FFmpeg as `EIO`, so no panic unwinds across the FFI boundary.
+unsafe extern "C" fn write_to_sink(opaque: *mut c_void, buf: *const u8, size: c_int) -> c_int {
+    // SAFETY: opaque is the context's live `WriteSink`, and FFmpeg calls this from the thread driving the muxer,
+    // which holds the context exclusively.
+    let sink = unsafe { &mut *opaque.cast::<WriteSink>() };
+    if sink.failed {
+        return AVERROR_EIO;
+    }
+    let data = match usize::try_from(size) {
+        // SAFETY: FFmpeg passes a buffer of `size` readable bytes.
+        Ok(len) if len > 0 => unsafe { std::slice::from_raw_parts(buf, len) },
+        _ => return 0,
+    };
+    let result = panic::catch_unwind(AssertUnwindSafe(|| sink.writer.write_all(data)))
+        .unwrap_or_else(|payload| Err(io::Error::other(format!("the writer panicked: {}", panic_message(&*payload)))));
+    match result {
+        Ok(()) => size,
+        Err(e) => {
+            sink.error = Some(e);
+            sink.failed = true;
+            AVERROR_EIO
+        }
+    }
+}
+
+/// The text of a panic payload, when it carries one.
+fn panic_message(payload: &(dyn Any + Send)) -> &str {
+    payload
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("no message")
+}
+
+/// An owned muxer context, writing to a path or to the caller's writer.
 pub(crate) struct OutputFormatContext {
     ptr: NonNull<sys::AVFormatContext>,
-    avio_opened: bool,
+    io: OutputIo,
 }
 
 impl OutputFormatContext {
-    /// Allocate an output context for `url`, inferring the container from its extension, and
-    /// open the output file when the format requires one.
-    pub(crate) fn create(url: &str) -> Result<Self> {
-        let curl = cstring(url)?;
-        let mut raw: *mut sys::AVFormatContext = ptr::null_mut();
-        // SAFETY: raw is a valid out-param; format inferred from the filename.
-        let ret = unsafe { sys::avformat_alloc_output_context2(&mut raw, ptr::null(), ptr::null(), curl.as_ptr()) };
-        if ret < 0 || raw.is_null() {
-            return Err(Error::CreateOutput(with_reason(url, ret)));
-        }
-        let mut ctx = Self { ptr: non_null(raw, "AVFormatContext")?, avio_opened: false };
+    /// Allocate an output context writing to `target`, in the container `format` names, or, for a path, the one its
+    /// extension implies.
+    pub(crate) fn create(target: OutputTarget, format: Option<&str>) -> Result<Self> {
+        let cformat = format.map(|f| CString::new(f).map_err(|_| Error::InvalidConfig("format contains a NUL byte")));
+        let cformat = cformat.transpose()?;
+        let format_ptr = cformat.as_ref().map_or(ptr::null(), |f| f.as_ptr());
+        let (label, curl) = match &target {
+            OutputTarget::Path(url) => (url.clone(), Some(cstring(url)?)),
+            OutputTarget::Writer(_) => (format!("writer ({})", format.unwrap_or("no format")), None),
+        };
+        let url_ptr = curl.as_ref().map_or(ptr::null(), |u| u.as_ptr());
 
-        // Open the file unless the muxer is file-less (e.g. a pipe/protocol format).
+        let mut raw: *mut sys::AVFormatContext = ptr::null_mut();
+        // SAFETY: raw is a valid out-param; the format name and filename are valid C strings or null.
+        let ret = unsafe { sys::avformat_alloc_output_context2(&mut raw, ptr::null(), format_ptr, url_ptr) };
+        if ret < 0 || raw.is_null() {
+            return Err(Error::CreateOutput(with_reason(&label, ret)));
+        }
+        let mut ctx = Self { ptr: non_null(raw, "AVFormatContext")?, io: OutputIo::None };
+
+        // A file-less muxer (e.g. a pipe/protocol format) needs no AVIO.
         let needs_file = unsafe {
             let oformat = (*ctx.ctx()).oformat;
             (*oformat).flags & sys::AVFMT_NOFILE as i32 == 0
         };
-        if needs_file {
-            // SAFETY: pb is a valid out-param slot; curl valid for the call.
-            let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
-            if r < 0 {
-                return Err(Error::CreateOutput(with_reason(url, r)));
+        match target {
+            OutputTarget::Path(url) if needs_file => {
+                let curl = cstring(&url)?;
+                // SAFETY: pb is a valid out-param slot; curl valid for the call.
+                let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
+                if r < 0 {
+                    return Err(Error::CreateOutput(with_reason(&url, r)));
+                }
+                ctx.io = OutputIo::File;
             }
-            ctx.avio_opened = true;
+            OutputTarget::Path(_) => {}
+            OutputTarget::Writer(_) if !needs_file => {
+                return Err(Error::InvalidConfig("this format writes no bytes, so it can't write to a writer"));
+            }
+            OutputTarget::Writer(writer) => ctx.attach_sink(writer)?,
         }
         Ok(ctx)
+    }
+
+    /// Point the context's `pb` at a custom, non-seekable AVIO that writes into `writer`.
+    fn attach_sink(&mut self, writer: Box<dyn Write + Send>) -> Result<()> {
+        let mut sink = Box::new(WriteSink { writer, error: None, failed: false });
+        // SAFETY: a plain allocation, handed to the AVIO, which frees it on teardown.
+        let buffer = non_null(unsafe { sys::av_malloc(SINK_BUFFER_SIZE) }, "AVIO buffer")?;
+        let opaque: *mut WriteSink = &mut *sink;
+        // SAFETY: buffer is SINK_BUFFER_SIZE bytes; opaque outlives the AVIO, since `Drop` frees the AVIO before the
+        // sink; there is no read or seek callback.
+        let pb = unsafe {
+            sys::avio_alloc_context(
+                buffer.as_ptr().cast(),
+                SINK_BUFFER_SIZE as c_int,
+                1,
+                opaque.cast(),
+                None,
+                Some(write_to_sink),
+                None,
+            )
+        };
+        let Some(pb) = NonNull::new(pb) else {
+            // SAFETY: the AVIO wasn't created, so the buffer is still ours to free.
+            unsafe { sys::av_free(buffer.as_ptr()) };
+            return Err(Error::AllocFailed("AVIOContext"));
+        };
+        // SAFETY: ctx and pb are valid. `seekable = 0` tells muxers not to seek back; CUSTOM_IO tells FFmpeg not to
+        // close an AVIO it didn't open.
+        unsafe {
+            (*pb.as_ptr()).seekable = 0;
+            (*self.ctx()).pb = pb.as_ptr();
+            (*self.ctx()).flags |= sys::AVFMT_FLAG_CUSTOM_IO as i32;
+        }
+        self.io = OutputIo::Sink(sink);
+        Ok(())
+    }
+
+    /// Turn an FFmpeg return code into a `Result`, preferring the writer's own error when it has failed.
+    fn check_io(&mut self, code: i32) -> Result<()> {
+        if let OutputIo::Sink(sink) = &mut self.io
+            && let Some(e) = sink.error.take()
+        {
+            return Err(Error::Write(e));
+        }
+        check(code)
     }
 
     fn ctx(&self) -> *mut sys::AVFormatContext {
@@ -257,36 +419,127 @@ impl OutputFormatContext {
         Ok(Rational::from_av(unsafe { (*s).time_base }))
     }
 
-    /// Write the container header.
-    pub(crate) fn write_header(&mut self) -> Result<()> {
-        // SAFETY: ctx is valid; all streams configured.
-        check(unsafe { sys::avformat_write_header(self.ctx(), ptr::null_mut()) })
+    /// Write the container header, passing `options` to the muxer. Options are applied before any byte is written,
+    /// and any the muxer didn't recognise fail with [`Error::UnknownOption`].
+    pub(crate) fn write_header(&mut self, options: &[(CString, CString)]) -> Result<()> {
+        let mut dict = Dictionary::new(options)?;
+        // SAFETY: ctx is valid with all streams configured; init_output consumes the options it recognises and
+        // leaves the rest in the dictionary.
+        let ret = unsafe { sys::avformat_init_output(self.ctx(), &mut dict.0) };
+        self.check_io(ret)?;
+        let unknown = dict.keys();
+        if !unknown.is_empty() {
+            return Err(Error::UnknownOption(unknown.join(", ")));
+        }
+        // SAFETY: the muxer was initialised above, so no options are left to pass.
+        let ret = unsafe { sys::avformat_write_header(self.ctx(), ptr::null_mut()) };
+        self.check_io(ret)
     }
 
     /// Interleave and write a packet (whose `stream_index` must already be set).
     pub(crate) fn write_packet(&mut self, pkt: &mut RawPacket) -> Result<()> {
         // SAFETY: ctx is valid; pkt is a valid owned packet with a set stream_index.
-        check(unsafe { sys::av_interleaved_write_frame(self.ctx(), pkt.as_mut_ptr()) })
+        let ret = unsafe { sys::av_interleaved_write_frame(self.ctx(), pkt.as_mut_ptr()) };
+        self.check_io(ret)
     }
 
     /// Finalise the file.
     pub(crate) fn write_trailer(&mut self) -> Result<()> {
         // SAFETY: ctx is valid and the header was written.
-        check(unsafe { sys::av_write_trailer(self.ctx()) })
+        // av_write_trailer also flushes the AVIO.
+        let ret = unsafe { sys::av_write_trailer(self.ctx()) };
+        self.check_io(ret)
+    }
+
+    /// Write out everything muxed so far: drain the interleaving queue, ask the muxer to close what it has pending
+    /// (the mp4 muxer cuts its current fragment; a muxer that can't flush on demand ignores it), then hand the
+    /// AVIO's buffer to the file or writer.
+    pub(crate) fn flush(&mut self) -> Result<()> {
+        // SAFETY: ctx is valid and its header was written; a null packet means "flush" to both calls.
+        let ret = unsafe { sys::av_interleaved_write_frame(self.ctx(), ptr::null_mut()) };
+        self.check_io(ret)?;
+        let ret = unsafe { sys::av_write_frame(self.ctx(), ptr::null_mut()) };
+        self.check_io(ret)?;
+        self.flush_io()
+    }
+
+    /// Hand what the AVIO has buffered to its file or writer.
+    fn flush_io(&mut self) -> Result<()> {
+        // SAFETY: ctx is valid; pb is null for a file-less muxer, and avio_flush sets pb->error on failure.
+        let ret = unsafe {
+            let pb = (*self.ctx()).pb;
+            if pb.is_null() {
+                return Ok(());
+            }
+            sys::avio_flush(pb);
+            (*pb).error
+        };
+        self.check_io(ret)
+    }
+}
+
+/// An owned `AVDictionary`, freed on drop.
+struct Dictionary(*mut sys::AVDictionary);
+
+impl Dictionary {
+    fn new(entries: &[(CString, CString)]) -> Result<Self> {
+        let mut dict = Self(ptr::null_mut());
+        for (key, value) in entries {
+            // SAFETY: dict.0 is a valid dictionary slot; key and value are copied in.
+            check(unsafe { sys::av_dict_set(&mut dict.0, key.as_ptr(), value.as_ptr(), 0) })?;
+        }
+        Ok(dict)
+    }
+
+    /// The keys still in the dictionary, in insertion order.
+    fn keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        let mut entry: *const sys::AVDictionaryEntry = ptr::null();
+        loop {
+            // SAFETY: an empty key with IGNORE_SUFFIX walks every entry, starting after `entry`.
+            entry = unsafe { sys::av_dict_get(self.0, c"".as_ptr(), entry, sys::AV_DICT_IGNORE_SUFFIX as i32) };
+            if entry.is_null() {
+                return keys;
+            }
+            // SAFETY: a returned entry has a valid NUL-terminated key.
+            keys.push(unsafe { CStr::from_ptr((*entry).key) }.to_string_lossy().into_owned());
+        }
+    }
+}
+
+impl Drop for Dictionary {
+    fn drop(&mut self) {
+        // SAFETY: av_dict_free accepts a null dictionary and nulls the pointer.
+        unsafe { sys::av_dict_free(&mut self.0) };
     }
 }
 
 impl Drop for OutputFormatContext {
     fn drop(&mut self) {
-        // Close the AVIO file first (only if we opened one), then free the context.
-        if self.avio_opened {
-            // SAFETY: pb was opened by avio_open; closep nulls it.
-            unsafe { sys::avio_closep(&mut (*self.ctx()).pb) };
+        // Close the AVIO first, then free the context.
+        match std::mem::replace(&mut self.io, OutputIo::None) {
+            OutputIo::None => {}
+            OutputIo::File => {
+                // SAFETY: pb was opened by avio_open; closep nulls it.
+                unsafe { sys::avio_closep(&mut (*self.ctx()).pb) };
+            }
+            OutputIo::Sink(sink) => {
+                // SAFETY: pb is the custom AVIO from attach_sink. Flush it into the writer while the sink is alive,
+                // free its buffer (FFmpeg may have reallocated it), then the AVIO itself.
+                unsafe {
+                    let pb = &mut (*self.ctx()).pb;
+                    sys::avio_flush(*pb);
+                    sys::av_freep((&mut (**pb).buffer as *mut *mut u8).cast());
+                    sys::avio_context_free(pb);
+                }
+                // Nothing refers to the sink any more; this drops the caller's writer.
+                drop(sink);
+            }
         }
         // SAFETY: ctx was allocated by avformat_alloc_output_context2.
         unsafe { sys::avformat_free_context(self.ctx()) };
     }
 }
 
-// SAFETY: a single owner with no shared interior state.
+// SAFETY: a single owner with no shared interior state; the sink's writer is `Send`.
 unsafe impl Send for OutputFormatContext {}

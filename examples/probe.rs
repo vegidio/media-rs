@@ -1,7 +1,7 @@
 //! Inspect a media file's container and stream metadata without decoding any frames.
 //!
-//! Shows: `probe()`, `MediaInfo` (`duration`, `streams`, `video`, `audio`) and the
-//! `StreamInfo` fields.
+//! Shows: `probe()`, `MediaInfo` (`format_name`, `duration`, `streams`, `video`, `audio`) and
+//! the `StreamInfo` fields, including the codec name and RFC 6381 codec string.
 //!
 //! Run with: `cargo run --example probe`
 
@@ -13,6 +13,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let info = probe(INPUT)?;
 
     println!("File: {INPUT}");
+    println!("Container: {}", info.format_name());
     println!("Duration: {:.2}s", info.duration().as_secs_f64());
     println!("Streams: {}", info.stream_count());
 
@@ -29,6 +30,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             ),
             other => println!("  [{}] {:?}", stream.index, other),
         }
+        // FFmpeg's name for any codec, and the string a MIME type's `codecs=` parameter wants (if FFmpeg has one).
+        println!("      {} / {}", stream.codec_name, stream.codec_string.as_deref().unwrap_or("no codec string"));
     }
 
     // Convenience accessors for the first video / audio stream.

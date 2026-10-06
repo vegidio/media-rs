@@ -4,4 +4,4 @@ pub mod reader;
 pub mod writer;
 
 pub use reader::{MediaReader, Packets, StreamRef};
-pub use writer::MediaWriter;
+pub use writer::{MediaWriter, MediaWriterBuilder};

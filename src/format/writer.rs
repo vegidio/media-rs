@@ -3,8 +3,15 @@
 use crate::codec::encoder::Encoder;
 use crate::error::{Error, Result};
 use crate::packet::Packet;
-use crate::raw::format_context::OutputFormatContext;
+use crate::raw::format_context::{OutputFormatContext, OutputTarget};
 use crate::types::rational::Rational;
+use std::ffi::CString;
+use std::io::Write;
+
+/// The `movflags` [`MediaWriterBuilder::fragmented_mp4`] sets: cut a fragment at each keyframe, write an empty
+/// `moov` up front, make sample offsets relative to each `moof`, which is what Media Source Extensions want, and
+/// skip the `mfra` index at the end, which MSE doesn't use and FFmpeg would otherwise grow for every fragment.
+const FRAGMENTED_MP4_FLAGS: &str = "frag_keyframe+empty_moov+default_base_moof+skip_trailer";
 
 /// Creates a media file and muxes encoded packets into it.
 ///
@@ -21,22 +28,38 @@ use crate::types::rational::Rational;
 /// writer.write_trailer()?;
 /// # Ok(()) }
 /// ```
+///
+/// To write to something other than a file, or to pass muxer options, use [`MediaWriter::builder`].
 pub struct MediaWriter {
     output: OutputFormatContext,
     /// Source (encoder) time base per output stream index, for packet rescaling.
     source_tb: Vec<Rational>,
+    /// Muxer options, applied at `write_header`, which is when FFmpeg reads them.
+    options: Vec<(CString, CString)>,
     header_written: bool,
 }
 
 impl MediaWriter {
-    /// Create `path`, inferring the container format from its extension.
+    /// Create `path`, inferring the container format from its extension. The same as
+    /// `MediaWriter::builder().path(path).build()`.
     pub fn create(path: impl AsRef<str>) -> Result<Self> {
-        crate::log::ensure_init();
-        Ok(Self {
-            output: OutputFormatContext::create(path.as_ref())?,
-            source_tb: Vec::new(),
-            header_written: false,
-        })
+        Self::builder().path(path).build()
+    }
+
+    /// Start building a writer that writes to a path or to any [`Write`], with muxer options:
+    ///
+    /// ```no_run
+    /// use media::prelude::*;
+    /// # fn demo(sink: std::fs::File) -> media::Result<()> {
+    /// let mut writer = MediaWriter::builder()
+    ///     .writer(sink)
+    ///     .fragmented_mp4()
+    ///     .option("frag_duration", "2000000")
+    ///     .build()?;
+    /// # Ok(()) }
+    /// ```
+    pub fn builder() -> MediaWriterBuilder {
+        MediaWriterBuilder::default()
     }
 
     /// Add an output stream fed by `encoder` (a [`VideoEncoder`](crate::codec::VideoEncoder) or
@@ -79,8 +102,11 @@ impl MediaWriter {
 
     /// Write the container header. Must be called once, after all streams are added and
     /// before any packets.
+    ///
+    /// The builder's muxer options are applied here. Any the muxer didn't recognise fail with
+    /// [`Error::UnknownOption`] before anything is written.
     pub fn write_header(&mut self) -> Result<()> {
-        self.output.write_header()?;
+        self.output.write_header(&self.options)?;
         self.header_written = true;
         Ok(())
     }
@@ -100,8 +126,108 @@ impl MediaWriter {
         self.output.write_packet(&mut packet.raw)
     }
 
+    /// Write out everything muxed so far, so a reader of the file or writer sees it now rather than when the buffer
+    /// fills. With [`fragmented_mp4`](MediaWriterBuilder::fragmented_mp4) it also closes the pending fragment, so
+    /// after each call the output holds only whole fragments: call it before each keyframe to hand a player one
+    /// fragment at a time. A muxer that can't cut on demand just writes out what it has buffered.
+    ///
+    /// Valid only after [`write_header`](Self::write_header).
+    pub fn flush(&mut self) -> Result<()> {
+        if !self.header_written {
+            return Err(Error::InvalidConfig("write_header must be called before flush"));
+        }
+        self.output.flush()
+    }
+
     /// Finalise and close the file.
     pub fn write_trailer(&mut self) -> Result<()> {
         self.output.write_trailer()
+    }
+}
+
+/// Builds a [`MediaWriter`]: where it writes, in which container, and with which muxer options.
+///
+/// Give exactly one of [`path`](Self::path) or [`writer`](Self::writer). A writer has no file extension to guess the
+/// container from, so it also needs [`format`](Self::format) (or [`fragmented_mp4`](Self::fragmented_mp4)).
+#[derive(Default)]
+pub struct MediaWriterBuilder {
+    path: Option<String>,
+    writer: Option<Box<dyn Write + Send>>,
+    format: Option<String>,
+    options: Vec<(String, String)>,
+}
+
+impl MediaWriterBuilder {
+    /// Write to the file at `path`. The container comes from its extension unless [`format`](Self::format) names one.
+    pub fn path(mut self, path: impl AsRef<str>) -> Self {
+        self.path = Some(path.as_ref().to_owned());
+        self
+    }
+
+    /// Write to `writer` instead of a file. It needs [`format`](Self::format), and is never seeked, so the container
+    /// must be one that can be written front to back, such as fragmented MP4, Matroska or MPEG-TS.
+    ///
+    /// The writer is `'static` because the [`MediaWriter`] owns it. To get the bytes back, pass something you share
+    /// with it, such as an `Arc<Mutex<Vec<u8>>>` wrapper or a channel-backed writer.
+    pub fn writer(mut self, writer: impl Write + Send + 'static) -> Self {
+        self.writer = Some(Box::new(writer));
+        self
+    }
+
+    /// The container to write, by FFmpeg's muxer name: `mp4`, `matroska`, `webm`, `mpegts`, … Required with
+    /// [`writer`](Self::writer); with [`path`](Self::path) it overrides the extension.
+    pub fn format(mut self, format: impl AsRef<str>) -> Self {
+        self.format = Some(format.as_ref().to_owned());
+        self
+    }
+
+    /// Pass a muxer option, such as `movflags` or `frag_duration`. Repeatable; a later value for the same key wins.
+    /// An option the muxer doesn't recognise fails [`MediaWriter::write_header`] with [`Error::UnknownOption`].
+    pub fn option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Self {
+        let (key, value) = (key.as_ref().to_owned(), value.as_ref().to_owned());
+        match self.options.iter_mut().find(|(k, _)| *k == key) {
+            Some(entry) => entry.1 = value,
+            None => self.options.push((key, value)),
+        }
+        self
+    }
+
+    /// Write fragmented MP4 for Media Source Extensions: the `mp4` container, starting with an init segment
+    /// (`ftyp` + `moov`), then `moof` + `mdat` fragments that each start on a keyframe. Other options are kept, and
+    /// its flags are added to any `movflags` already set.
+    pub fn fragmented_mp4(mut self) -> Self {
+        self.format = Some("mp4".to_owned());
+        let flags = match self.options.iter().find(|(k, _)| k == "movflags") {
+            Some((_, existing)) => format!("{existing}+{FRAGMENTED_MP4_FLAGS}"),
+            None => FRAGMENTED_MP4_FLAGS.to_owned(),
+        };
+        self.option("movflags", flags)
+    }
+
+    /// Create the writer: open the file, or wrap the writer, and allocate the muxer.
+    pub fn build(self) -> Result<MediaWriter> {
+        crate::log::ensure_init();
+        let target = match (self.path, self.writer) {
+            (Some(path), None) => OutputTarget::Path(path),
+            (None, Some(writer)) => {
+                if self.format.is_none() {
+                    return Err(Error::InvalidConfig("a media writer writing to a writer requires a format"));
+                }
+                OutputTarget::Writer(writer)
+            }
+            _ => return Err(Error::InvalidConfig("a media writer requires exactly one of path or writer")),
+        };
+        let options = self
+            .options
+            .into_iter()
+            .map(|(k, v)| Ok((CString::new(k)?, CString::new(v)?)))
+            .collect::<std::result::Result<Vec<_>, std::ffi::NulError>>()
+            .map_err(|_| Error::InvalidConfig("a muxer option contains a NUL byte"))?;
+        Ok(MediaWriter {
+            output: OutputFormatContext::create(target, self.format.as_deref())?,
+            source_tb: Vec::new(),
+            options,
+            header_written: false,
+        })
     }
 }

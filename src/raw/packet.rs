@@ -43,6 +43,10 @@ impl RawPacket {
         unsafe { (*self.ptr.as_ptr()).dts }
     }
 
+    pub(crate) fn is_keyframe(&self) -> bool {
+        unsafe { (*self.ptr.as_ptr()).flags & sys::AV_PKT_FLAG_KEY as i32 != 0 }
+    }
+
     /// The packet's duration, in its time base; `0` when unknown.
     pub(crate) fn duration(&self) -> i64 {
         unsafe { (*self.ptr.as_ptr()).duration }

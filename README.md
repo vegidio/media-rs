@@ -145,6 +145,7 @@ cargo run --example transcode_trim           # keep a time range
 cargo run --example transcode_progress       # progress callback
 cargo run --example filters                  # FilterChain (scale/fps/denoise/color)
 cargo run --example remux                    # stream-copy to a new container (no re-encode)
+cargo run --example remux_fmp4               # stream fragmented MP4 into any Write, fragment by fragment
 cargo run --example extract_frames           # extract stills across all three tiers
 cargo run --example extract_sampling         # Fps / EveryNFrames intervals + custom naming
 cargo run --example extract_save             # save frames + raw RGB pixel access

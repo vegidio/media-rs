@@ -34,6 +34,11 @@ impl Packet {
         self.raw.dts()
     }
 
+    /// `true` if the packet holds a keyframe: one a decoder can start from, without earlier packets.
+    pub fn is_keyframe(&self) -> bool {
+        self.raw.is_keyframe()
+    }
+
     /// Rescale this packet's timestamps from `src` to `dst` time base.
     pub fn rescale_ts(&mut self, src: Rational, dst: Rational) {
         self.raw.rescale_ts(src, dst);

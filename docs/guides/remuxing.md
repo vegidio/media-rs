@@ -70,6 +70,62 @@ change.
     (e.g. you can't copy VP9 into a plain `.mp4` the way MKV accepts it). If in doubt, MKV
     accepts almost anything.
 
+## Streaming fragmented MP4
+
+A web view's Media Source Extensions (MSE) player can't open an MKV, but it can play the same H.264/AAC streams
+once they're in **fragmented MP4**, fed to it in pieces. Remux into any `std::io::Write` and hand over each fragment
+as soon as it's complete:
+
+```rust
+use media::prelude::*;
+use std::io::Write;
+
+# fn demo(sink: impl Write + Send + 'static) -> media::Result<()> {
+let mut reader = MediaReader::open("input.mkv")?;
+let mut writer = MediaWriter::builder()             // (1)!
+    .writer(sink)                                   // (2)!
+    .fragmented_mp4()                               // (3)!
+    .build()?;
+
+let mut out_index = Vec::with_capacity(reader.stream_count());
+for i in 0..reader.stream_count() {
+    out_index.push(writer.add_stream_copy(&reader, i)?);
+}
+let video = reader.best_stream(StreamKind::Video)?;
+
+writer.write_header()?;                             // (4)!
+
+for packet in reader.packets() {
+    let mut packet = packet?;
+    if packet.stream_index() == video && packet.is_keyframe() {
+        writer.flush()?;                            // (5)!
+    }
+    packet.set_stream_index(out_index[packet.stream_index()]);
+    writer.write_packet(&mut packet)?;
+}
+
+writer.write_trailer()?;                            // (6)!
+# Ok(()) }
+```
+
+1. [`MediaWriter::builder()`](../reference/format.md#mediawriterbuilder) instead of `create`, because the output
+   isn't a file.
+2. Anything that implements `Write + Send + 'static`: a socket, a pipe, a channel-backed writer, or a shared
+   buffer (see [the recipe](../reference/format.md#writers-must-not-seek-and-are-static)). It is never seeked.
+3. Shorthand for `.format("mp4")` plus the `movflags` that make the output an init segment (`ftyp` + `moov`)
+   followed by `moof` + `mdat` fragments, each starting on a keyframe. Add more with `.option(key, value)`; one the
+   muxer doesn't know fails at `write_header` with `Error::UnknownOption`.
+4. The init segment is written here. Append it to the MSE `SourceBuffer` first.
+5. `flush` closes the pending fragment and pushes it into the writer, so the player gets each fragment the moment
+   it's complete instead of when a 64 KiB buffer fills. Flushing right before each keyframe gives exactly one
+   fragment per flush.
+6. Writes the last fragment.
+
+!!! note "The codecs must suit the browser"
+    Remuxing only changes the container. A web view still has to decode the streams inside, so check
+    [`codec_string`](probing.md#container-name-and-codec-strings) with `MediaSource.isTypeSupported` first. If the
+    codecs themselves won't play, transcode instead.
+
 ## See also
 
 - [Format I/O API reference](../reference/format.md) — `MediaReader` / `MediaWriter`
