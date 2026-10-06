@@ -22,11 +22,7 @@ where
 {
     #[inline]
     fn extract_bit(byte: u8, index: usize) -> bool {
-        let bit_index = if cfg!(target_endian = "big") {
-            7 - (index % 8)
-        } else {
-            index % 8
-        };
+        let bit_index = if cfg!(target_endian = "big") { 7 - (index % 8) } else { index % 8 };
         let mask = 1 << bit_index;
         byte & mask == mask
     }
@@ -46,11 +42,7 @@ where
     }
     #[inline]
     fn change_bit(byte: u8, index: usize, val: bool) -> u8 {
-        let bit_index = if cfg!(target_endian = "big") {
-            7 - (index % 8)
-        } else {
-            index % 8
-        };
+        let bit_index = if cfg!(target_endian = "big") { 7 - (index % 8) } else { index % 8 };
         let mask = 1 << bit_index;
         if val { byte | mask } else { byte & !mask }
     }
@@ -76,11 +68,7 @@ where
         let mut val = 0;
         for i in 0..(bit_width as usize) {
             if self.get_bit(i + bit_offset) {
-                let index = if cfg!(target_endian = "big") {
-                    bit_width as usize - 1 - i
-                } else {
-                    i
-                };
+                let index = if cfg!(target_endian = "big") { bit_width as usize - 1 - i } else { i };
                 val |= 1 << index;
             }
         }
@@ -94,11 +82,7 @@ where
         let mut val = 0;
         for i in 0..(bit_width as usize) {
             if unsafe { Self::raw_get_bit(this, i + bit_offset) } {
-                let index = if cfg!(target_endian = "big") {
-                    bit_width as usize - 1 - i
-                } else {
-                    i
-                };
+                let index = if cfg!(target_endian = "big") { bit_width as usize - 1 - i } else { i };
                 val |= 1 << index;
             }
         }
@@ -112,11 +96,7 @@ where
         for i in 0..(bit_width as usize) {
             let mask = 1 << i;
             let val_bit_is_set = val & mask == mask;
-            let index = if cfg!(target_endian = "big") {
-                bit_width as usize - 1 - i
-            } else {
-                i
-            };
+            let index = if cfg!(target_endian = "big") { bit_width as usize - 1 - i } else { i };
             self.set_bit(index + bit_offset, val_bit_is_set);
         }
     }
@@ -128,11 +108,7 @@ where
         for i in 0..(bit_width as usize) {
             let mask = 1 << i;
             let val_bit_is_set = val & mask == mask;
-            let index = if cfg!(target_endian = "big") {
-                bit_width as usize - 1 - i
-            } else {
-                i
-            };
+            let index = if cfg!(target_endian = "big") { bit_width as usize - 1 - i } else { i };
             unsafe { Self::raw_set_bit(this, index + bit_offset, val_bit_is_set) };
         }
     }
@@ -239,6 +215,8 @@ pub const AV_UTF8_FLAG_ACCEPT_NON_CHARACTERS: u32 = 2;
 pub const AV_UTF8_FLAG_ACCEPT_SURROGATES: u32 = 4;
 pub const AV_UTF8_FLAG_EXCLUDE_XML_INVALID_CONTROL_CODES: u32 = 8;
 pub const AV_UTF8_FLAG_ACCEPT_ALL: u32 = 7;
+pub const AV_BPRINT_SIZE_AUTOMATIC: u32 = 1;
+pub const AV_BPRINT_SIZE_COUNT_ONLY: u32 = 0;
 pub const AV_HASH_MAX_SIZE: u32 = 64;
 pub const AV_FIFO_FLAG_AUTO_GROW: u32 = 1;
 pub const AV_STEREO3D_FLAG_INVERT: u32 = 1;
@@ -1286,11 +1264,6 @@ pub union AVChannelLayout__bindgen_ty_1 {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct AVBPrint {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
 pub struct AVDictionaryEntry {
     pub key: *mut ::std::os::raw::c_char,
     pub value: *mut ::std::os::raw::c_char,
@@ -1575,6 +1548,16 @@ pub const AVEscapeMode_AV_ESCAPE_MODE_XML: AVEscapeMode = 3;
 pub type AVEscapeMode = ::std::os::raw::c_uint;
 #[cfg(target_os = "windows")]
 pub type AVEscapeMode = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AVBPrint {
+    pub str_: *mut ::std::os::raw::c_char,
+    pub len: ::std::os::raw::c_uint,
+    pub size: ::std::os::raw::c_uint,
+    pub size_max: ::std::os::raw::c_uint,
+    pub reserved_internal_buffer: [::std::os::raw::c_char; 1usize],
+    pub reserved_padding: [::std::os::raw::c_char; 1000usize],
+}
 #[cfg(target_os = "macos")]
 pub type time_t = __darwin_time_t;
 #[cfg(target_os = "linux")]
@@ -19936,6 +19919,31 @@ unsafe extern "C" {
         format: *const ::std::os::raw::c_char,
         ...
     ) -> ::std::os::raw::c_int;
+    pub fn av_bprint_init(buf: *mut AVBPrint, size_init: ::std::os::raw::c_uint, size_max: ::std::os::raw::c_uint);
+    pub fn av_bprint_init_for_buffer(
+        buf: *mut AVBPrint,
+        buffer: *mut ::std::os::raw::c_char,
+        size: ::std::os::raw::c_uint,
+    );
+    pub fn av_bprintf(buf: *mut AVBPrint, fmt: *const ::std::os::raw::c_char, ...);
+    pub fn av_bprint_chars(buf: *mut AVBPrint, c: ::std::os::raw::c_char, n: ::std::os::raw::c_uint);
+    pub fn av_bprint_append_data(buf: *mut AVBPrint, data: *const ::std::os::raw::c_char, size: ::std::os::raw::c_uint);
+    pub fn av_bprint_strftime(buf: *mut AVBPrint, fmt: *const ::std::os::raw::c_char, tm: *const tm);
+    pub fn av_bprint_get_buffer(
+        buf: *mut AVBPrint,
+        size: ::std::os::raw::c_uint,
+        mem: *mut *mut ::std::os::raw::c_uchar,
+        actual_size: *mut ::std::os::raw::c_uint,
+    );
+    pub fn av_bprint_clear(buf: *mut AVBPrint);
+    pub fn av_bprint_finalize(buf: *mut AVBPrint, ret_str: *mut *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn av_bprint_escape(
+        dstbuf: *mut AVBPrint,
+        src: *const ::std::os::raw::c_char,
+        special_chars: *const ::std::os::raw::c_char,
+        mode: AVEscapeMode,
+        flags: ::std::os::raw::c_int,
+    );
     pub fn av_parse_ratio(
         q: *mut AVRational,
         str_: *const ::std::os::raw::c_char,
@@ -21449,6 +21457,14 @@ unsafe extern "C" {
         line_size: ::std::os::raw::c_int,
         print_prefix: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
+}
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+unsafe extern "C" {
+    pub fn av_vbprintf(buf: *mut AVBPrint, fmt: *const ::std::os::raw::c_char, vl_arg: va_list);
+}
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub fn av_vbprintf(buf: *mut AVBPrint, fmt: *const ::std::os::raw::c_char, vl_arg: *mut __va_list_tag);
 }
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 unsafe extern "C" {
