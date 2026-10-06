@@ -73,6 +73,9 @@
 #if __has_include(<libavutil/avstring.h>)
 #include <libavutil/avstring.h>
 #endif
+#if __has_include(<libavutil/bprint.h>)
+#include <libavutil/bprint.h>
+#endif
 #if __has_include(<libavutil/parseutils.h>)
 #include <libavutil/parseutils.h>
 #endif
