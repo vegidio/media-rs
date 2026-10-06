@@ -1,6 +1,6 @@
 [package]
 name = "media-rs"
-version = "26.10.2"
+version = "26.10.3"
 edition = "2024"
 links = "ffmpeg"
 build = "build.rs"
