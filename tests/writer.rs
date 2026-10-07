@@ -207,6 +207,24 @@ fn fragmented_mp4_keeps_other_options() {
 }
 
 #[test]
+fn fragmented_mp4_keeps_its_flags_whatever_the_movflags_order() {
+    let Some(input) = common::audio_sample() else { return };
+    let input = input.to_str().unwrap();
+    // A writer is never seeked, so without the fragmenting flags the mp4 muxer would refuse it at `write_header`.
+    let fragments = |builder: media::format::MediaWriterBuilder| {
+        let buf = SharedBuf::default();
+        remux(input, builder.writer(buf.clone()).build().unwrap()).unwrap();
+        assert_fragmented(&top_level_types(&buf.bytes()))
+    };
+
+    let before = fragments(MediaWriter::builder().option("movflags", "negative_cts_offsets").fragmented_mp4());
+    let after = fragments(MediaWriter::builder().fragmented_mp4().option("movflags", "negative_cts_offsets"));
+
+    assert!(before > 0);
+    assert_eq!(before, after);
+}
+
+#[test]
 fn a_builder_needs_exactly_one_of_path_or_writer() {
     let neither = MediaWriter::builder().format("mp4").build();
     let both = MediaWriter::builder().path(common::temp("media_rs_writer_both.mp4")).writer(io::sink()).build();

@@ -155,6 +155,8 @@ pub struct MediaWriterBuilder {
     writer: Option<Box<dyn Write + Send>>,
     format: Option<String>,
     options: Vec<(String, String)>,
+    /// Set by `fragmented_mp4`; its flags are merged into `movflags` at `build`, whatever the call order.
+    fragmented: bool,
 }
 
 impl MediaWriterBuilder {
@@ -194,22 +196,23 @@ impl MediaWriterBuilder {
 
     /// Write fragmented MP4 for Media Source Extensions: the `mp4` container, starting with an init segment
     /// (`ftyp` + `moov`), then `moof` + `mdat` fragments that each start on a keyframe. Other options are kept, and
-    /// its flags are added to any `movflags` already set.
-    ///
-    /// Set your own `movflags` before calling it: a later `option("movflags", …)` replaces them all, fragmenting flags
-    /// included.
+    /// its flags are added to any `movflags` set with [`option`](Self::option), before or after this call.
     pub fn fragmented_mp4(mut self) -> Self {
         self.format = Some("mp4".to_owned());
-        let flags = match self.options.iter().find(|(k, _)| k == "movflags") {
-            Some((_, existing)) => format!("{existing}+{FRAGMENTED_MP4_FLAGS}"),
-            None => FRAGMENTED_MP4_FLAGS.to_owned(),
-        };
-        self.option("movflags", flags)
+        self.fragmented = true;
+        self
     }
 
     /// Create the writer: open the file, or wrap the writer, and allocate the muxer.
-    pub fn build(self) -> Result<MediaWriter> {
+    pub fn build(mut self) -> Result<MediaWriter> {
         crate::log::ensure_init();
+        if self.fragmented {
+            let flags = match self.options.iter().find(|(k, _)| k == "movflags") {
+                Some((_, existing)) => format!("{existing}+{FRAGMENTED_MP4_FLAGS}"),
+                None => FRAGMENTED_MP4_FLAGS.to_owned(),
+            };
+            self = self.option("movflags", flags);
+        }
         let target = match (self.path, self.writer) {
             (Some(path), None) => OutputTarget::Path(path),
             (None, Some(writer)) => {

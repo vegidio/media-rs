@@ -113,8 +113,9 @@ writer.write_trailer()?;                            // (6)!
 2. Anything that implements `Write + Send + 'static`: a socket, a pipe, a channel-backed writer, or a shared
    buffer (see [the recipe](../reference/format.md#writers-must-not-seek-and-are-static)). It is never seeked.
 3. Shorthand for `.format("mp4")` plus the `movflags` that make the output an init segment (`ftyp` + `moov`)
-   followed by `moof` + `mdat` fragments, each starting on a keyframe. Add more with `.option(key, value)`; one the
-   muxer doesn't know fails at `write_header` with `Error::UnknownOption`.
+   followed by `moof` + `mdat` fragments, each starting on a keyframe. Add more with `.option(key, value)`, before or
+   after it: your own `movflags` are combined with these. One the muxer doesn't know fails at `write_header` with
+   `Error::UnknownOption`.
 4. The init segment is written here. Append it to the MSE `SourceBuffer` first.
 5. `flush` closes the pending fragment and pushes it into the writer, so the player gets each fragment the moment
    it's complete instead of when a 64 KiB buffer fills. Flushing right before each keyframe gives exactly one

@@ -102,7 +102,7 @@ let writer = MediaWriter::builder()
 | `writer` | `writer(self, w: impl Write + Send + 'static) -> Self` | Write to `w` instead. Needs `format`. Never seeked. |
 | `format` | `format(self, name: impl AsRef<str>) -> Self` | FFmpeg's muxer name: `mp4`, `matroska`, `webm`, `mpegts`, … Required with `writer`; overrides the extension with `path`. |
 | `option` | `option(self, key, value) -> Self` | A muxer option (`movflags`, `frag_duration`, …). Repeatable; a later value for the same key wins. |
-| `fragmented_mp4` | `fragmented_mp4(self) -> Self` | `format("mp4")` plus `movflags=frag_keyframe+empty_moov+default_base_moof+skip_trailer`, added to any `movflags` already set. Other options are kept. Set your own `movflags` before calling it: a later `option("movflags", …)` replaces them all, fragmenting flags included. |
+| `fragmented_mp4` | `fragmented_mp4(self) -> Self` | `format("mp4")` plus `movflags=frag_keyframe+empty_moov+default_base_moof+skip_trailer`, added to any `movflags` set with `option`, before or after it. Other options are kept. |
 | `build` | `build(self) -> Result<MediaWriter>` | Open the file or wrap the writer. |
 
 `build` returns [`Error::InvalidConfig`](errors.md) when given neither or both of `path` and `writer`, or a `writer`
