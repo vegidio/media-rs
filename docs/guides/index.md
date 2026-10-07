@@ -14,6 +14,7 @@ on the ideas in [Core concepts](../getting-started/concepts.md). Every snippet b
 | [Remuxing](remuxing.md) | Change container with no re-encode (stream copy). |
 | [Seeking](seeking.md) | Jump to a timestamp before decoding. |
 | [Low-level pipeline](low-level.md) | Wire reader → decoder → encoder → writer by hand. |
+| [Hardware encoders](hardware-encoders.md) | Encode on the GPU or media engine, and test that it works first. |
 | [Logging](logging.md) | Control FFmpeg's log verbosity. |
 | [Raw FFI](raw-ffi.md) | Drop down to the raw `media::sys` bindings. |
 

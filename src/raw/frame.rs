@@ -111,6 +111,36 @@ impl RawFrame {
         Ok(frame)
     }
 
+    /// Allocate a `width`×`height` RGB24 frame with each pixel set by `pixel(x, y)`.
+    pub(crate) fn rgb24(width: i32, height: i32, pixel: impl Fn(i32, i32) -> [u8; 3]) -> Result<RawFrame> {
+        let mut frame = RawFrame::alloc()?;
+        // SAFETY: frame is a freshly allocated AVFrame; the shape is set before av_frame_get_buffer sizes it.
+        unsafe {
+            let f = frame.as_mut_ptr();
+            (*f).format = sys::AVPixelFormat_AV_PIX_FMT_RGB24;
+            (*f).width = width;
+            (*f).height = height;
+        }
+        check(unsafe { sys::av_frame_get_buffer(frame.as_mut_ptr(), 0) })?;
+        // SAFETY: av_frame_get_buffer allocated one packed plane of `height` rows of `linesize[0]` bytes, each row
+        // holding at least `width * 3`.
+        unsafe {
+            let f = frame.as_mut_ptr();
+            let (data, stride) = ((*f).data[0], (*f).linesize[0] as isize);
+            for y in 0..height {
+                let row = data.offset(y as isize * stride);
+                for x in 0..width {
+                    let [r, g, b] = pixel(x, y);
+                    let at = row.add(x as usize * 3);
+                    *at = r;
+                    *at.add(1) = g;
+                    *at.add(2) = b;
+                }
+            }
+        }
+        Ok(frame)
+    }
+
     /// Override the reported sample count (after a FIFO read that returned fewer samples than
     /// the frame's allocated capacity, so the encoder sees the true length).
     pub(crate) fn set_nb_samples(&mut self, nb: i32) {

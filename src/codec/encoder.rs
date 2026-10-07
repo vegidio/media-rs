@@ -1,10 +1,11 @@
 //! Encoding: turn decoded [`Frame`]s back into compressed [`Packet`]s (video and audio).
 
 use crate::error::{Error, Result};
+use crate::filter::{VideoFilter, VideoFilterChain};
 use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::raw::audio_fifo::AudioFifo;
-use crate::raw::codec_context::{CodecContext, drain_received, find_encoder_by_name};
+use crate::raw::codec_context::{CodecContext, codec_id, drain_received, find_encoder_by_name, has_private_option};
 use crate::raw::frame::RawFrame;
 use crate::raw::packet::RawPacket;
 use crate::raw::resampler::ResampleContext;
@@ -138,8 +139,13 @@ impl Iterator for EncodeIter<'_> {
 }
 
 /// Builder for a [`VideoEncoder`].
+///
+/// `Clone`, so one configuration can be [`probe`](Self::probe)d and then [`build`](Self::build)t.
+#[derive(Clone)]
 pub struct VideoEncoderBuilder {
     codec: Option<VideoCodec>,
+    /// The FFmpeg encoder by name, when not the codec's own (see [`VideoCodec::encoder_name`]).
+    encoder: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
     pix_fmt: Option<PixelFormat>,
@@ -157,6 +163,7 @@ impl Default for VideoEncoderBuilder {
     fn default() -> Self {
         Self {
             codec: None,
+            encoder: None,
             width: None,
             height: None,
             pix_fmt: None,
@@ -178,6 +185,27 @@ impl VideoEncoderBuilder {
     /// The codec to encode with (required).
     pub fn codec(mut self, codec: VideoCodec) -> Self {
         self.codec = Some(codec);
+        self
+    }
+
+    /// Encode with the FFmpeg encoder called `name` instead of the codec's own, such as `h264_videotoolbox`,
+    /// `h264_nvenc` or `hevc_qsv` for a hardware encoder. It must encode the codec set with [`codec`](Self::codec).
+    ///
+    /// ```no_run
+    /// use media::prelude::*;
+    /// let encoder = VideoEncoder::builder()
+    ///     .codec(VideoCodec::H264)
+    ///     .encoder("h264_videotoolbox")
+    ///     .resolution(1920, 1080)
+    ///     .build()?;
+    /// # Ok::<(), media::Error>(())
+    /// ```
+    ///
+    /// [`build`](Self::build) fails with [`Error::CodecUnavailable`] when this FFmpeg build has no encoder by that
+    /// name, and with [`Error::InvalidConfig`] when it encodes another codec. An encoder that is in the build may
+    /// still fail to open on a machine without the hardware or driver behind it; [`probe`](Self::probe) finds out.
+    pub fn encoder(mut self, name: impl Into<String>) -> Self {
+        self.encoder = Some(name.into());
         self
     }
 
@@ -228,13 +256,15 @@ impl VideoEncoderBuilder {
         self
     }
 
-    /// Speed/quality preset (applied for H.264/H.265).
+    /// Speed/quality preset (applied for H.264/H.265). [`build`](Self::build) fails with [`Error::UnknownOption`]
+    /// when the encoder has no `preset` of its own, as VideoToolbox hasn't.
     pub fn preset(mut self, preset: H264Preset) -> Self {
         self.preset = Some(preset);
         self
     }
 
-    /// Codec profile (applied for H.264/H.265).
+    /// Codec profile (applied for H.264/H.265). [`build`](Self::build) fails with [`Error::UnknownOption`] when the
+    /// encoder has no `profile` of its own.
     pub fn profile(mut self, profile: H264Profile) -> Self {
         self.profile = Some(profile);
         self
@@ -298,7 +328,10 @@ impl VideoEncoderBuilder {
             return Err(Error::UnsupportedResolution { width, height });
         }
 
-        let av_codec = find_encoder_by_name(codec.encoder_name())?;
+        let av_codec = find_encoder_by_name(self.encoder.as_deref().unwrap_or(codec.encoder_name()))?;
+        if codec_id(av_codec) != codec.codec_id() {
+            return Err(Error::InvalidConfig("the encoder doesn't encode the builder's codec"));
+        }
         let mut ctx = CodecContext::alloc(av_codec)?;
 
         let pix_fmt = self.pix_fmt.unwrap_or(PixelFormat::Yuv420p);
@@ -324,13 +357,18 @@ impl VideoEncoderBuilder {
         // thread.
         ctx.set_threading(0, (sys::FF_THREAD_FRAME | sys::FF_THREAD_SLICE) as i32);
 
-        // preset/profile are x264/x265 private options.
+        // preset/profile are each encoder's own options; one without them would make av_opt_set fail with a bare
+        // "option not found", so that is reported as the setting it is.
         if matches!(codec, VideoCodec::H264 | VideoCodec::H265) {
-            if let Some(p) = self.preset {
-                ctx.set_opt("preset", p.as_str())?;
-            }
-            if let Some(p) = self.profile {
-                ctx.set_opt("profile", p.as_str())?;
+            for (key, value) in [
+                ("preset", self.preset.map(H264Preset::as_str)),
+                ("profile", self.profile.map(H264Profile::as_str)),
+            ] {
+                let Some(value) = value else { continue };
+                if !has_private_option(av_codec, key) {
+                    return Err(Error::UnknownOption(key.to_owned()));
+                }
+                ctx.set_opt(key, value)?;
             }
         }
 
@@ -348,6 +386,72 @@ impl VideoEncoderBuilder {
             0
         };
         Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, send: RawFrame::alloc()?, time_base, frame_duration })
+    }
+
+    /// Find out whether this configuration encodes on this machine, before relying on it: build the encoder, encode
+    /// `frames` generated frames, flush it, and return every packet it produced.
+    ///
+    /// The frames are at the configured resolution, pixel format and frame rate, one frame apart in the configured
+    /// time base. The first half are one flat colour and the second half another with a gradient, so the clip has a
+    /// hard scene cut halfway, where an encoder with scene-cut detection on places a keyframe.
+    ///
+    /// ```no_run
+    /// use media::prelude::*;
+    /// let nvenc = VideoEncoder::builder().codec(VideoCodec::H264).encoder("h264_nvenc").resolution(640, 360);
+    /// let encoder = match nvenc.clone().probe(24) {
+    ///     Ok(_) => nvenc.build()?,
+    ///     Err(_) => VideoEncoder::builder().codec(VideoCodec::H264).resolution(640, 360).build()?,
+    /// };
+    /// # Ok::<(), media::Error>(())
+    /// ```
+    ///
+    /// Fails as [`build`](Self::build) and [`VideoEncoder::encode`] would: an encoder missing from the build, a
+    /// driver that isn't installed, a device that is busy, or an option the encoder doesn't take.
+    pub fn probe(self, frames: u32) -> Result<Vec<Packet>> {
+        let pix_fmt = self.pix_fmt.unwrap_or(PixelFormat::Yuv420p);
+        let mut encoder = self.build()?;
+        let (width, height) = (encoder.ctx.width(), encoder.ctx.height());
+        let step = encoder.frame_duration.max(1);
+
+        // SAFETY: av_get_pix_fmt_name returns null or a static C string.
+        let name = unsafe { sys::av_get_pix_fmt_name(pix_fmt.to_av()) };
+        if name.is_null() {
+            return Err(Error::InvalidConfig("the encoder's pixel format has no name"));
+        }
+        // SAFETY: a non-null name is a static NUL-terminated string.
+        let name = unsafe { std::ffi::CStr::from_ptr(name) }.to_string_lossy();
+        let chain = VideoFilterChain::raw(format!("format={name}"));
+        let mut convert =
+            VideoFilter::from_shape(width, height, PixelFormat::Rgb24, encoder.time_base, Rational::ONE, &chain)?;
+
+        let cut = frames / 2;
+        let mut packets = Vec::new();
+        for n in 0..frames {
+            let raw = if n < cut {
+                RawFrame::rgb24(width, height, |_, _| [32, 48, 160])?
+            } else {
+                RawFrame::rgb24(width, height, |x, y| {
+                    let shade = |at: i32, of: i32| (at * 255 / of.max(1)) as u8;
+                    [224, shade(x, width), shade(y, height)]
+                })?
+            };
+            let mut frame = Frame::from_raw(raw);
+            frame.set_pts(i64::from(n) * step);
+            for shaped in convert.filter(frame)? {
+                for packet in encoder.encode(&shaped)? {
+                    packets.push(packet?);
+                }
+            }
+        }
+        for shaped in convert.flush()? {
+            for packet in encoder.encode(&shaped)? {
+                packets.push(packet?);
+            }
+        }
+        for packet in encoder.flush()? {
+            packets.push(packet?);
+        }
+        Ok(packets)
     }
 }
 
@@ -638,5 +742,100 @@ mod tests {
         // dimension; it is reported as unsupported with a saturated width.
         let result = VideoEncoder::builder().codec(VideoCodec::H264).resolution(u32::MAX, 480).build();
         assert!(matches!(result, Err(Error::UnsupportedResolution { width: i32::MAX, height: 480 })));
+    }
+
+    /// libx264 at 640×360 with no B-frames, as a hardware encoder would be set up to be tested.
+    fn x264() -> VideoEncoderBuilder {
+        VideoEncoder::builder()
+            .codec(VideoCodec::H264)
+            .resolution(640, 360)
+            .framerate(Framerate::fps(30))
+            .gop_size(121)
+            .option("bf", "0")
+    }
+
+    fn keyframes(packets: &[Packet]) -> Vec<usize> {
+        packets.iter().enumerate().filter(|(_, p)| p.is_keyframe()).map(|(n, _)| n).collect()
+    }
+
+    #[test]
+    fn naming_the_codecs_own_encoder_encodes_as_the_default_does() {
+        let named = x264().encoder("libx264").option("sc_threshold", "0").probe(24).unwrap();
+        let default = x264().option("sc_threshold", "0").probe(24).unwrap();
+
+        assert_eq!(named.len(), default.len());
+        for (a, b) in named.iter().zip(&default) {
+            assert_eq!((a.data(), a.pts(), a.is_keyframe()), (b.data(), b.pts(), b.is_keyframe()));
+        }
+    }
+
+    #[test]
+    fn an_encoder_missing_from_the_build_is_unavailable() {
+        let result = x264().encoder("no_such_encoder").build();
+        assert!(matches!(result, Err(Error::CodecUnavailable(name)) if name == "no_such_encoder"));
+    }
+
+    #[test]
+    fn an_encoder_for_another_codec_is_invalid() {
+        let result = x264().encoder("libx265").build();
+        assert!(matches!(result, Err(Error::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn the_typed_preset_and_profile_still_apply_to_libx264() {
+        assert!(x264().preset(H264Preset::Veryfast).profile(H264Profile::High).build().is_ok());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_typed_preset_on_an_encoder_without_one_is_an_unknown_option() {
+        // Checked before the encoder opens, so this holds on a machine without a media engine too.
+        let result = x264().encoder("h264_videotoolbox").preset(H264Preset::Veryfast).build();
+        assert!(matches!(result, Err(Error::UnknownOption(key)) if key == "preset"));
+    }
+
+    #[test]
+    fn a_probe_without_scene_cuts_has_one_keyframe_the_first() {
+        let packets = x264().option("sc_threshold", "0").probe(24).unwrap();
+
+        assert_eq!(packets.len(), 24);
+        assert_eq!(keyframes(&packets), [0]);
+        assert!(packets.iter().all(|p| p.dts() == p.pts()));
+        assert_eq!(packets.iter().map(Packet::pts).collect::<Vec<_>>(), (0..24).collect::<Vec<i64>>());
+    }
+
+    #[test]
+    fn a_probe_has_a_scene_cut_halfway() {
+        let packets = x264().probe(24).unwrap();
+        assert_eq!(keyframes(&packets), [0, 12]);
+    }
+
+    #[test]
+    fn a_probe_converts_to_the_encoders_pixel_format() {
+        let packets = x264().pixel_format(PixelFormat::Nv12).option("sc_threshold", "0").probe(6).unwrap();
+        assert_eq!(packets.len(), 6);
+    }
+
+    #[test]
+    fn a_probe_fails_as_build_would() {
+        let result = x264().option("no_such_option", "1").probe(4);
+        assert!(matches!(result, Err(Error::UnknownOption(key)) if key == "no_such_option"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    #[ignore = "needs a Mac with a media engine; a CI virtual machine may have none"]
+    fn videotoolbox_probes_with_one_keyframe() {
+        let packets = x264()
+            .encoder("h264_videotoolbox")
+            .pixel_format(PixelFormat::Nv12)
+            .profile(H264Profile::High)
+            .option("allow_sw", "0")
+            .probe(24)
+            .unwrap();
+
+        assert_eq!(packets.len(), 24);
+        assert_eq!(keyframes(&packets), [0]);
+        assert!(packets.iter().all(|p| p.dts() == p.pts()));
     }
 }

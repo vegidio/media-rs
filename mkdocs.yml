@@ -87,6 +87,7 @@ nav:
       - Remuxing: guides/remuxing.md
       - Seeking: guides/seeking.md
       - Low-level pipeline: guides/low-level.md
+      - Hardware encoders: guides/hardware-encoders.md
       - Logging: guides/logging.md
       - Raw FFI: guides/raw-ffi.md
   - API Reference:

@@ -64,6 +64,35 @@ pub(crate) fn find_encoder_by_name(name: &str) -> Result<*const sys::AVCodec> {
     if codec.is_null() { Err(Error::CodecUnavailable(name.to_owned())) } else { Ok(codec) }
 }
 
+/// `true` if `codec` has a private option called `name`, such as libx264's `preset`. Generic options every encoder
+/// takes, such as `bf`, aren't private, so they don't count.
+pub(crate) fn has_private_option(codec: *const sys::AVCodec, name: &str) -> bool {
+    let Ok(cname) = CString::new(name) else { return false };
+    // SAFETY: codec is a valid static AVCodec; priv_class is null or a static AVClass.
+    let class = unsafe { (*codec).priv_class };
+    if class.is_null() {
+        return false;
+    }
+    // SAFETY: with AV_OPT_SEARCH_FAKE_OBJ, av_opt_find takes a pointer to an AVClass pointer in place of an object,
+    // and only reads the class's option table.
+    let found = unsafe {
+        sys::av_opt_find(
+            (&class as *const *const sys::AVClass).cast_mut().cast(),
+            cname.as_ptr(),
+            ptr::null(),
+            0,
+            sys::AV_OPT_SEARCH_FAKE_OBJ as i32,
+        )
+    };
+    !found.is_null()
+}
+
+/// The codec id `codec` encodes to or decodes from.
+pub(crate) fn codec_id(codec: *const sys::AVCodec) -> sys::AVCodecID {
+    // SAFETY: codec is a valid static AVCodec.
+    unsafe { (*codec).id }
+}
+
 /// An owned `AVCodecContext`. Freed with `avcodec_free_context` on drop.
 pub(crate) struct CodecContext {
     ptr: NonNull<sys::AVCodecContext>,

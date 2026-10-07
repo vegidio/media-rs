@@ -53,23 +53,30 @@ A configured, opened video encoder. Build with `VideoEncoder::builder()`.
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `codec` | `codec(codec: VideoCodec) -> Self` | Codec (**required**). |
+| `encoder` | `encoder(name: impl Into<String>) -> Self` | Encode with the FFmpeg encoder of that name instead of the codec's own, such as `h264_videotoolbox`. See [Hardware encoders](../guides/hardware-encoders.md). |
 | `resolution` | `resolution(width: u32, height: u32) -> Self` | Output size (**required** unless `from_decoder`). |
 | `from_decoder` | `from_decoder(decoder: &Decoder) -> Self` | Inherit resolution, pixel format and frame rate. |
 | `pixel_format` | `pixel_format(pix_fmt: PixelFormat) -> Self` | Pixel format (default: decoder's, else YUV420p). |
 | `framerate` | `framerate(framerate: Framerate) -> Self` | Output frame rate (default 25). |
 | `time_base` | `time_base(time_base: Rational) -> Self` | Time base for incoming frame timestamps. |
 | `bitrate` | `bitrate(bitrate: Bitrate) -> Self` | Target bit rate. |
-| `preset` | `preset(preset: H264Preset) -> Self` | Speed/quality preset (H.264/H.265). |
-| `profile` | `profile(profile: H264Profile) -> Self` | Codec profile (H.264/H.265). |
+| `preset` | `preset(preset: H264Preset) -> Self` | Speed/quality preset (H.264/H.265), for an encoder that has a `preset` of its own. |
+| `profile` | `profile(profile: H264Profile) -> Self` | Codec profile (H.264/H.265), for an encoder that has a `profile` of its own. |
 | `gop_size` | `gop_size(gop_size: u32) -> Self` | Keyframe interval (default 12). |
 | `global_header` | `global_header(enabled: bool) -> Self` | Global-header flag (**on by default**; needed for MP4/MKV/WebM). |
 | `option` | `option(key: impl AsRef<str>, value: impl AsRef<str>) -> Self` | Any encoder option by FFmpeg's name: a generic one such as `bf` or `sc_threshold`, or one of the encoder's own, such as libx264's `tune`. Repeatable; a later value for a key wins, and an option wins over the typed setter for the same setting. |
 | `build` | `build(self) -> Result<VideoEncoder>` | Validate and open the encoder. |
+| `probe` | `probe(self, frames: u32) -> Result<Vec<Packet>>` | Build the encoder, encode `frames` generated frames with a hard scene cut halfway, flush, and return the packets: whether this configuration encodes on this machine. |
+
+The builder is `Clone`, so you can `probe` one copy and `build` the other.
 
 `build` requires a codec and a resolution; a zero/out-of-range resolution →
 [`Error::UnsupportedResolution`](errors.md), a missing codec/resolution →
 [`Error::InvalidConfig`](errors.md), and an `option` the encoder doesn't recognise →
-[`Error::UnknownOption`](errors.md), so a typo is never silently ignored.
+[`Error::UnknownOption`](errors.md), so a typo is never silently ignored. An `encoder` missing
+from this FFmpeg build → [`Error::CodecUnavailable`](errors.md), and one for a different codec →
+[`Error::InvalidConfig`](errors.md). A typed `preset` or `profile` on an encoder that has no
+option of that name (VideoToolbox has no `preset`) → [`Error::UnknownOption`](errors.md).
 
 !!! note "Keyframes are the encoder's choice"
     A decoded frame remembers whether it was an I, P or B frame in its source, and some

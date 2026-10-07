@@ -82,7 +82,7 @@ probing, decoding, **audio and video** encoding, filtering, resampling, transcod
 and frame extraction.
 
 !!! note "Not yet available"
-    An `async` feature and per-platform hardware guardrails are not implemented yet.
+    An `async` feature is not implemented yet.
 
 ## Next steps
 
