@@ -195,6 +195,9 @@ impl MediaWriterBuilder {
     /// Write fragmented MP4 for Media Source Extensions: the `mp4` container, starting with an init segment
     /// (`ftyp` + `moov`), then `moof` + `mdat` fragments that each start on a keyframe. Other options are kept, and
     /// its flags are added to any `movflags` already set.
+    ///
+    /// Set your own `movflags` before calling it: a later `option("movflags", …)` replaces them all, fragmenting flags
+    /// included.
     pub fn fragmented_mp4(mut self) -> Self {
         self.format = Some("mp4".to_owned());
         let flags = match self.options.iter().find(|(k, _)| k == "movflags") {
