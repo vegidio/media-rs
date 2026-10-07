@@ -5,6 +5,7 @@
 //! writes to a file) and then `avformat_free_context`.
 
 use super::codec_context::CodecContext;
+use super::dictionary::Dictionary;
 use super::packet::RawPacket;
 use super::util::{bprint_to_string, non_null};
 use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check, strerror};
@@ -112,6 +113,26 @@ impl InputFormatContext {
     pub(crate) fn stream_sample_rate(&self, index: usize) -> Result<i32> {
         let par = self.stream_codecpar(index)?;
         Ok(unsafe { (*par).sample_rate })
+    }
+
+    /// The rotation stream `index` asks to be shown with, as FFmpeg's counterclockwise angle in degrees, from the
+    /// display matrix in its side data; `None` when it has none.
+    pub(crate) fn stream_display_rotation(&self, index: usize) -> Result<Option<f64>> {
+        let par = self.stream_codecpar(index)?;
+        // SAFETY: par is the stream's live codecpar, whose coded side data array has nb_coded_side_data entries; a
+        // display matrix is nine i32s, which the size check confirms before av_display_rotation_get reads them.
+        let angle = unsafe {
+            let sd = sys::av_packet_side_data_get(
+                (*par).coded_side_data,
+                (*par).nb_coded_side_data,
+                sys::AVPacketSideDataType_AV_PKT_DATA_DISPLAYMATRIX,
+            );
+            if sd.is_null() || (*sd).size < 9 * std::mem::size_of::<i32>() {
+                return Ok(None);
+            }
+            sys::av_display_rotation_get((*sd).data.cast())
+        };
+        Ok((!angle.is_nan()).then_some(angle))
     }
 
     /// FFmpeg's name for stream `index`'s codec (`h264`, `mpeg4`, `pcm_s16le`, …), for any codec id.
@@ -475,42 +496,6 @@ impl OutputFormatContext {
             (*pb).error
         };
         self.check_io(ret)
-    }
-}
-
-/// An owned `AVDictionary`, freed on drop.
-struct Dictionary(*mut sys::AVDictionary);
-
-impl Dictionary {
-    fn new(entries: &[(CString, CString)]) -> Result<Self> {
-        let mut dict = Self(ptr::null_mut());
-        for (key, value) in entries {
-            // SAFETY: dict.0 is a valid dictionary slot; key and value are copied in.
-            check(unsafe { sys::av_dict_set(&mut dict.0, key.as_ptr(), value.as_ptr(), 0) })?;
-        }
-        Ok(dict)
-    }
-
-    /// The keys still in the dictionary, in insertion order.
-    fn keys(&self) -> Vec<String> {
-        let mut keys = Vec::new();
-        let mut entry: *const sys::AVDictionaryEntry = ptr::null();
-        loop {
-            // SAFETY: an empty key with IGNORE_SUFFIX walks every entry, starting after `entry`.
-            entry = unsafe { sys::av_dict_get(self.0, c"".as_ptr(), entry, sys::AV_DICT_IGNORE_SUFFIX as i32) };
-            if entry.is_null() {
-                return keys;
-            }
-            // SAFETY: a returned entry has a valid NUL-terminated key.
-            keys.push(unsafe { CStr::from_ptr((*entry).key) }.to_string_lossy().into_owned());
-        }
-    }
-}
-
-impl Drop for Dictionary {
-    fn drop(&mut self) {
-        // SAFETY: av_dict_free accepts a null dictionary and nulls the pointer.
-        unsafe { sys::av_dict_free(&mut self.0) };
     }
 }
 

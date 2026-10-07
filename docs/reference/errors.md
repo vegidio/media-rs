@@ -32,7 +32,7 @@ can give you something more actionable than a numeric code.
 | `ThreadPanicked` | A worker thread panicked during processing (e.g. the transcode demux/decode thread). |
 | `InvalidPath` | A path contained an interior NUL byte. |
 | `ImageEncode(String)` | Encoding a frame to an image, or writing it out, failed. |
-| `UnknownOption(String)` | The muxer didn't recognise one or more options from [`MediaWriterBuilder::option`](format.md#mediawriterbuilder). The string names them, comma-separated. Raised by `write_header`, before anything is written. |
+| `UnknownOption(String)` | The muxer or the encoder didn't recognise one or more options, from [`MediaWriterBuilder::option`](format.md#mediawriterbuilder) or [`VideoEncoderBuilder::option`](codec.md#videoencoderbuilder). The string names them, comma-separated. Raised by `write_header`, before anything is written, or by the encoder's `build`. |
 | `Write(std::io::Error)` | The writer given to [`MediaWriterBuilder::writer`](format.md#mediawriterbuilder) failed or panicked. Carries the writer's own error (a panic becomes an `io::Error` with its message); it is also the `source()`. |
 | `Internal { code: i32, message: String }` | A raw FFmpeg error code plus its decoded message. |
 

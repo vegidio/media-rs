@@ -10,7 +10,9 @@ pub use crate::extract::{
     ExtractReport, ExtractedFrame, FrameExtractor, ImageFormat, Interval, NamingScheme, Output, Resolution,
     SampledFrames, extract_frames,
 };
-pub use crate::filter::{AudioFilterChain, ColorCorrect, Decibels, DenoiseLevel, VideoFilterChain};
+pub use crate::filter::{
+    AudioFilter, AudioFilterChain, ColorCorrect, Decibels, DenoiseLevel, VideoFilter, VideoFilterChain,
+};
 pub use crate::format::{MediaReader, MediaWriter};
 pub use crate::frame::{Frame, SampleBuffer};
 pub use crate::log::{self, Level};

@@ -44,6 +44,21 @@ re-encoded.
 
 `pub struct Decibels(pub f64)` — a gain amount in decibels, used by `AudioFilterChain::gain`.
 
+## `AudioFilter`
+
+An `AudioFilterChain`, built for the frames of one decoder and ready to run (module
+`media::filter`): the audio counterpart to [`VideoFilter`](filter.md#videofilter).
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `new(decoder: &Decoder, time_base: Rational, chain: &AudioFilterChain) -> Result<Self>` | Build `chain` for `decoder`'s frames (their sample rate, sample format and channel layout), whose timestamps are in `time_base`. An empty chain passes frames through. |
+| `filter` | `filter(&mut self, frame: Frame) -> Result<Vec<Frame>>` | Push one frame through; returns every frame that comes out (none while a stage holds samples back). |
+| `flush` | `flush(&mut self) -> Result<Vec<Frame>>` | End of stream: returns the frames the chain was still holding. |
+
+Timestamp-based stages, such as `atrim=start=10.5`, read each frame's `pts`: set it from
+`best_effort_timestamp` first, as before encoding. `atrim` cuts at an exact sample, inside a
+decoded frame, which skipping whole frames can't do.
+
 ## `AudioEncoder`
 
 A configured, opened audio encoder (module `media::codec`). It resamples every input

@@ -4,6 +4,7 @@
 //! strongly-typed operators so callers rarely touch raw filtergraph strings. For anything not
 //! covered, drop down to their `raw` constructors.
 
+use crate::codec::Decoder;
 use crate::error::Result;
 use crate::frame::Frame;
 use crate::raw::codec_context::Receive;
@@ -199,14 +200,45 @@ impl<G: RunnableGraph> FilterRunner<G> {
     }
 }
 
-/// A built, runnable video filter graph for frames of a fixed input shape. Used internally
-/// by the transcode pipeline.
-pub(crate) struct VideoFilter {
+/// A [`VideoFilterChain`], built and ready to run on the frames of one decoder.
+///
+/// Build it from the [`Decoder`] whose frames it will take, which gives it their width, height, pixel format and
+/// sample aspect ratio, and from their time base, usually the stream's. Then push each decoded frame through
+/// [`filter`](Self::filter), and call [`flush`](Self::flush) at the end of the stream for any frames the chain still
+/// holds. The `output_*` accessors tell you what comes out, before any frame goes in, which is what an encoder fed by
+/// the filter needs:
+///
+/// ```no_run
+/// use media::prelude::*;
+/// # fn demo(reader: &mut MediaReader) -> media::Result<()> {
+/// let index = reader.best_stream(StreamKind::Video)?;
+/// let time_base = reader.stream_time_base(index)?;
+/// let decoder = reader.stream(index).decoder()?;
+///
+/// let chain = VideoFilterChain::raw("scale=1280:720,format=yuv420p");
+/// let mut filter = VideoFilter::new(&decoder, time_base, &chain)?;
+/// assert_eq!((filter.output_width(), filter.output_height()), (1280, 720));
+/// # Ok(()) }
+/// ```
+///
+/// The input shape is fixed when the filter is built: a stream that changes resolution midway needs a new filter.
+pub struct VideoFilter {
     runner: FilterRunner<VideoFilterGraph>,
 }
 
 impl VideoFilter {
-    pub(crate) fn new(
+    /// Build `chain` for the frames `decoder` produces, whose timestamps are in `time_base`. An empty chain passes
+    /// frames through unchanged.
+    ///
+    /// Errors when the chain doesn't parse, names a filter this FFmpeg build lacks, or can't take frames of the
+    /// decoder's shape.
+    pub fn new(decoder: &Decoder, time_base: Rational, chain: &VideoFilterChain) -> Result<Self> {
+        let (width, height) = (decoder.width() as i32, decoder.height() as i32);
+        Self::from_shape(width, height, decoder.pixel_format(), time_base, decoder.sample_aspect_ratio(), chain)
+    }
+
+    /// Build `chain` for frames of an explicit shape, for callers inside the crate that have no decoder at hand.
+    pub(crate) fn from_shape(
         width: i32,
         height: i32,
         pix_fmt: PixelFormat,
@@ -214,43 +246,46 @@ impl VideoFilter {
         sample_aspect_ratio: Rational,
         chain: &VideoFilterChain,
     ) -> Result<Self> {
+        // An empty description isn't a valid graph; `null` is the pass-through filter.
+        let description = if chain.is_empty() { "null".to_owned() } else { chain.description() };
         let input = VideoInput { width, height, pix_fmt: pix_fmt.to_av(), time_base, sample_aspect_ratio };
-        Ok(Self { runner: FilterRunner::new(VideoFilterGraph::new(&input, &chain.description())?)? })
+        Ok(Self { runner: FilterRunner::new(VideoFilterGraph::new(&input, &description)?)? })
     }
 
-    /// The width of frames this filter emits.
-    pub(crate) fn output_width(&self) -> i32 {
-        self.runner.graph.out_width()
+    /// The width of the frames this filter emits, in pixels.
+    pub fn output_width(&self) -> u32 {
+        self.runner.graph.out_width().max(0) as u32
     }
 
-    /// The height of frames this filter emits.
-    pub(crate) fn output_height(&self) -> i32 {
-        self.runner.graph.out_height()
+    /// The height of the frames this filter emits, in pixels.
+    pub fn output_height(&self) -> u32 {
+        self.runner.graph.out_height().max(0) as u32
     }
 
-    /// The pixel format of frames this filter emits.
-    pub(crate) fn output_pixel_format(&self) -> PixelFormat {
+    /// The pixel format of the frames this filter emits.
+    pub fn output_pixel_format(&self) -> PixelFormat {
         PixelFormat::from_av(self.runner.graph.out_pix_fmt())
     }
 
-    /// The time base of the timestamps on frames this filter emits.
-    pub(crate) fn output_time_base(&self) -> Rational {
+    /// The time base of the timestamps on the frames this filter emits. Most filters keep the input's; `fps` doesn't.
+    pub fn output_time_base(&self) -> Rational {
         self.runner.graph.out_time_base()
     }
 
-    /// The frame rate of frames this filter emits, when the graph knows it.
-    pub(crate) fn output_frame_rate(&self) -> Option<Framerate> {
+    /// The frame rate of the frames this filter emits, when the chain knows it (after `fps`, for example).
+    pub fn output_frame_rate(&self) -> Option<Framerate> {
         let fr = self.runner.graph.out_frame_rate();
         (fr.num > 0 && fr.den > 0).then_some(Framerate(fr))
     }
 
-    /// Push a frame and collect every frame the graph emits in response.
-    pub(crate) fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
+    /// Push one frame through the chain and return every frame that comes out: usually one, none while a filter
+    /// such as `fps` is holding frames back, several when it catches up.
+    pub fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
         self.runner.filter(frame)
     }
 
-    /// Signal end of stream and collect any remaining frames.
-    pub(crate) fn flush(&mut self) -> Result<Vec<Frame>> {
+    /// Signal the end of the stream and return the frames the chain was still holding.
+    pub fn flush(&mut self) -> Result<Vec<Frame>> {
         self.runner.flush()
     }
 }
@@ -332,31 +367,65 @@ impl AudioFilterChain {
     }
 }
 
-/// A built, runnable audio filter graph for frames of a fixed input shape. Used internally by
-/// the transcode pipeline.
-pub(crate) struct AudioFilter {
+/// An [`AudioFilterChain`], built and ready to run on the frames of one decoder: the audio counterpart to
+/// [`VideoFilter`].
+///
+/// Build it from the [`Decoder`] whose frames it will take, which gives it their sample rate, sample format and channel
+/// layout, and from their time base, usually the stream's. Push each decoded frame through [`filter`](Self::filter),
+/// and call [`flush`](Self::flush) at the end of the stream. Raw libavfilter stages work too, such as `atrim` to cut
+/// the audio at an exact sample, which whole decoded frames can't do:
+///
+/// ```no_run
+/// use media::prelude::*;
+/// # fn demo(reader: &mut MediaReader) -> media::Result<()> {
+/// let index = reader.best_stream(StreamKind::Audio)?;
+/// let time_base = reader.stream_time_base(index)?;
+/// let decoder = reader.stream(index).decoder()?;
+///
+/// // Keep only what plays from 10.5 s on. Timestamp-based stages read each frame's `pts`.
+/// let chain = AudioFilterChain::raw("atrim=start=10.5");
+/// let mut filter = AudioFilter::new(&decoder, time_base, &chain)?;
+/// # let _ = &mut filter; Ok(()) }
+/// ```
+///
+/// The input shape is fixed when the filter is built: a stream that changes format midway needs a new filter.
+pub struct AudioFilter {
     runner: FilterRunner<AudioFilterGraph>,
 }
 
 impl AudioFilter {
-    pub(crate) fn new(
+    /// Build `chain` for the frames `decoder` produces, whose timestamps are in `time_base`. An empty chain passes
+    /// frames through unchanged.
+    ///
+    /// Errors when the chain doesn't parse, names a filter this FFmpeg build lacks, or can't take frames of the
+    /// decoder's format.
+    pub fn new(decoder: &Decoder, time_base: Rational, chain: &AudioFilterChain) -> Result<Self> {
+        let rate = decoder.sample_rate() as i32;
+        Self::from_shape(rate, decoder.sample_format(), decoder.ch_layout_owned(), time_base, chain)
+    }
+
+    /// Build `chain` for frames of an explicit shape, for callers inside the crate that have no decoder at hand.
+    pub(crate) fn from_shape(
         sample_rate: i32,
         sample_fmt: SampleFormat,
         ch_layout: ChannelLayout,
         time_base: Rational,
         chain: &AudioFilterChain,
     ) -> Result<Self> {
+        // An empty description isn't a valid graph; `anull` is the pass-through filter.
+        let description = if chain.is_empty() { "anull".to_owned() } else { chain.description() };
         let input = AudioInput { sample_rate, sample_fmt: sample_fmt.to_av(), ch_layout, time_base };
-        Ok(Self { runner: FilterRunner::new(AudioFilterGraph::new(&input, &chain.description())?)? })
+        Ok(Self { runner: FilterRunner::new(AudioFilterGraph::new(&input, &description)?)? })
     }
 
-    /// Push a frame and collect every frame the graph emits in response.
-    pub(crate) fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
+    /// Push one frame through the chain and return every frame that comes out: none while a stage holds samples back,
+    /// or when `atrim` drops the whole frame.
+    pub fn filter(&mut self, frame: Frame) -> Result<Vec<Frame>> {
         self.runner.filter(frame)
     }
 
-    /// Signal end of stream and collect any remaining frames.
-    pub(crate) fn flush(&mut self) -> Result<Vec<Frame>> {
+    /// Signal the end of the stream and return the frames the chain was still holding.
+    pub fn flush(&mut self) -> Result<Vec<Frame>> {
         self.runner.flush()
     }
 }

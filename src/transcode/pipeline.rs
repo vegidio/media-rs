@@ -165,8 +165,8 @@ fn setup_video(
     let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
         (in_w, in_h, in_pix)
     } else {
-        let f = VideoFilter::new(in_w, in_h, in_pix, in_tb, Rational::ONE, &chain)?;
-        let dims = (f.output_width(), f.output_height(), f.output_pixel_format());
+        let f = VideoFilter::from_shape(in_w, in_h, in_pix, in_tb, Rational::ONE, &chain)?;
+        let dims = (f.output_width() as i32, f.output_height() as i32, f.output_pixel_format());
         vfilter = Some(f);
         dims
     };
@@ -254,13 +254,7 @@ fn setup_audio(
     let afilter = if opts.audio_filter.is_empty() {
         None
     } else {
-        Some(AudioFilter::new(
-            dec.sample_rate() as i32,
-            dec.sample_format(),
-            dec.ch_layout_owned(),
-            a_tb,
-            &opts.audio_filter,
-        )?)
+        Some(AudioFilter::new(&dec, a_tb, &opts.audio_filter)?)
     };
 
     let out_aidx = writer.add_stream_from_encoder(&encoder)?;

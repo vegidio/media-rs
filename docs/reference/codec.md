@@ -20,6 +20,7 @@ A decoder bound to one input stream. Build one with
 | `width` | `width(&self) -> u32` | Decoded frame width. |
 | `height` | `height(&self) -> u32` | Decoded frame height. |
 | `pixel_format` | `pixel_format(&self) -> PixelFormat` | Output pixel format. |
+| `sample_aspect_ratio` | `sample_aspect_ratio(&self) -> Rational` | The shape of a pixel, width to height. `1:1` for square pixels and for a stream that doesn't say; something else, such as `4:3`, for an anamorphic one. Multiply the width by it for the shape to show the picture at. |
 | `reset` | `reset(&mut self)` | Discard buffered state; **call after seeking** the reader. |
 
 !!! warning "Drain fully, then send"
@@ -39,7 +40,7 @@ A configured, opened video encoder. Build with `VideoEncoder::builder()`.
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `builder` | `builder() -> VideoEncoderBuilder` | Start configuring. |
-| `encode` | `encode(&mut self, frame: &Frame) -> Result<EncodeIter<'_>>` | Submit a frame (PTS must be in the encoder's time base). |
+| `encode` | `encode(&mut self, frame: &Frame) -> Result<EncodeIter<'_>>` | Submit a frame (PTS must be in the encoder's time base). Keyframes are placed by the encoder's own settings, never by the source's frame types. |
 | `flush` | `flush(&mut self) -> Result<EncodeIter<'_>>` | Drain buffered packets at end of stream. |
 | `time_base` | `time_base(&self) -> Rational` | The encoder's time base. |
 
@@ -62,11 +63,20 @@ A configured, opened video encoder. Build with `VideoEncoder::builder()`.
 | `profile` | `profile(profile: H264Profile) -> Self` | Codec profile (H.264/H.265). |
 | `gop_size` | `gop_size(gop_size: u32) -> Self` | Keyframe interval (default 12). |
 | `global_header` | `global_header(enabled: bool) -> Self` | Global-header flag (**on by default**; needed for MP4/MKV/WebM). |
+| `option` | `option(key: impl AsRef<str>, value: impl AsRef<str>) -> Self` | Any encoder option by FFmpeg's name: a generic one such as `bf` or `sc_threshold`, or one of the encoder's own, such as libx264's `tune`. Repeatable; a later value for a key wins, and an option wins over the typed setter for the same setting. |
 | `build` | `build(self) -> Result<VideoEncoder>` | Validate and open the encoder. |
 
 `build` requires a codec and a resolution; a zero/out-of-range resolution →
 [`Error::UnsupportedResolution`](errors.md), a missing codec/resolution →
-[`Error::InvalidConfig`](errors.md).
+[`Error::InvalidConfig`](errors.md), and an `option` the encoder doesn't recognise →
+[`Error::UnknownOption`](errors.md), so a typo is never silently ignored.
+
+!!! note "Keyframes are the encoder's choice"
+    A decoded frame remembers whether it was an I, P or B frame in its source, and some
+    encoders (libx264 among them) would take that as an order. `encode` clears it, so a
+    re-encode places keyframes by `gop_size` and its own scene-cut detection only, as the
+    `ffmpeg` command line does. To get exactly one keyframe at the start of a run of frames,
+    use a `gop_size` above their count with `option("sc_threshold", "0")`.
 
 ### `EncodeIter`
 

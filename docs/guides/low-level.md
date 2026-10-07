@@ -157,6 +157,74 @@ writer.write_trailer()?;
     flush (packets it still holds). Miss either and the last fraction of a second is silently
     dropped.
 
+## Part 3 — building blocks for your own pipeline
+
+A pipeline of your own often needs more than decode and encode. These pieces cover the usual
+cases. The [`segments` example](https://github.com/vegidio/media-rs/blob/main/examples/segments.rs)
+puts them together: it encodes a video as independent 2-second H.264 segments, keeps them as
+bytes, and writes them out as fragmented MP4.
+
+### Shape the frames before encoding
+
+Scale, turn or convert frames with a [`VideoFilter`](../reference/filter.md#videofilter) built for
+your decoder (see [Filters](filters.md#running-a-chain-yourself)), and size the encoder from its
+output. Two facts about the source decide the shape the picture should be shown at:
+
+```rust
+use media::prelude::*;
+# fn demo(reader: &mut MediaReader, index: usize) -> media::Result<()> {
+let rotation = reader.stream_rotation(index)?;           // (1)!
+let decoder = reader.stream(index).decoder()?;
+let sar = decoder.sample_aspect_ratio();                  // (2)!
+
+let mut width = f64::from(decoder.width()) * sar.as_f64();
+let mut height = f64::from(decoder.height());
+if matches!(rotation, Some(90 | 270)) {
+    std::mem::swap(&mut width, &mut height);              // (3)!
+}
+# let _ = (width, height); Ok(()) }
+```
+
+1. [`stream_rotation`](../reference/format.md#rotation) says how far the picture must be turned to
+   be upright: a phone's portrait video is stored as landscape pixels and turned when shown.
+   Decoding drops the turn, so put `transpose=clock` (90), `hflip,vflip` (180) or
+   `transpose=cclock` (270) at the start of the chain.
+2. `sample_aspect_ratio` is `1:1` for square pixels. For an anamorphic source it is the width of a
+   pixel relative to its height, so the shape to show the picture at is the width times it.
+3. A quarter turn swaps the sides.
+
+### Tune the encoder
+
+[`option`](../reference/codec.md#videoencoderbuilder) passes any encoder option by FFmpeg's
+name, for what the typed setters don't cover:
+
+```rust
+use media::prelude::*;
+# fn demo(decoder: &Decoder, time_base: Rational) -> media::Result<()> {
+let encoder = VideoEncoder::builder()
+    .codec(VideoCodec::H264)
+    .from_decoder(decoder)
+    .time_base(time_base)
+    .gop_size(1000)                    // (1)!
+    .option("bf", "0")                 // (2)!
+    .option("sc_threshold", "0")       // (3)!
+    .build()?;
+# let _ = encoder; Ok(()) }
+```
+
+1. A GOP longer than the frames you will feed it…
+2. …with no B-frames, so every packet's `dts` equals its `pts`…
+3. …and no scene-cut keyframes gives exactly one keyframe: the first frame. The source's own
+   keyframes don't count: `encode` places keyframes by the encoder's settings alone.
+
+An option the encoder doesn't know fails `build` with `Error::UnknownOption`.
+
+### Keep encoded packets
+
+A packet's [`data`, timestamps, duration and keyframe flag](../reference/frame-packet.md#keeping-packets)
+are all a muxer needs, and `Packet::from_data` rebuilds it from them. Store them, in memory or on
+disk, and write them again later without re-encoding.
+
 ## Why go low-level?
 
 You get access things the high-level API doesn't expose: custom frame selection, per-frame

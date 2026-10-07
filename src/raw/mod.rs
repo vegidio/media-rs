@@ -7,6 +7,7 @@
 
 pub(crate) mod audio_fifo;
 pub(crate) mod codec_context;
+pub(crate) mod dictionary;
 pub(crate) mod filter_graph;
 pub(crate) mod format_context;
 pub(crate) mod frame;

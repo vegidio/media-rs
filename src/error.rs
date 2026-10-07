@@ -75,10 +75,11 @@ pub enum Error {
     #[error("path contains an interior NUL byte")]
     InvalidPath,
 
-    /// The muxer didn't recognise one or more options passed to
-    /// [`MediaWriterBuilder::option`](crate::format::MediaWriterBuilder::option). The string names them,
+    /// The muxer or the encoder didn't recognise one or more options passed to
+    /// [`MediaWriterBuilder::option`](crate::format::MediaWriterBuilder::option) or
+    /// [`VideoEncoderBuilder::option`](crate::codec::encoder::VideoEncoderBuilder::option). The string names them,
     /// comma-separated.
-    #[error("the muxer didn't recognise the option(s): {0}")]
+    #[error("unrecognised option(s): {0}")]
     UnknownOption(String),
 
     /// The writer given to [`MediaWriterBuilder::writer`](crate::format::MediaWriterBuilder::writer) failed or

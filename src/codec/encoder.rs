@@ -17,6 +17,7 @@ use crate::types::preset::H264Preset;
 use crate::types::profile::H264Profile;
 use crate::types::rational::{Bitrate, Framerate, Rational};
 use crate::types::sample_format::SampleFormat;
+use std::ffi::CString;
 
 /// Default keyframe interval (group-of-pictures size) when the caller doesn't set one.
 const DEFAULT_GOP_SIZE: i32 = 12;
@@ -55,6 +56,8 @@ pub(crate) mod sealed {
 pub struct VideoEncoder {
     ctx: CodecContext,
     recv: RawPacket,
+    /// Each submitted frame, re-referenced without its picture type; see [`encode`](Self::encode).
+    send: RawFrame,
     time_base: Rational,
     /// One frame at the configured frame rate, in [`time_base`](Self::time_base) ticks: the duration given to packets
     /// the codec leaves without one.
@@ -71,8 +74,16 @@ impl VideoEncoder {
     ///
     /// The frame's `pts` must already be expressed in this encoder's
     /// [`time_base`](Self::time_base).
+    ///
+    /// The encoder places keyframes by its own settings ([`gop_size`](VideoEncoderBuilder::gop_size) and its
+    /// scene-cut detection), never by the frame types of the stream the frame was decoded from: a decoded I-frame
+    /// isn't encoded as a keyframe unless the encoder chooses one there.
     pub fn encode(&mut self, frame: &Frame) -> Result<EncodeIter<'_>> {
-        self.ctx.send_frame(Some(&frame.raw))?;
+        // libx264 and others treat a frame's picture type as an order, and a decoder leaves its own on every frame.
+        self.send.ref_without_picture_type(&frame.raw)?;
+        let sent = self.ctx.send_frame(Some(&self.send));
+        self.send.unref();
+        sent?;
         Ok(EncodeIter { enc: self })
     }
 
@@ -139,6 +150,7 @@ pub struct VideoEncoderBuilder {
     profile: Option<H264Profile>,
     gop_size: Option<i32>,
     global_header: bool,
+    options: Vec<(String, String)>,
 }
 
 impl Default for VideoEncoderBuilder {
@@ -157,6 +169,7 @@ impl Default for VideoEncoderBuilder {
             // MP4/MKV/WebM need codec extradata in the container header; defaulting this on
             // makes the common case correct without the caller knowing the container.
             global_header: true,
+            options: Vec::new(),
         }
     }
 }
@@ -240,6 +253,33 @@ impl VideoEncoderBuilder {
         self
     }
 
+    /// Pass an encoder option by FFmpeg's name for it, for anything the typed setters don't cover. It can be one
+    /// every encoder takes, such as `bf` (the most B-frames in a row) or `sc_threshold` (scene-cut detection), or one
+    /// of this encoder's own, such as libx264's `tune` or `x264-params`. Repeatable; a later value for the same key
+    /// wins, and an option wins over the typed setter for the same setting.
+    ///
+    /// ```no_run
+    /// use media::prelude::*;
+    /// let encoder = VideoEncoder::builder()
+    ///     .codec(VideoCodec::H264)
+    ///     .resolution(1280, 720)
+    ///     .option("bf", "0")
+    ///     .option("tune", "zerolatency")
+    ///     .build()?;
+    /// # Ok::<(), media::Error>(())
+    /// ```
+    ///
+    /// An option the encoder doesn't recognise fails [`build`](Self::build) with [`Error::UnknownOption`], so a typo
+    /// can't be silently ignored. A value it can't take fails `build` with FFmpeg's own error.
+    pub fn option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Self {
+        let (key, value) = (key.as_ref().to_owned(), value.as_ref().to_owned());
+        match self.options.iter_mut().find(|(k, _)| *k == key) {
+            Some(entry) => entry.1 = value,
+            None => self.options.push((key, value)),
+        }
+        self
+    }
+
     /// Validate the configuration, open the encoder, and return it.
     pub fn build(self) -> Result<VideoEncoder> {
         crate::log::ensure_init();
@@ -294,14 +334,20 @@ impl VideoEncoderBuilder {
             }
         }
 
-        ctx.open()?;
+        let options = self
+            .options
+            .iter()
+            .map(|(k, v)| Ok((CString::new(k.as_str())?, CString::new(v.as_str())?)))
+            .collect::<std::result::Result<Vec<_>, std::ffi::NulError>>()
+            .map_err(|_| Error::InvalidConfig("an encoder option contains a NUL byte"))?;
+        ctx.open_with(&options)?;
         let frame_duration = if framerate.0.num > 0 && framerate.0.den > 0 && time_base.num > 0 {
             // SAFETY: av_rescale_q is pure arithmetic, and neither rational has a zero denominator here.
             unsafe { sys::av_rescale_q(1, framerate.time_base().to_av(), time_base.to_av()) }
         } else {
             0
         };
-        Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, time_base, frame_duration })
+        Ok(VideoEncoder { ctx, recv: RawPacket::alloc()?, send: RawFrame::alloc()?, time_base, frame_duration })
     }
 }
 

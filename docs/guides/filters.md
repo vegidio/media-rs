@@ -76,6 +76,62 @@ let chain = VideoFilterChain::raw("scale=1280:720,unsharp=5:5:1.0"); // (1)!
     A chain is either built from typed operators **or** created from a raw string. To combine
     custom filters with typed ones, write the whole graph as a single `raw` string.
 
+## Running a chain yourself
+
+In a [low-level pipeline](low-level.md) there's no transcode to hand the chain to. Build it into a
+[`VideoFilter`](../reference/filter.md#videofilter) for your decoder instead, and push frames
+through it between decoding and encoding:
+
+```rust
+use media::prelude::*;
+# fn demo() -> media::Result<()> {
+let mut reader = MediaReader::open("input.mp4")?;
+let index = reader.best_stream(StreamKind::Video)?;
+let time_base = reader.stream_time_base(index)?;
+let mut decoder = reader.stream(index).decoder()?;
+
+let chain = VideoFilterChain::raw("scale=1280:720,format=yuv420p");   // (1)!
+let mut filter = VideoFilter::new(&decoder, time_base, &chain)?;      // (2)!
+println!("out: {}x{}", filter.output_width(), filter.output_height()); // (3)!
+
+for packet in reader.packets() {
+    let packet = packet?;
+    if packet.stream_index() != index { continue; }
+    let frames: Vec<Frame> = decoder.decode(&packet)?.collect::<media::Result<_>>()?;
+    for frame in frames {
+        for scaled in filter.filter(frame)? {                          // (4)!
+            let _ = scaled; // …encode it…
+        }
+    }
+}
+for scaled in filter.flush()? {                                        // (5)!
+    let _ = scaled;
+}
+# Ok(()) }
+```
+
+1. Any chain works, typed or raw. `format=yuv420p` converts to the pixel format most encoders
+   want, whatever the source's.
+2. `VideoFilter::new` takes the shape of the frames from the decoder: their size, pixel format and
+   sample aspect ratio. The time base is the one their timestamps are in, usually the stream's.
+3. The output shape is known before any frame goes in, so you can size the encoder from it.
+4. `filter` returns every frame that comes out for the one that went in: usually exactly one, but
+   none or several for stages such as `fps`.
+5. At the end of the stream, `flush` returns any frames the chain is still holding.
+
+Audio works the same way, with an [`AudioFilter`](../reference/audio.md#audiofilter) built from an
+`AudioFilterChain`. One use only it can do is cutting at an exact sample: skipping whole decoded
+frames can only cut at frame boundaries, which can be 85 ms apart for FLAC.
+
+```rust
+use media::prelude::*;
+# fn demo(decoder: &Decoder, time_base: Rational) -> media::Result<()> {
+// Keep the audio from 10.5 s on. `atrim` reads each frame's pts, so set it from
+// `best_effort_timestamp` before pushing the frame in.
+let mut trim = AudioFilter::new(decoder, time_base, &AudioFilterChain::raw("atrim=start=10.5"))?;
+# let _ = &mut trim; Ok(()) }
+```
+
 ## Color correction reference
 
 | Knob         | Identity | Meaning                                |

@@ -1,5 +1,6 @@
 //! Compressed media packets.
 
+use crate::error::Result;
 use crate::raw::packet::RawPacket;
 use crate::types::rational::Rational;
 
@@ -12,6 +13,43 @@ pub struct Packet {
 impl Packet {
     pub(crate) fn from_raw(raw: RawPacket) -> Self {
         Self { raw }
+    }
+
+    /// Build a packet from its parts: a copy of `data`, its timestamps and `duration` in the time base of the stream
+    /// it will be written to, and whether it is a keyframe. Its stream index is 0 until
+    /// [`set_stream_index`](Self::set_stream_index) changes it.
+    ///
+    /// Together with [`data`](Self::data), [`pts`](Self::pts), [`dts`](Self::dts), [`duration`](Self::duration) and
+    /// [`is_keyframe`](Self::is_keyframe), this lets encoded packets be kept, in memory or on disk, and written again
+    /// later:
+    ///
+    /// ```no_run
+    /// use media::prelude::*;
+    /// # fn demo(packet: &Packet) -> media::Result<()> {
+    /// let kept = packet.data().to_vec();
+    /// let again = Packet::from_data(&kept, packet.pts(), packet.dts(), packet.duration(), packet.is_keyframe())?;
+    /// assert_eq!(again.data(), packet.data());
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// Errors with [`Error::InvalidConfig`](crate::Error::InvalidConfig) when `data` is over 2 GiB, which no packet
+    /// can hold.
+    pub fn from_data(data: &[u8], pts: i64, dts: i64, duration: i64, keyframe: bool) -> Result<Self> {
+        let mut raw = RawPacket::from_bytes(data)?;
+        raw.set_timestamps(pts, dts);
+        raw.set_duration(duration);
+        raw.set_keyframe(keyframe);
+        Ok(Self { raw })
+    }
+
+    /// The packet's compressed payload, exactly as the demuxer read it or the encoder produced it.
+    pub fn data(&self) -> &[u8] {
+        self.raw.data()
+    }
+
+    /// How long the packet lasts, in its stream's time base; `0` when unknown.
+    pub fn duration(&self) -> i64 {
+        self.raw.duration()
     }
 
     /// The index of the stream this packet belongs to.

@@ -1,10 +1,10 @@
 //! RAII wrapper for `AVPacket`.
 
 use super::util::{impl_ffi_drop, non_null};
-use crate::error::Result;
+use crate::error::{Error, Result, check};
 use crate::sys;
 use crate::types::rational::Rational;
-use std::ptr::NonNull;
+use std::ptr::{self, NonNull};
 
 /// An owned `AVPacket`. Freed with `av_packet_free` on drop.
 pub(crate) struct RawPacket {
@@ -17,6 +17,19 @@ impl RawPacket {
         // SAFETY: av_packet_alloc allocates an AVPacket or returns null.
         let ptr = unsafe { sys::av_packet_alloc() };
         Ok(Self { ptr: non_null(ptr, "AVPacket")? })
+    }
+
+    /// Allocate a packet holding a copy of `data`, in a buffer of its own (padded as decoders and muxers expect).
+    pub(crate) fn from_bytes(data: &[u8]) -> Result<Self> {
+        let size = i32::try_from(data.len()).map_err(|_| Error::InvalidConfig("a packet's data is over 2 GiB"))?;
+        let mut packet = Self::alloc()?;
+        // SAFETY: packet is a valid empty AVPacket; av_new_packet gives it a buffer of `size` bytes plus padding.
+        check(unsafe { sys::av_new_packet(packet.as_mut_ptr(), size) })?;
+        if size > 0 {
+            // SAFETY: the buffer was just allocated with room for `data.len()` bytes, and doesn't overlap `data`.
+            unsafe { ptr::copy_nonoverlapping(data.as_ptr(), (*packet.as_mut_ptr()).data, data.len()) };
+        }
+        Ok(packet)
     }
 
     pub(crate) fn as_ptr(&self) -> *const sys::AVPacket {
@@ -45,6 +58,33 @@ impl RawPacket {
 
     pub(crate) fn is_keyframe(&self) -> bool {
         unsafe { (*self.ptr.as_ptr()).flags & sys::AV_PKT_FLAG_KEY as i32 != 0 }
+    }
+
+    pub(crate) fn set_keyframe(&mut self, keyframe: bool) {
+        let key = sys::AV_PKT_FLAG_KEY as i32;
+        unsafe {
+            let flags = &mut (*self.ptr.as_ptr()).flags;
+            *flags = if keyframe { *flags | key } else { *flags & !key };
+        }
+    }
+
+    pub(crate) fn set_timestamps(&mut self, pts: i64, dts: i64) {
+        unsafe {
+            (*self.ptr.as_ptr()).pts = pts;
+            (*self.ptr.as_ptr()).dts = dts;
+        }
+    }
+
+    /// The packet's payload; empty for a packet with no data.
+    pub(crate) fn data(&self) -> &[u8] {
+        // SAFETY: a packet's `data` points to `size` readable bytes for as long as the packet holds its reference.
+        unsafe {
+            let p = self.ptr.as_ptr();
+            match usize::try_from((*p).size) {
+                Ok(len) if len > 0 && !(*p).data.is_null() => std::slice::from_raw_parts((*p).data, len),
+                _ => &[],
+            }
+        }
     }
 
     /// The packet's duration, in its time base; `0` when unknown.

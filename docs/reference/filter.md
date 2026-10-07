@@ -20,7 +20,28 @@ the order added.
 | `description` | `description(&self) -> String` | The combined libavfilter string (stages joined with `,`). |
 
 Apply a chain with [`transcode(...).video_filter(chain)`](transcode.md) or the builder's
-`video_filter`.
+`video_filter`, or run it yourself on decoded frames with a [`VideoFilter`](#videofilter).
+
+## `VideoFilter`
+
+A `VideoFilterChain`, built for the frames of one decoder and ready to run. Use it in a
+[low-level pipeline](../guides/low-level.md) to scale, turn or convert frames before you encode
+them. Its audio counterpart is [`AudioFilter`](audio.md#audiofilter).
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `new(decoder: &Decoder, time_base: Rational, chain: &VideoFilterChain) -> Result<Self>` | Build `chain` for `decoder`'s frames (their size, pixel format and sample aspect ratio), whose timestamps are in `time_base`. An empty chain passes frames through. |
+| `filter` | `filter(&mut self, frame: Frame) -> Result<Vec<Frame>>` | Push one frame through; returns every frame that comes out (usually one). |
+| `flush` | `flush(&mut self) -> Result<Vec<Frame>>` | End of stream: returns the frames the chain was still holding. |
+| `output_width` | `output_width(&self) -> u32` | Width of the frames it emits. |
+| `output_height` | `output_height(&self) -> u32` | Height of the frames it emits. |
+| `output_pixel_format` | `output_pixel_format(&self) -> PixelFormat` | Pixel format of the frames it emits. |
+| `output_time_base` | `output_time_base(&self) -> Rational` | Time base of the timestamps it emits; most stages keep the input's, `fps` doesn't. |
+| `output_frame_rate` | `output_frame_rate(&self) -> Option<Framerate>` | Frame rate of the frames it emits, when the chain knows it (after `fps`). |
+
+The `output_*` accessors answer before any frame goes in, so you can size a
+[`VideoEncoder`](codec.md#videoencoder) from them. The input shape is fixed when the filter is
+built: a stream that changes resolution midway needs a new filter.
 
 ## `DenoiseLevel`
 

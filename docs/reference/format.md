@@ -17,6 +17,7 @@ Opens a media file and exposes its streams and packets.
 | `stream_kind` | `stream_kind(&self, index: usize) -> Result<StreamKind>` | The stream's kind. |
 | `stream_time_base` | `stream_time_base(&self, index: usize) -> Result<Rational>` | The stream's time base. |
 | `stream_avg_frame_rate` | `stream_avg_frame_rate(&self, index: usize) -> Result<Rational>` | Average frame rate (may be `0/0`). |
+| `stream_rotation` | `stream_rotation(&self, index: usize) -> Result<Option<i32>>` | How far to turn the stream clockwise to show it upright: `0`, `90`, `180` or `270` degrees, or `None` when it doesn't say. See [Rotation](#rotation). |
 | `seek` | `seek(&mut self, stream_index: usize, at: Duration) -> Result<()>` | Seek to at/before the nearest keyframe; call [`Decoder::reset`](codec.md#decoder) after. |
 | `packets` | `packets(&mut self) -> Packets<'_>` | Iterate every packet in interleaved order. |
 
@@ -24,6 +25,22 @@ Opens a media file and exposes its streams and packets.
     `stream(&mut self, …)` takes `&mut self` because a [`StreamRef`](#streamref) may need to
     seek (for `sampled_at`). Build a `Decoder` from the handle up front; the decoder itself
     does not borrow the reader, so you can then decode while iterating `packets()`.
+
+### Rotation
+
+Phones record portrait video as landscape pixels and store the turn in the file, as a display
+matrix. Players apply it when they show the video, and copying the stream into another file keeps
+it. Decoding drops it: decoded frames are the stored, sideways pixels. So a re-encode that should
+come out upright turns the frames itself, before scaling:
+
+| `stream_rotation` | Filter stage |
+|-------------------|--------------|
+| `Some(90)` | `transpose=clock` |
+| `Some(180)` | `hflip,vflip` |
+| `Some(270)` | `transpose=cclock` |
+| `None` or `Some(0)` | — |
+
+Angles are rounded to the nearest quarter turn. A mirrored matrix reports only its rotation.
 
 ### `StreamRef`
 

@@ -1,6 +1,7 @@
 //! RAII wrapper for `AVCodecContext` plus the shared send/receive primitives used by both
 //! decoders and encoders.
 
+use super::dictionary::Dictionary;
 use super::frame::RawFrame;
 use super::packet::RawPacket;
 use super::util::{impl_ffi_drop, non_null};
@@ -82,10 +83,20 @@ impl CodecContext {
         self.ptr.as_ptr()
     }
 
-    /// Open the codec, finalising configuration. Pass `None` for no private options.
+    /// Open the codec, finalising configuration.
     pub(crate) fn open(&mut self) -> Result<()> {
         // SAFETY: ctx and codec are valid; passing null options.
         check(unsafe { sys::avcodec_open2(self.ctx(), self.codec, ptr::null_mut()) })
+    }
+
+    /// Open the codec with `options`, generic or codec-private, as `key=value` pairs. Any the codec didn't
+    /// recognise fail with [`Error::UnknownOption`], after the codec has been opened, so the context is then dropped.
+    pub(crate) fn open_with(&mut self, options: &[(CString, CString)]) -> Result<()> {
+        let mut dict = Dictionary::new(options)?;
+        // SAFETY: ctx and codec are valid; open2 consumes the options it recognises and leaves the rest in `dict`.
+        check(unsafe { sys::avcodec_open2(self.ctx(), self.codec, &mut dict.0) })?;
+        let unknown = dict.keys();
+        if unknown.is_empty() { Ok(()) } else { Err(Error::UnknownOption(unknown.join(", "))) }
     }
 
     // --- parameter copy ---------------------------------------------------------------
@@ -242,6 +253,11 @@ impl CodecContext {
 
     pub(crate) fn framerate(&self) -> Rational {
         Rational::from_av(unsafe { (*self.ctx()).framerate })
+    }
+
+    /// The width of a pixel relative to its height; `0/1` when unknown.
+    pub(crate) fn sample_aspect_ratio(&self) -> Rational {
+        Rational::from_av(unsafe { (*self.ctx()).sample_aspect_ratio })
     }
 
     /// Deep-copy this context's channel layout (for inheriting from a decoder).

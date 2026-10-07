@@ -152,6 +152,8 @@ cargo run --example extract_save             # save frames + raw RGB pixel acces
 cargo run --example decode_frames            # MediaReader + Decoder (Tier 3 read)
 cargo run --example seek                     # seek to a timestamp before decoding
 cargo run --example transcode_lowlevel       # read → decode → encode → mux by hand
+cargo run --example segments                 # independent 2 s H.264 segments, kept as bytes and re-muxed
+cargo run --example audio_trim               # cut decoded audio at an exact sample with AudioFilter
 cargo run --example logging                  # FFmpeg log verbosity control
 cargo run --example raw_ffi                  # media::sys raw FFI escape hatch
 cargo run --example version                  # print the linked FFmpeg version

@@ -32,9 +32,32 @@ encoder, the input to a decoder or a muxer.
 | `pts` | `i64` | Presentation timestamp, in the stream's time base. |
 | `dts` | `i64` | Decompression timestamp, in the stream's time base. |
 | `is_keyframe` | `bool` | Whether a decoder can start from this packet. Flush a fragmented MP4 writer before one to cut a fragment there. |
+| `duration` | `i64` | How long the packet lasts, in the stream's time base; `0` when unknown. |
+| `data` | `&[u8]` | The compressed payload, exactly as the demuxer read it or the encoder produced it. |
+| `from_data` | `from_data(data: &[u8], pts: i64, dts: i64, duration: i64, keyframe: bool) -> Result<Packet>` | A packet from its parts: a copy of `data`, with its timestamps and duration. Its stream index is `0` until you set it. |
 | `rescale_ts` | `rescale_ts(&mut self, src: Rational, dst: Rational)` | Rescale timestamps between time bases. |
 | `clear_pos` | `clear_pos(&mut self)` | Reset the byte position so the muxer recomputes it. |
 | `offset_timestamps` | `offset_timestamps(&mut self, delta: i64)` | Shift pts/dts earlier by `delta` (re-basing trimmed streams). |
+
+### Keeping packets
+
+`data`, `pts`, `dts`, `duration` and `is_keyframe` are everything a muxer needs from a packet,
+and `from_data` rebuilds one from them. So encoded packets can be stored, in memory or on disk,
+and written again later: a cache of encoded segments, for example.
+
+```rust
+use media::prelude::*;
+# fn demo(packet: &Packet) -> media::Result<()> {
+let kept = (packet.data().to_vec(), packet.pts(), packet.dts(), packet.duration(), packet.is_keyframe());
+
+let (data, pts, dts, duration, keyframe) = kept;
+let mut again = Packet::from_data(&data, pts, dts, duration, keyframe)?;
+again.set_stream_index(0);
+# Ok(()) }
+```
+
+Rebuilt packets write the same bytes as the originals, provided they go to a stream with the same
+parameters and time base. Packet side data isn't kept.
 
 !!! note "Muxing handles rescaling for you"
     When you call [`MediaWriter::write_packet`](format.md#mediawriter), it rescales the

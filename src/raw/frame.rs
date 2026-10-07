@@ -157,6 +157,22 @@ impl RawFrame {
         Ok(buf)
     }
 
+    /// Make `self` a new reference to `src`'s buffers and a copy of its metadata, with no picture type: the
+    /// decoder's I/P/B decision, which an encoder would otherwise take as an order. No pixel copy. Call
+    /// [`unref`](Self::unref) once done with it.
+    pub(crate) fn ref_without_picture_type(&mut self, src: &RawFrame) -> Result<()> {
+        // SAFETY: both frames are valid; self is unreferenced (alloc'd or unref'd), as av_frame_ref requires.
+        check(unsafe { sys::av_frame_ref(self.as_mut_ptr(), src.as_ptr()) })?;
+        unsafe { (*self.as_mut_ptr()).pict_type = sys::AVPictureType_AV_PICTURE_TYPE_NONE };
+        Ok(())
+    }
+
+    /// Drop this frame's buffer references and reset its fields, leaving it ready to be filled again.
+    pub(crate) fn unref(&mut self) {
+        // SAFETY: self is a valid frame; unref accepts one with or without buffers.
+        unsafe { sys::av_frame_unref(self.as_mut_ptr()) };
+    }
+
     /// Move the contents (refcounted buffers + metadata) of `self` into a brand-new frame,
     /// leaving `self` unreferenced and ready for the next receive. No pixel/sample copy.
     pub(crate) fn move_out(&mut self) -> Result<RawFrame> {

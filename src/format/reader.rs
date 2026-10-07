@@ -78,6 +78,20 @@ impl MediaReader {
         self.input.stream_avg_frame_rate(index)
     }
 
+    /// How far stream `index` must be turned clockwise to be shown upright, in degrees: `0`, `90`, `180` or `270`, or
+    /// `None` when the stream doesn't say.
+    ///
+    /// Phones record portrait video as landscape pixels and store the turn in the file, as a display matrix, which
+    /// players apply when they show it. Copying a stream into another file keeps the matrix, but decoding drops it:
+    /// decoded frames are the stored landscape pixels, so a transcode that should come out upright turns them itself,
+    /// for example with `transpose=clock` for `90`. Angles are rounded to the nearest quarter turn; a mirrored matrix
+    /// reports only its rotation.
+    pub fn stream_rotation(&self, index: usize) -> Result<Option<i32>> {
+        let angle = self.input.stream_display_rotation(index)?;
+        // FFmpeg's angle is counterclockwise; a quarter-turn count of 0..4 gives the clockwise one.
+        Ok(angle.map(|angle| ((-angle / 90.0).round() as i32).rem_euclid(4) * 90))
+    }
+
     pub(crate) fn input(&self) -> &InputFormatContext {
         &self.input
     }

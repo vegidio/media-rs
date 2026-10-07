@@ -68,6 +68,14 @@ impl Decoder {
         crate::types::pixel_format::PixelFormat::from_av(self.ctx.pix_fmt())
     }
 
+    /// The shape of a decoded pixel (video streams): its width relative to its height. `1:1` for square pixels,
+    /// and for a stream that doesn't say. An anamorphic stream reports something else, such as `4:3` for 1440×1080
+    /// shown at 1920×1080: multiply the width by it to get the shape the picture is meant to be shown at.
+    pub fn sample_aspect_ratio(&self) -> crate::types::rational::Rational {
+        let sar = self.ctx.sample_aspect_ratio();
+        if sar.num > 0 && sar.den > 0 { sar } else { crate::types::rational::Rational::ONE }
+    }
+
     /// The decoded sample rate in Hz (audio streams).
     pub fn sample_rate(&self) -> u32 {
         self.ctx.sample_rate().max(0) as u32
