@@ -8,11 +8,12 @@ use super::codec_context::CodecContext;
 use super::dictionary::Dictionary;
 use super::packet::RawPacket;
 use super::util::{bprint_to_string, non_null};
-use crate::error::{AV_NOPTS_VALUE, AVERROR_EOF, Error, Result, check, strerror};
+use crate::error::{AV_NOPTS_VALUE, AVERROR_EIO, AVERROR_EOF, Error, Result, check, strerror};
 use crate::sys;
-use crate::types::rational::Rational;
+use crate::types::rational::{Framerate, Rational};
 use crate::types::stream_kind::StreamKind;
 use std::any::Any;
+use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::os::raw::{c_int, c_void};
@@ -144,15 +145,10 @@ impl InputFormatContext {
 
     /// The RFC 6381 codec string FFmpeg builds for stream `index` (`avc1.640028`, `mp4a.40.2`, …), or `None` when
     /// it has none for the codec or its parameters are too incomplete to build one.
-    pub(crate) fn stream_codec_string(&self, index: usize) -> Result<Option<String>> {
+    pub(crate) fn stream_codec_string(&self, index: usize, frame_rate: Option<Framerate>) -> Result<Option<String>> {
         let par = self.stream_codecpar(index)?;
-        let avg = self.stream_avg_frame_rate(index)?;
         // `1/0` is av_mime_codec_str's documented "frame rate unknown".
-        let frame_rate = if self.stream_kind(index)? == StreamKind::Video && avg.num > 0 && avg.den > 0 {
-            avg
-        } else {
-            Rational::new(1, 0)
-        };
+        let frame_rate = frame_rate.map_or(Rational::new(1, 0), |f| f.0);
         // SAFETY: par is the stream's live codecpar; bp is the live AVBPrint bprint_to_string hands over.
         let text = bprint_to_string(|bp| unsafe { sys::av_mime_codec_str(par, frame_rate.to_av(), bp) });
         Ok(text.ok().filter(|s| !s.is_empty()))
@@ -235,9 +231,6 @@ struct WriteSink {
 /// The custom AVIO's buffer size: FFmpeg's own default for file AVIO.
 const SINK_BUFFER_SIZE: usize = 64 * 1024;
 
-/// `AVERROR(EIO)`: `EIO` is `5` on every target this crate builds for.
-const AVERROR_EIO: i32 = -5;
-
 /// The custom AVIO's write callback: hand `buf` to the sink's writer. A failed or panicking write is stored on
 /// the sink and reported to FFmpeg as `EIO`, so no panic unwinds across the FFI boundary.
 unsafe extern "C" fn write_to_sink(opaque: *mut c_void, buf: *const u8, size: c_int) -> c_int {
@@ -287,8 +280,8 @@ impl OutputFormatContext {
         let cformat = cformat.transpose()?;
         let format_ptr = cformat.as_ref().map_or(ptr::null(), |f| f.as_ptr());
         let (label, curl) = match &target {
-            OutputTarget::Path(url) => (url.clone(), Some(cstring(url)?)),
-            OutputTarget::Writer(_) => (format!("writer ({})", format.unwrap_or("no format")), None),
+            OutputTarget::Path(url) => (Cow::Borrowed(url.as_str()), Some(cstring(url)?)),
+            OutputTarget::Writer(_) => (Cow::Owned(format!("writer ({})", format.unwrap_or("no format"))), None),
         };
         let url_ptr = curl.as_ref().map_or(ptr::null(), |u| u.as_ptr());
 
@@ -305,9 +298,8 @@ impl OutputFormatContext {
             let oformat = (*ctx.ctx()).oformat;
             (*oformat).flags & sys::AVFMT_NOFILE as i32 == 0
         };
-        match target {
-            OutputTarget::Path(url) if needs_file => {
-                let curl = cstring(&url)?;
+        match (target, curl) {
+            (OutputTarget::Path(url), Some(curl)) if needs_file => {
                 // SAFETY: pb is a valid out-param slot; curl valid for the call.
                 let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
                 if r < 0 {
@@ -315,11 +307,11 @@ impl OutputFormatContext {
                 }
                 ctx.io = OutputIo::File;
             }
-            OutputTarget::Path(_) => {}
-            OutputTarget::Writer(_) if !needs_file => {
+            (OutputTarget::Path(_), _) => {}
+            (OutputTarget::Writer(_), _) if !needs_file => {
                 return Err(Error::InvalidConfig("this format writes no bytes, so it can't write to a writer"));
             }
-            OutputTarget::Writer(writer) => ctx.attach_sink(writer)?,
+            (OutputTarget::Writer(writer), _) => ctx.attach_sink(writer)?,
         }
         Ok(ctx)
     }
@@ -448,10 +440,7 @@ impl OutputFormatContext {
         // leaves the rest in the dictionary.
         let ret = unsafe { sys::avformat_init_output(self.ctx(), &mut dict.0) };
         self.check_io(ret)?;
-        let unknown = dict.keys();
-        if !unknown.is_empty() {
-            return Err(Error::UnknownOption(unknown.join(", ")));
-        }
+        dict.ensure_consumed()?;
         // SAFETY: the muxer was initialised above, so no options are left to pass.
         let ret = unsafe { sys::avformat_write_header(self.ctx(), ptr::null_mut()) };
         self.check_io(ret)

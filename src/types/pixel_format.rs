@@ -26,6 +26,13 @@ pub enum PixelFormat {
 }
 
 impl PixelFormat {
+    /// FFmpeg's name for this format (`yuv420p`, `nv12`, …), as filters such as `format=` take it.
+    pub(crate) fn name(self) -> Option<&'static str> {
+        // SAFETY: av_get_pix_fmt_name returns null or a static NUL-terminated string.
+        let name = unsafe { sys::av_get_pix_fmt_name(self.to_av()) };
+        if name.is_null() { None } else { unsafe { std::ffi::CStr::from_ptr(name) }.to_str().ok() }
+    }
+
     pub(crate) fn to_av(self) -> sys::AVPixelFormat {
         match self {
             PixelFormat::Yuv420p => sys::AVPixelFormat_AV_PIX_FMT_YUV420P,

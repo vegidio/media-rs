@@ -16,6 +16,13 @@ const INPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/video2.mp4");
 #[derive(Clone, Default)]
 struct Counter(Arc<Mutex<usize>>);
 
+impl Counter {
+    /// The bytes received so far.
+    fn total(&self) -> usize {
+        *self.0.lock().unwrap()
+    }
+}
+
 impl Write for Counter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         *self.0.lock().unwrap() += buf.len();
@@ -44,7 +51,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // The init segment (`ftyp` + `moov`) goes first; flush it out so it can be appended on its own.
     writer.write_header()?;
     writer.flush()?;
-    let mut handed_over = *sink.0.lock().unwrap();
+    let mut handed_over = sink.total();
     println!("init segment: {handed_over} bytes");
 
     // Flushing before each keyframe closes the fragment before it and pushes it into the writer.
@@ -53,7 +60,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut packet = packet?;
         if packet.stream_index() == video && packet.is_keyframe() {
             writer.flush()?;
-            let total = *sink.0.lock().unwrap();
+            let total = sink.total();
             if total > handed_over {
                 fragments += 1;
                 println!("fragment {fragments}: {} bytes", total - handed_over);
@@ -66,7 +73,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // The trailer writes the last fragment.
     writer.write_trailer()?;
-    let total = *sink.0.lock().unwrap();
+    let total = sink.total();
     println!("fragment {}: {} bytes", fragments + 1, total - handed_over);
     println!("{total} bytes in all");
 

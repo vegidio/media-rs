@@ -18,11 +18,11 @@ pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo> {
         let sample_rate = reader.input().stream_sample_rate(index)?;
         let codec_id = reader.input().stream_codec_id(index)?;
         let codec_name = reader.input().stream_codec_name(index)?;
-        let codec_string = reader.input().stream_codec_string(index)?;
         // The average, not `r_frame_rate`: that is the timebase-derived base rate, which for a variable-rate phone
         // video often reads 60 or 90000/1 where players show the average.
         let avg = reader.input().stream_avg_frame_rate(index)?;
-        let frame_rate = (kind == StreamKind::Video && avg.num > 0 && avg.den > 0).then_some(Framerate(avg));
+        let frame_rate = if kind == StreamKind::Video { Framerate::known(avg) } else { None };
+        let codec_string = reader.input().stream_codec_string(index, frame_rate)?;
         streams.push(StreamInfo {
             index,
             kind,

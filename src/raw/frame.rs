@@ -20,6 +20,13 @@ impl RawFrame {
         Ok(Self { ptr: non_null(ptr, "AVFrame")? })
     }
 
+    /// A new frame referencing the same buffers, with a copy of the metadata. No pixel copy.
+    pub(crate) fn try_clone(&self) -> Result<Self> {
+        // SAFETY: self is a valid frame; av_frame_clone allocates a new one or returns null.
+        let ptr = unsafe { sys::av_frame_clone(self.as_ptr()) };
+        Ok(Self { ptr: non_null(ptr, "AVFrame")? })
+    }
+
     pub(crate) fn as_ptr(&self) -> *const sys::AVFrame {
         self.ptr.as_ptr()
     }

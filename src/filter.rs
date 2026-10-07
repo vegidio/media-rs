@@ -10,10 +10,8 @@ use crate::frame::Frame;
 use crate::raw::codec_context::Receive;
 use crate::raw::filter_graph::{AudioFilterGraph, AudioInput, VideoFilterGraph, VideoInput};
 use crate::raw::frame::RawFrame;
-use crate::types::channel_layout::ChannelLayout;
 use crate::types::pixel_format::PixelFormat;
 use crate::types::rational::{Framerate, Rational};
-use crate::types::sample_format::SampleFormat;
 use std::time::Duration;
 
 /// A gain amount in decibels (e.g. `Decibels(-6.0)` halves perceived loudness).
@@ -233,14 +231,14 @@ impl VideoFilter {
     /// Errors when the chain doesn't parse, names a filter this FFmpeg build lacks, or can't take frames of the
     /// decoder's shape.
     pub fn new(decoder: &Decoder, time_base: Rational, chain: &VideoFilterChain) -> Result<Self> {
-        let (width, height) = (decoder.width() as i32, decoder.height() as i32);
+        let (width, height) = (decoder.width(), decoder.height());
         Self::from_shape(width, height, decoder.pixel_format(), time_base, decoder.sample_aspect_ratio(), chain)
     }
 
     /// Build `chain` for frames of an explicit shape, for callers inside the crate that have no decoder at hand.
     pub(crate) fn from_shape(
-        width: i32,
-        height: i32,
+        width: u32,
+        height: u32,
         pix_fmt: PixelFormat,
         time_base: Rational,
         sample_aspect_ratio: Rational,
@@ -248,6 +246,7 @@ impl VideoFilter {
     ) -> Result<Self> {
         // An empty description isn't a valid graph; `null` is the pass-through filter.
         let description = if chain.is_empty() { "null".to_owned() } else { chain.description() };
+        let (width, height) = (width as i32, height as i32);
         let input = VideoInput { width, height, pix_fmt: pix_fmt.to_av(), time_base, sample_aspect_ratio };
         Ok(Self { runner: FilterRunner::new(VideoFilterGraph::new(&input, &description)?)? })
     }
@@ -274,8 +273,7 @@ impl VideoFilter {
 
     /// The frame rate of the frames this filter emits, when the chain knows it (after `fps`, for example).
     pub fn output_frame_rate(&self) -> Option<Framerate> {
-        let fr = self.runner.graph.out_frame_rate();
-        (fr.num > 0 && fr.den > 0).then_some(Framerate(fr))
+        Framerate::known(self.runner.graph.out_frame_rate())
     }
 
     /// Push one frame through the chain and return every frame that comes out: usually one, none while a filter
@@ -400,21 +398,14 @@ impl AudioFilter {
     /// Errors when the chain doesn't parse, names a filter this FFmpeg build lacks, or can't take frames of the
     /// decoder's format.
     pub fn new(decoder: &Decoder, time_base: Rational, chain: &AudioFilterChain) -> Result<Self> {
-        let rate = decoder.sample_rate() as i32;
-        Self::from_shape(rate, decoder.sample_format(), decoder.ch_layout_owned(), time_base, chain)
-    }
-
-    /// Build `chain` for frames of an explicit shape, for callers inside the crate that have no decoder at hand.
-    pub(crate) fn from_shape(
-        sample_rate: i32,
-        sample_fmt: SampleFormat,
-        ch_layout: ChannelLayout,
-        time_base: Rational,
-        chain: &AudioFilterChain,
-    ) -> Result<Self> {
         // An empty description isn't a valid graph; `anull` is the pass-through filter.
         let description = if chain.is_empty() { "anull".to_owned() } else { chain.description() };
-        let input = AudioInput { sample_rate, sample_fmt: sample_fmt.to_av(), ch_layout, time_base };
+        let input = AudioInput {
+            sample_rate: decoder.sample_rate() as i32,
+            sample_fmt: decoder.sample_format().to_av(),
+            ch_layout: decoder.ch_layout_owned(),
+            time_base,
+        };
         Ok(Self { runner: FilterRunner::new(AudioFilterGraph::new(&input, &description)?)? })
     }
 

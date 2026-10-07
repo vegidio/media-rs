@@ -38,16 +38,16 @@ pub(crate) struct TranscodeOptions {
     pub audio_filter: AudioFilterChain,
 }
 
-/// Encode one frame whose presentation time is `ts`, in the encoder's time base, and mux the resulting packets.
+/// Encode one frame, whose `pts` is in the encoder's time base, and mux the resulting packets.
 fn encode_and_mux(
     encoder: &mut VideoEncoder,
     writer: &mut MediaWriter,
     out_idx: usize,
     mut frame: Frame,
-    ts: i64,
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
+    let ts = frame.pts().ok_or(Error::Bug("a video frame reached the encoder without a pts"))?;
     frame.set_pts(ts - trim_start_ts);
     for pkt in encoder.encode(&frame)? {
         let mut pkt = pkt?;
@@ -56,20 +56,6 @@ fn encode_and_mux(
     }
     *frames += 1;
     Ok(())
-}
-
-/// Encode one frame the filter emitted. The filter sets `pts` itself, in its output time base, which is the encoder's;
-/// the frame's `best_effort_timestamp` is still the decoder's, copied from its source frame, so it is not used.
-fn encode_filtered(
-    encoder: &mut VideoEncoder,
-    writer: &mut MediaWriter,
-    out_idx: usize,
-    frame: Frame,
-    trim_start_ts: i64,
-    frames: &mut u64,
-) -> Result<()> {
-    let ts = frame.pts().ok_or(Error::Bug("the video filter emitted a frame without a pts"))?;
-    encode_and_mux(encoder, writer, out_idx, frame, ts, trim_start_ts, frames)
 }
 
 /// Run a frame (from decode or decoder-flush) through the optional filter, then encode it.
@@ -84,14 +70,14 @@ fn process_video_frame(
     trim_start_ts: i64,
     frames: &mut u64,
 ) -> Result<()> {
-    let ts = frame.best_ts();
+    // Encoder and filter both time frames by `pts`, which a decoder may leave unset where its best-effort timestamp
+    // is not. A frame the filter emits carries the filter's own `pts`, in its output time base (the encoder's).
+    frame.set_pts(frame.best_ts());
     match vfilter {
-        None => encode_and_mux(encoder, writer, out_idx, frame, ts, trim_start_ts, frames),
+        None => encode_and_mux(encoder, writer, out_idx, frame, trim_start_ts, frames),
         Some(vf) => {
-            // The filter times frames by `pts`, which a decoder may leave unset where its best-effort timestamp is not.
-            frame.set_pts(ts);
             for out in vf.filter(frame)? {
-                encode_filtered(encoder, writer, out_idx, out, trim_start_ts, frames)?;
+                encode_and_mux(encoder, writer, out_idx, out, trim_start_ts, frames)?;
             }
             Ok(())
         }
@@ -165,7 +151,7 @@ fn setup_video(
     let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
         (in_w, in_h, in_pix)
     } else {
-        let f = VideoFilter::from_shape(in_w, in_h, in_pix, in_tb, Rational::ONE, &chain)?;
+        let f = VideoFilter::from_shape(in_w as u32, in_h as u32, in_pix, in_tb, Rational::ONE, &chain)?;
         let dims = (f.output_width() as i32, f.output_height() as i32, f.output_pixel_format());
         vfilter = Some(f);
         dims
@@ -177,7 +163,7 @@ fn setup_video(
         .as_ref()
         .and_then(|c| c.framerate)
         .or_else(|| vfilter.as_ref().and_then(VideoFilter::output_frame_rate))
-        .or_else(|| (avg_fr.num > 0 && avg_fr.den > 0).then_some(Framerate(avg_fr)))
+        .or_else(|| Framerate::known(avg_fr))
         .unwrap_or(Framerate::fps(DEFAULT_FRAMERATE_FPS));
 
     let mut eb = VideoEncoder::builder()
@@ -377,7 +363,7 @@ fn run_consumer(
     if let Some(vc) = video.as_mut() {
         if let Some(vf) = vc.vfilter.as_mut() {
             for frame in vf.flush()? {
-                encode_filtered(&mut vc.encoder, writer, vc.out_vidx, frame, v_start_ts, &mut frames)?;
+                encode_and_mux(&mut vc.encoder, writer, vc.out_vidx, frame, v_start_ts, &mut frames)?;
             }
         }
 

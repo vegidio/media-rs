@@ -6,6 +6,7 @@ use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::raw::audio_fifo::AudioFifo;
 use crate::raw::codec_context::{CodecContext, codec_id, drain_received, find_encoder_by_name, has_private_option};
+use crate::raw::dictionary::{set_option, to_c_options};
 use crate::raw::frame::RawFrame;
 use crate::raw::packet::RawPacket;
 use crate::raw::resampler::ResampleContext;
@@ -18,7 +19,6 @@ use crate::types::preset::H264Preset;
 use crate::types::profile::H264Profile;
 use crate::types::rational::{Bitrate, Framerate, Rational};
 use crate::types::sample_format::SampleFormat;
-use std::ffi::CString;
 
 /// Default keyframe interval (group-of-pictures size) when the caller doesn't set one.
 const DEFAULT_GOP_SIZE: i32 = 12;
@@ -224,9 +224,8 @@ impl VideoEncoderBuilder {
         self.width.get_or_insert(ctx.width().max(0) as u32);
         self.height.get_or_insert(ctx.height().max(0) as u32);
         self.pix_fmt.get_or_insert(PixelFormat::from_av(ctx.pix_fmt()));
-        let fr = ctx.framerate();
-        if self.framerate.is_none() && fr.num > 0 && fr.den > 0 {
-            self.framerate = Some(Framerate(fr));
+        if self.framerate.is_none() {
+            self.framerate = Framerate::known(ctx.framerate());
         }
         self
     }
@@ -302,11 +301,7 @@ impl VideoEncoderBuilder {
     /// An option the encoder doesn't recognise fails [`build`](Self::build) with [`Error::UnknownOption`], so a typo
     /// can't be silently ignored. A value it can't take fails `build` with FFmpeg's own error.
     pub fn option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Self {
-        let (key, value) = (key.as_ref().to_owned(), value.as_ref().to_owned());
-        match self.options.iter_mut().find(|(k, _)| *k == key) {
-            Some(entry) => entry.1 = value,
-            None => self.options.push((key, value)),
-        }
+        set_option(&mut self.options, key.as_ref(), value.as_ref());
         self
     }
 
@@ -372,14 +367,9 @@ impl VideoEncoderBuilder {
             }
         }
 
-        let options = self
-            .options
-            .iter()
-            .map(|(k, v)| Ok((CString::new(k.as_str())?, CString::new(v.as_str())?)))
-            .collect::<std::result::Result<Vec<_>, std::ffi::NulError>>()
-            .map_err(|_| Error::InvalidConfig("an encoder option contains a NUL byte"))?;
+        let options = to_c_options(self.options, "an encoder option contains a NUL byte")?;
         ctx.open_with(&options)?;
-        let frame_duration = if framerate.0.num > 0 && framerate.0.den > 0 && time_base.num > 0 {
+        let frame_duration = if framerate.0.is_positive() && time_base.num > 0 {
             // SAFETY: av_rescale_q is pure arithmetic, and neither rational has a zero denominator here.
             unsafe { sys::av_rescale_q(1, framerate.time_base().to_av(), time_base.to_av()) }
         } else {
@@ -413,44 +403,40 @@ impl VideoEncoderBuilder {
         let (width, height) = (encoder.ctx.width(), encoder.ctx.height());
         let step = encoder.frame_duration.max(1);
 
-        // SAFETY: av_get_pix_fmt_name returns null or a static C string.
-        let name = unsafe { sys::av_get_pix_fmt_name(pix_fmt.to_av()) };
-        if name.is_null() {
-            return Err(Error::InvalidConfig("the encoder's pixel format has no name"));
-        }
-        // SAFETY: a non-null name is a static NUL-terminated string.
-        let name = unsafe { std::ffi::CStr::from_ptr(name) }.to_string_lossy();
+        let name = pix_fmt.name().ok_or(Error::InvalidConfig("the encoder's pixel format has no name"))?;
         let chain = VideoFilterChain::raw(format!("format={name}"));
-        let mut convert =
-            VideoFilter::from_shape(width, height, PixelFormat::Rgb24, encoder.time_base, Rational::ONE, &chain)?;
+        let mut convert = VideoFilter::from_shape(
+            width as u32,
+            height as u32,
+            PixelFormat::Rgb24,
+            encoder.time_base,
+            Rational::ONE,
+            &chain,
+        )?;
 
+        // Two images, drawn once; every frame is a reference to one of them.
+        let flat = RawFrame::rgb24(width, height, |_, _| [32, 48, 160])?;
+        let gradient = RawFrame::rgb24(width, height, |x, y| {
+            let shade = |at: i32, of: i32| (at * 255 / of.max(1)) as u8;
+            [224, shade(x, width), shade(y, height)]
+        })?;
+
+        let encode_all = |encoder: &mut VideoEncoder, shaped: Vec<Frame>, packets: &mut Vec<Packet>| -> Result<()> {
+            for frame in shaped {
+                packets.extend(encoder.encode(&frame)?.collect::<Result<Vec<_>>>()?);
+            }
+            Ok(())
+        };
         let cut = frames / 2;
         let mut packets = Vec::new();
         for n in 0..frames {
-            let raw = if n < cut {
-                RawFrame::rgb24(width, height, |_, _| [32, 48, 160])?
-            } else {
-                RawFrame::rgb24(width, height, |x, y| {
-                    let shade = |at: i32, of: i32| (at * 255 / of.max(1)) as u8;
-                    [224, shade(x, width), shade(y, height)]
-                })?
-            };
-            let mut frame = Frame::from_raw(raw);
+            let image = if n < cut { &flat } else { &gradient };
+            let mut frame = Frame::from_raw(image.try_clone()?);
             frame.set_pts(i64::from(n) * step);
-            for shaped in convert.filter(frame)? {
-                for packet in encoder.encode(&shaped)? {
-                    packets.push(packet?);
-                }
-            }
+            encode_all(&mut encoder, convert.filter(frame)?, &mut packets)?;
         }
-        for shaped in convert.flush()? {
-            for packet in encoder.encode(&shaped)? {
-                packets.push(packet?);
-            }
-        }
-        for packet in encoder.flush()? {
-            packets.push(packet?);
-        }
+        encode_all(&mut encoder, convert.flush()?, &mut packets)?;
+        packets.extend(encoder.flush()?.collect::<Result<Vec<_>>>()?);
         Ok(packets)
     }
 }

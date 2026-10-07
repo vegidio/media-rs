@@ -22,7 +22,7 @@ struct Kept {
     keyframe: bool,
 }
 
-impl Kept {
+impl From<&Packet> for Kept {
     fn from(packet: &Packet) -> Self {
         let (pts, dts, duration, keyframe) = (packet.pts(), packet.dts(), packet.duration(), packet.is_keyframe());
         Self { data: packet.data().to_vec(), pts, dts, duration, keyframe }
@@ -128,13 +128,12 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if packet.stream_index() != index {
             continue;
         }
-        let frames = decoder.decode(&packet)?.collect::<media::Result<Vec<_>>>()?;
-        for frame in frames {
-            segmenter.push(frame)?;
+        for frame in decoder.decode(&packet)? {
+            segmenter.push(frame?)?;
         }
     }
-    for frame in decoder.flush()?.collect::<media::Result<Vec<_>>>()? {
-        segmenter.push(frame)?;
+    for frame in decoder.flush()? {
+        segmenter.push(frame?)?;
     }
     segmenter.finish()?;
 

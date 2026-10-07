@@ -73,7 +73,7 @@ impl Decoder {
     /// shown at 1920×1080: multiply the width by it to get the shape the picture is meant to be shown at.
     pub fn sample_aspect_ratio(&self) -> crate::types::rational::Rational {
         let sar = self.ctx.sample_aspect_ratio();
-        if sar.num > 0 && sar.den > 0 { sar } else { crate::types::rational::Rational::ONE }
+        if sar.is_positive() { sar } else { crate::types::rational::Rational::ONE }
     }
 
     /// The decoded sample rate in Hz (audio streams).

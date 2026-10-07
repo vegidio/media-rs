@@ -3,6 +3,7 @@
 use crate::codec::encoder::Encoder;
 use crate::error::{Error, Result};
 use crate::packet::Packet;
+use crate::raw::dictionary::{set_option, to_c_options};
 use crate::raw::format_context::{OutputFormatContext, OutputTarget};
 use crate::types::rational::Rational;
 use std::ffi::CString;
@@ -186,11 +187,7 @@ impl MediaWriterBuilder {
     /// Pass a muxer option, such as `movflags` or `frag_duration`. Repeatable; a later value for the same key wins.
     /// An option the muxer doesn't recognise fails [`MediaWriter::write_header`] with [`Error::UnknownOption`].
     pub fn option(mut self, key: impl AsRef<str>, value: impl AsRef<str>) -> Self {
-        let (key, value) = (key.as_ref().to_owned(), value.as_ref().to_owned());
-        match self.options.iter_mut().find(|(k, _)| *k == key) {
-            Some(entry) => entry.1 = value,
-            None => self.options.push((key, value)),
-        }
+        set_option(&mut self.options, key.as_ref(), value.as_ref());
         self
     }
 
@@ -223,12 +220,7 @@ impl MediaWriterBuilder {
             }
             _ => return Err(Error::InvalidConfig("a media writer requires exactly one of path or writer")),
         };
-        let options = self
-            .options
-            .into_iter()
-            .map(|(k, v)| Ok((CString::new(k)?, CString::new(v)?)))
-            .collect::<std::result::Result<Vec<_>, std::ffi::NulError>>()
-            .map_err(|_| Error::InvalidConfig("a muxer option contains a NUL byte"))?;
+        let options = to_c_options(self.options, "a muxer option contains a NUL byte")?;
         Ok(MediaWriter {
             output: OutputFormatContext::create(target, self.format.as_deref())?,
             source_tb: Vec::new(),

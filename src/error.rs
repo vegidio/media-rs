@@ -166,6 +166,9 @@ pub(crate) const EAGAIN: i32 = 11;
 /// `AVERROR(EAGAIN)` — the "needs more input" sentinel from the send/receive APIs.
 pub(crate) const AVERROR_EAGAIN: i32 = averror(EAGAIN);
 
+/// `AVERROR(EIO)`: `EIO` is `5` on every target this crate builds for.
+pub(crate) const AVERROR_EIO: i32 = averror(5);
+
 /// `AV_NOPTS_VALUE` — the "timestamp unknown" sentinel (`INT64_C(0x8000000000000000)`).
 pub(crate) const AV_NOPTS_VALUE: i64 = i64::MIN;
 

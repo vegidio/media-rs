@@ -33,8 +33,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if packet.stream_index() != index {
             continue;
         }
-        for frame in decoder.decode(&packet)?.collect::<media::Result<Vec<_>>>()? {
-            let mut frame = frame;
+        for frame in decoder.decode(&packet)? {
+            let mut frame = frame?;
             // `atrim` reads each frame's timestamp.
             frame.set_pts(frame.best_effort_timestamp().unwrap_or(0));
             for kept in trim.filter(frame)? {

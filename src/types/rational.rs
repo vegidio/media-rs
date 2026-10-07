@@ -39,6 +39,11 @@ impl Rational {
         ts as f64 * self.as_f64()
     }
 
+    /// Whether both terms are positive: a usable rate or ratio, not FFmpeg's `0/0` or `0/1` "unknown".
+    pub(crate) fn is_positive(self) -> bool {
+        self.num > 0 && self.den > 0
+    }
+
     pub(crate) fn to_av(self) -> sys::AVRational {
         sys::AVRational { num: self.num, den: self.den }
     }
@@ -73,6 +78,11 @@ impl Framerate {
     /// A rational frame rate, e.g. `Framerate::ratio(30000, 1001)` for 29.97 fps.
     pub const fn ratio(num: i32, den: i32) -> Self {
         Self(Rational::new(num, den))
+    }
+
+    /// `r` as a frame rate, or `None` when FFmpeg left it unknown (not positive).
+    pub(crate) fn known(r: Rational) -> Option<Self> {
+        r.is_positive().then_some(Self(r))
     }
 
     /// The frame rate as a floating-point value.

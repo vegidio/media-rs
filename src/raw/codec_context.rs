@@ -114,8 +114,7 @@ impl CodecContext {
 
     /// Open the codec, finalising configuration.
     pub(crate) fn open(&mut self) -> Result<()> {
-        // SAFETY: ctx and codec are valid; passing null options.
-        check(unsafe { sys::avcodec_open2(self.ctx(), self.codec, ptr::null_mut()) })
+        self.open_with(&[])
     }
 
     /// Open the codec with `options`, generic or codec-private, as `key=value` pairs. Any the codec didn't
@@ -124,8 +123,7 @@ impl CodecContext {
         let mut dict = Dictionary::new(options)?;
         // SAFETY: ctx and codec are valid; open2 consumes the options it recognises and leaves the rest in `dict`.
         check(unsafe { sys::avcodec_open2(self.ctx(), self.codec, &mut dict.0) })?;
-        let unknown = dict.keys();
-        if unknown.is_empty() { Ok(()) } else { Err(Error::UnknownOption(unknown.join(", "))) }
+        dict.ensure_consumed()
     }
 
     // --- parameter copy ---------------------------------------------------------------
