@@ -19,9 +19,12 @@
 //! *discovers* every static library in `lib/` and links them all, emitting the FFmpeg core libraries first in
 //! dependency order and the rest afterward. The archive naming differs by toolchain: GNU/macOS builds ship
 //! `lib<name>.a`, while the Windows builds are now **MSVC** and ship `<name>.lib` (the core libs without a `lib`
-//! prefix, e.g. `avcodec.lib`). On GNU linkers (Linux) the whole set is wrapped in `--start-group`/`--end-group` to
-//! resolve the circular references between FFmpeg and its dependencies; the macOS (`ld64`) and MSVC (`link.exe`)
-//! linkers are multi-pass and need no grouping.
+//! prefix, e.g. `avcodec.lib`).
+//!
+//! Every directive is a `cargo:rustc-link-lib`, never a `cargo:rustc-link-arg`: Cargo applies link args only to this
+//! package's own binaries, tests and examples, so a crate that depends on `media-rs` would link without FFmpeg. The
+//! static libraries are bundled into this crate's rlib, a single archive, so even the single-pass GNU `bfd` linker
+//! resolves the circular references between FFmpeg and its dependencies without a `--start-group`.
 
 use std::env;
 use std::fs;
@@ -162,27 +165,11 @@ fn emit_link_directives(lib_dir: &Path) {
         lib_dir.display()
     );
 
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
-
-    // GNU linkers (Linux) resolve symbols in a single pass, so the circular references between FFmpeg and its
-    // dependencies require a link group. The macOS (`ld64`) and Windows MSVC (`link.exe`) linkers are multi-pass and
-    // need no grouping. (The legacy `*-pc-windows-gnu` toolchain would also need a group, but the Windows archives are
-    // now MSVC `.lib` files and only link under `*-pc-windows-msvc`.)
-    let use_link_group = target_os == "linux" || (target_os == "windows" && target_env == "gnu");
-
-    if use_link_group {
-        println!("cargo:rustc-link-arg=-Wl,--start-group");
-        for lib in &libs {
-            println!("cargo:rustc-link-arg=-l{lib}");
-        }
-        println!("cargo:rustc-link-arg=-Wl,--end-group");
-    } else {
-        for lib in &libs {
-            println!("cargo:rustc-link-lib=static={lib}");
-        }
+    for lib in &libs {
+        println!("cargo:rustc-link-lib=static={lib}");
     }
 
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     emit_system_libs(&target_os);
 }
 
@@ -273,28 +260,9 @@ fn emit_system_libs(target_os: &str) {
             println!("cargo:rustc-link-lib=dylib=z");
             // The Linux build is `--enable-vaapi`, so `libavutil`/`libavcodec` reference VA-API symbols. As of binaries
             // 26.6.0 these are **bundled** — the archive ships `libva.a`/`libva-drm.a`/`libdrm.a`, which
-            // `discover_link_order()` picks up and links inside the `--start-group` above, so there is no host libva
+            // `discover_link_order()` picks up and links with the rest, so there is no host libva
             // dependency. VA-API (and NVENC/CUDA/QSV) still `dlopen` the GPU vendor driver at runtime (covered by
             // `-ldl`); no VDPAU symbols are referenced.
-
-            // aarch64-only linker fixes for GNU `bfd` (the default linker there; x86_64 uses `rust-lld`, which needs
-            // neither and even *rejects* the flag below — hence the gate).
-            //
-            // 1. `bfd` honours rustc's `--as-needed` positionally: a lib is kept only if it resolves an
-            //    *already-undefined* symbol when it appears. The system libs sit *before* the FFmpeg `--start-group`,
-            //    so by the time the group references libm or libgcc's aarch64 outline atomics those libs are already
-            //    discarded -> "undefined reference". Re-listing them as link-args (rustc appends these *after* the
-            //    group) makes the symbols undefined again, so `--as-needed` keeps them. `gcc` (static `libgcc.a`, for
-            //    the outline atomics) resolves via the `cc` driver's search path.
-            // 2. `__stack_chk_guard` is exported by the dynamic loader, a transitive `DT_NEEDED` of libc that bfd won't
-            //    follow by default -> "DSO missing from command line". `--copy-dt-needed-entries` makes it follow
-            //    libc's `NEEDED`; it must precede the trailing `-lc` to take effect.
-            if env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("aarch64") {
-                println!("cargo:rustc-link-arg=-Wl,--copy-dt-needed-entries");
-                for lib in ["stdc++", "m", "z", "pthread", "dl", "gcc", "gcc_s", "util", "rt", "c"] {
-                    println!("cargo:rustc-link-arg=-l{lib}");
-                }
-            }
         }
         "windows" => {
             // The release archives are now **MSVC** `.lib` files, built with vcpkg's `*-static-md` triplet (static
