@@ -71,8 +71,8 @@ pub enum Error {
     #[error("a worker thread panicked during processing")]
     ThreadPanicked,
 
-    /// A path contained an interior NUL byte and could not be passed to FFmpeg.
-    #[error("path contains an interior NUL byte")]
+    /// A path wasn't valid UTF-8 or contained an interior NUL byte, so it could not be passed to FFmpeg.
+    #[error("path is not valid UTF-8 or contains a NUL byte")]
     InvalidPath,
 
     /// The muxer or the encoder didn't recognise one or more options passed to
@@ -152,15 +152,11 @@ pub(crate) const AVERROR_EOF: i32 = fferrtag(b'E', b'O', b'F', b' ');
 
 /// `EAGAIN` (resource temporarily unavailable). FFmpeg returns `AVERROR(EAGAIN)` to mean
 /// "needs more input"; the numeric value of `EAGAIN` differs by platform. macOS/BSD use the
-/// outlier `35`; Linux and the MSVC/UCRT C runtime both use `11`.
+/// outlier `35`; Linux and the MSVC/UCRT C runtime both use `11`, which is also the fallback for
+/// any other target so the crate still compiles.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(crate) const EAGAIN: i32 = 35;
-#[cfg(target_os = "linux")]
-pub(crate) const EAGAIN: i32 = 11;
-#[cfg(windows)]
-pub(crate) const EAGAIN: i32 = 11;
-// Fallback for any other target so the crate still compiles.
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux", windows)))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 pub(crate) const EAGAIN: i32 = 11;
 
 /// `AVERROR(EAGAIN)` — the "needs more input" sentinel from the send/receive APIs.

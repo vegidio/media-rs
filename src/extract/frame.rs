@@ -3,7 +3,8 @@
 use crate::error::{Error, Result};
 use crate::extract::types::ImageFormat;
 use image::{DynamicImage, RgbImage};
-use rust_sak::image::EncodeOptions;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::time::Duration;
 
@@ -50,15 +51,17 @@ impl ExtractedFrame {
     pub fn encode(&self, format: ImageFormat) -> Result<Vec<u8>> {
         let img = self.dynamic_image()?;
         let mut bytes = Vec::new();
-        rust_sak::image::encode_writer(&img, &mut bytes, format.rsak_format(), Some(format.rsak_options()))
-            .map_err(|e| Error::ImageEncode(e.to_string()))?;
+        format.encode_to(&img, &mut bytes)?;
         Ok(bytes)
     }
 
-    /// Save this frame to `path`, choosing the format from the file extension
-    /// (`.jpg`/`.jpeg`/`.png`, …). Delegates the whole encode-and-write to `rust-sak`.
+    /// Save this frame to `path`, choosing the format from the file extension (`.jpg`/`.jpeg`
+    /// at quality 90, or `.png`). Any other extension fails with [`Error::ImageEncode`].
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
-        write_image(&self.dynamic_image()?, path.as_ref(), None)
+        let path = path.as_ref();
+        let format = ImageFormat::from_path(path)
+            .ok_or_else(|| Error::ImageEncode(format!("{}: unsupported image extension", path.display())))?;
+        write_image(&self.dynamic_image()?, path, format)
     }
 
     /// Save to `path` with an explicit format's encode settings (quality/compression),
@@ -66,14 +69,12 @@ impl ExtractedFrame {
     /// extension must match `format`; used by the directory output, which names files with
     /// `format`'s extension and drops each frame right after writing.
     pub(crate) fn into_save_as(self, path: impl AsRef<Path>, format: ImageFormat) -> Result<()> {
-        let opts = format.rsak_options();
         let img = self.into_dynamic_image()?;
-        write_image(&img, path.as_ref(), Some(opts))
+        write_image(&img, path.as_ref(), format)
     }
 
     /// Build an `image::DynamicImage` by copying the packed RGB pixels (leaves the frame
-    /// usable). The only step that touches the `image` crate directly, as `rust-sak`'s encoders
-    /// take a `DynamicImage`.
+    /// usable), as the `image` encoders take a `DynamicImage`.
     fn dynamic_image(&self) -> Result<DynamicImage> {
         Self::rgb_image(self.width, self.height, self.rgb.clone())
     }
@@ -91,8 +92,15 @@ impl ExtractedFrame {
     }
 }
 
-/// Encode `img` to `path` via `rust-sak`, tagging any error with the destination path.
-fn write_image(img: &DynamicImage, path: &Path, opts: Option<EncodeOptions>) -> Result<()> {
-    rust_sak::image::encode_file(img, path, opts)
-        .map_err(|e| Error::ImageEncode(format!("writing {}: {e}", path.display())))
+/// Encode `img` as `format` and stream it into a new file at `path`, tagging any error with the
+/// destination path.
+fn write_image(img: &DynamicImage, path: &Path, format: ImageFormat) -> Result<()> {
+    let tag = |e: &dyn std::fmt::Display| Error::ImageEncode(format!("writing {}: {e}", path.display()));
+    let mut writer = BufWriter::new(File::create(path).map_err(|e| tag(&e))?);
+    format.encode_to(img, &mut writer).map_err(|e| match e {
+        Error::ImageEncode(msg) => tag(&msg),
+        other => other,
+    })?;
+    // `BufWriter` swallows a write failure on drop, which would turn a full disk into a silently truncated image.
+    writer.flush().map_err(|e| tag(&e))
 }

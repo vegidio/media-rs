@@ -34,9 +34,9 @@ fn count_writes_exactly_n_valid_jpegs() {
     assert_eq!(files.len(), 8, "expected 8 files on disk");
 
     for path in &files {
-        // rust-sak must be able to decode what we wrote back into a real image.
-        let info = rust_sak::image::probe_file(path).unwrap();
-        assert!(info.width > 0 && info.height > 0, "{path:?}: zero dimensions");
+        // `image` must be able to read back what we wrote as a real image.
+        let (width, height) = image::image_dimensions(path).unwrap();
+        assert!(width > 0 && height > 0, "{path:?}: zero dimensions");
     }
 
     let _ = std::fs::remove_dir_all(&dir);

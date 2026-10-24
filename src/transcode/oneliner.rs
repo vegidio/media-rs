@@ -6,6 +6,7 @@ use super::progress::{Progress, TranscodeSummary};
 use crate::error::Result;
 use crate::filter::{AudioFilterChain, VideoFilterChain};
 use std::ops::RangeInclusive;
+use std::path::Path;
 use std::time::Duration;
 
 /// Begin a one-liner transcode from `input`. Chain [`to`](TranscodeJob::to) and
@@ -16,7 +17,7 @@ use std::time::Duration;
 /// transcode("input.mp4").to("output.webm").run()?;
 /// # Ok::<(), media::Error>(())
 /// ```
-pub fn transcode(input: impl Into<String>) -> TranscodeJob {
+pub fn transcode(input: impl AsRef<Path>) -> TranscodeJob {
     TranscodeJob { builder: TranscoderBuilder::default().input(input) }
 }
 
@@ -29,7 +30,7 @@ pub struct TranscodeJob {
 
 impl TranscodeJob {
     /// Set the output file (required). Container/codecs are inferred from its extension.
-    pub fn to(mut self, output: impl Into<String>) -> Self {
+    pub fn to(mut self, output: impl AsRef<Path>) -> Self {
         self.builder = self.builder.output(output);
         self
     }

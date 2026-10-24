@@ -511,7 +511,13 @@ impl AudioEncoder {
             return Ok(());
         }
         let in_fmt = frame.format();
-        let in_rate = frame.sample_rate().max(self.out_rate);
+        // The frame's own rate; only an unset (0) rate falls back to the output rate. Taking the
+        // larger of the two would declare lower-rate input to be at the output rate, skipping the
+        // conversion and playing it back too fast.
+        let in_rate = match frame.sample_rate() {
+            rate if rate > 0 => rate,
+            _ => self.out_rate,
+        };
         let in_layout = frame.ch_layout_copy();
         self.resampler = Some(ResampleContext::new(
             in_fmt,
@@ -732,6 +738,28 @@ mod tests {
         // dimension; it is reported as unsupported with a saturated width.
         let result = VideoEncoder::builder().codec(VideoCodec::H264).resolution(u32::MAX, 480).build();
         assert!(matches!(result, Err(Error::UnsupportedResolution { width: i32::MAX, height: 480 })));
+    }
+
+    #[test]
+    fn lower_rate_audio_is_resampled_up_to_the_output_rate() {
+        let mut encoder = AudioEncoder::builder()
+            .codec(AudioCodec::Flac)
+            .sample_rate(SampleRate::Hz44100)
+            .channels(Channels::Stereo)
+            .build()
+            .unwrap();
+        let raw =
+            RawFrame::new_audio(sys::AVSampleFormat_AV_SAMPLE_FMT_FLTP, &Channels::Stereo.to_layout(), 22_050, 4_410);
+        let mut frame = Frame::from_raw(raw.unwrap());
+        if let crate::frame::SampleBuffer::Fltp(planes) = frame.samples_mut() {
+            planes.into_iter().for_each(|plane| plane.fill(0.0));
+        }
+
+        let _ = encoder.encode(&frame).unwrap();
+        let _ = encoder.flush().unwrap();
+
+        // 0.2 s at 22.05 kHz is 0.2 s at 44.1 kHz: twice the samples, give or take the resampler's edges.
+        assert!((8_700..=8_900).contains(&encoder.next_pts), "encoded {} samples", encoder.next_pts);
     }
 
     /// libx264 at 640×360 with no B-frames, as a hardware encoder would be set up to be tested.

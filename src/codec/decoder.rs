@@ -6,6 +6,10 @@ use crate::packet::Packet;
 use crate::raw::codec_context::{CodecContext, drain_received, find_decoder};
 use crate::raw::frame::RawFrame;
 use crate::sys;
+use crate::types::channel_layout::{ChannelLayout, Channels};
+use crate::types::pixel_format::PixelFormat;
+use crate::types::rational::Rational;
+use crate::types::sample_format::SampleFormat;
 
 /// A decoder bound to one input stream.
 ///
@@ -64,16 +68,16 @@ impl Decoder {
     }
 
     /// The decoder's output pixel format (video streams).
-    pub fn pixel_format(&self) -> crate::types::pixel_format::PixelFormat {
-        crate::types::pixel_format::PixelFormat::from_av(self.ctx.pix_fmt())
+    pub fn pixel_format(&self) -> PixelFormat {
+        PixelFormat::from_av(self.ctx.pix_fmt())
     }
 
     /// The shape of a decoded pixel (video streams): its width relative to its height. `1:1` for square pixels,
     /// and for a stream that doesn't say. An anamorphic stream reports something else, such as `4:3` for 1440×1080
     /// shown at 1920×1080: multiply the width by it to get the shape the picture is meant to be shown at.
-    pub fn sample_aspect_ratio(&self) -> crate::types::rational::Rational {
+    pub fn sample_aspect_ratio(&self) -> Rational {
         let sar = self.ctx.sample_aspect_ratio();
-        if sar.is_positive() { sar } else { crate::types::rational::Rational::ONE }
+        if sar.is_positive() { sar } else { Rational::ONE }
     }
 
     /// The decoded sample rate in Hz (audio streams).
@@ -82,13 +86,12 @@ impl Decoder {
     }
 
     /// The decoder's output sample format (audio streams).
-    pub fn sample_format(&self) -> crate::types::sample_format::SampleFormat {
-        crate::types::sample_format::SampleFormat::from_av(self.ctx.sample_fmt())
+    pub fn sample_format(&self) -> SampleFormat {
+        SampleFormat::from_av(self.ctx.sample_fmt())
     }
 
     /// The decoded channel configuration (audio streams).
-    pub fn channels(&self) -> crate::types::channel_layout::Channels {
-        use crate::types::channel_layout::Channels;
+    pub fn channels(&self) -> Channels {
         match self.ctx.ch_layout_owned().count() {
             1 => Channels::Mono,
             2 => Channels::Stereo,
@@ -97,7 +100,7 @@ impl Decoder {
     }
 
     /// The decoder's owned channel layout, for inheriting into an audio encoder/resampler.
-    pub(crate) fn ch_layout_owned(&self) -> crate::types::channel_layout::ChannelLayout {
+    pub(crate) fn ch_layout_owned(&self) -> ChannelLayout {
         self.ctx.ch_layout_owned()
     }
 

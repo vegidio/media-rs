@@ -1,9 +1,12 @@
 //! Typed configuration for frame extraction: sampling interval, image format, output
 //! resolution, file naming, and where extracted frames go.
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::extract::frame::ExtractedFrame;
-use rust_sak::image::{EncodeOptions, ImageFormat as RsakFormat, PngCompression, PngFilter};
+use image::DynamicImage;
+use image::codecs::jpeg::JpegEncoder;
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -69,22 +72,17 @@ impl ImageFormat {
         path.as_ref().extension().and_then(|e| e.to_str()).and_then(Self::from_extension)
     }
 
-    /// The matching `rust-sak` container format.
-    pub(crate) fn rsak_format(self) -> RsakFormat {
-        match self {
-            ImageFormat::Jpeg { .. } => RsakFormat::Jpeg,
-            ImageFormat::Png => RsakFormat::Png,
-        }
-    }
-
-    /// The matching `rust-sak` encode options (carrying quality/compression settings).
-    pub(crate) fn rsak_options(self) -> EncodeOptions {
-        match self {
-            ImageFormat::Jpeg { quality } => EncodeOptions::Jpeg { quality },
-            ImageFormat::Png => {
-                EncodeOptions::Png { compression: PngCompression::default(), filter: PngFilter::default() }
-            }
-        }
+    /// Encode `img` in this format (with its quality/compression settings) into `writer`.
+    pub(crate) fn encode_to(self, img: &DynamicImage, writer: impl Write) -> Result<()> {
+        let encoded = match self {
+            ImageFormat::Jpeg { quality } => img.write_with_encoder(JpegEncoder::new_with_quality(writer, quality)),
+            ImageFormat::Png => img.write_with_encoder(PngEncoder::new_with_quality(
+                writer,
+                CompressionType::Default,
+                FilterType::Adaptive,
+            )),
+        };
+        encoded.map_err(|e| Error::ImageEncode(e.to_string()))
     }
 }
 

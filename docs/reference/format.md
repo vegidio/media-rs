@@ -9,7 +9,7 @@ Opens a media file and exposes its streams and packets.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `open` | `open(path: impl AsRef<str>) -> Result<Self>` | Open and probe the stream layout. |
+| `open` | `open(path: impl AsRef<Path>) -> Result<Self>` | Open and probe the stream layout. |
 | `stream_count` | `stream_count(&self) -> usize` | Number of streams. |
 | `duration_secs` | `duration_secs(&self) -> f64` | Estimated duration (`0.0` if unknown). |
 | `best_stream` | `best_stream(&self, kind: StreamKind) -> Result<usize>` | Index of the best stream of `kind`; errors [`NoVideoStream`](errors.md)/[`NoAudioStream`](errors.md). |
@@ -63,7 +63,7 @@ Muxes packets into a file, or into any `std::io::Write`.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `create` | `create(path: impl AsRef<str>) -> Result<Self>` | Create; container inferred from the extension. Same as `builder().path(path).build()`. |
+| `create` | `create(path: impl AsRef<Path>) -> Result<Self>` | Create; container inferred from the extension. Same as `builder().path(path).build()`. |
 | `builder` | `builder() -> MediaWriterBuilder` | Write to a path or a `Write`, with an explicit container and muxer options. See [`MediaWriterBuilder`](#mediawriterbuilder). |
 | `add_stream_from_encoder` | `add_stream_from_encoder(&mut self, encoder: &VideoEncoder) -> Result<usize>` | Add an output stream fed by `encoder`; returns its index. |
 | `add_stream_copy` | `add_stream_copy(&mut self, reader: &MediaReader, src_index: usize) -> Result<usize>` | Add a stream that copies `src_index` verbatim (remux); returns its index. |
@@ -71,7 +71,7 @@ Muxes packets into a file, or into any `std::io::Write`.
 | `write_header` | `write_header(&mut self) -> Result<()>` | Write the header; once, after all streams, before any packet. |
 | `write_packet` | `write_packet(&mut self, packet: &mut Packet) -> Result<()>` | Mux one packet; its `stream_index` selects the output stream and timestamps are rescaled automatically. |
 | `flush` | `flush(&mut self) -> Result<()>` | Write out everything muxed so far. For fragmented MP4 it also closes the pending fragment. Only after `write_header`. |
-| `write_trailer` | `write_trailer(&mut self) -> Result<()>` | Finalise and close the file. |
+| `write_trailer` | `write_trailer(&mut self) -> Result<()>` | Finalise and close the file. Valid only after `write_header`. |
 
 ### Usage order
 
@@ -115,7 +115,7 @@ let writer = MediaWriter::builder()
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `path` | `path(self, path: impl AsRef<str>) -> Self` | Write to a file. |
+| `path` | `path(self, path: impl AsRef<Path>) -> Self` | Write to a file. |
 | `writer` | `writer(self, w: impl Write + Send + 'static) -> Self` | Write to `w` instead. Needs `format`. Never seeked. |
 | `format` | `format(self, name: impl AsRef<str>) -> Self` | FFmpeg's muxer name: `mp4`, `matroska`, `webm`, `mpegts`, … Required with `writer`; overrides the extension with `path`. |
 | `option` | `option(self, key, value) -> Self` | A muxer option (`movflags`, `frag_duration`, …). Repeatable; a later value for the same key wins. |

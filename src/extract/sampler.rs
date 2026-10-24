@@ -252,10 +252,11 @@ impl<'r> SampledFrames<'r> {
 
     /// Convert `frame` into an [`ExtractedFrame`], building the converter on first use.
     fn make_extracted(&mut self, frame: Frame, ts: i64) -> Result<ExtractedFrame> {
-        if self.converter.is_none() {
-            self.converter = Some(FrameConverter::new(&frame, self.resolution, self.time_base)?);
-        }
-        let (rgb, width, height) = self.converter.as_mut().unwrap().convert(frame)?;
+        let converter = match self.converter {
+            Some(ref mut converter) => converter,
+            None => self.converter.insert(FrameConverter::new(&frame, self.resolution, self.time_base)?),
+        };
+        let (rgb, width, height) = converter.convert(frame)?;
         let index = self.next_index;
         self.next_index += 1;
         let timestamp = Duration::from_secs_f64(self.time_base.secs_from_ts(ts).max(0.0));

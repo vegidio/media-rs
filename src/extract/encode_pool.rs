@@ -76,10 +76,12 @@ impl EncodePool {
         Ok(())
     }
 
-    /// Close the queue, wait for all pending encodes+writes, then propagate the first error.
+    /// Close the queue, wait for all pending encodes+writes, then propagate the first error. A
+    /// worker that panicked lost the frame it held, so that is an error too.
     pub(crate) fn finish(mut self) -> Result<()> {
-        self.shutdown();
-        self.take_error()
+        let panicked = self.shutdown();
+        self.take_error()?;
+        if panicked { Err(Error::ThreadPanicked) } else { Ok(()) }
     }
 
     /// Take the first recorded worker error, if any.
@@ -90,13 +92,17 @@ impl EncodePool {
         }
     }
 
-    /// Close the queue and join every worker. Idempotent: safe to call from both `finish` and
-    /// `Drop` (the second call finds no sender and no workers to join).
-    fn shutdown(&mut self) {
+    /// Close the queue and join every worker, returning `true` if any of them panicked.
+    /// Idempotent: safe to call from both `finish` and `Drop` (the second call finds no sender and
+    /// no workers to join).
+    fn shutdown(&mut self) -> bool {
         drop(self.tx.take());
+        // Join every worker, even after one has panicked (`any` would stop at the first).
+        let mut panicked = false;
         for w in self.workers.drain(..) {
-            let _ = w.join();
+            panicked |= w.join().is_err();
         }
+        panicked
     }
 }
 
@@ -104,6 +110,6 @@ impl Drop for EncodePool {
     fn drop(&mut self) {
         // On the error/early-return path `finish` never ran; make sure in-flight writes still
         // complete and no worker thread is left detached.
-        self.shutdown();
+        let _ = self.shutdown();
     }
 }

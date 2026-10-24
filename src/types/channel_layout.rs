@@ -6,6 +6,7 @@
 //! released via `av_channel_layout_uninit`. The internal `ChannelLayout` enforces that with RAII and is
 //! deliberately **not** `Copy`.
 
+use crate::raw::util::bprint_to_string;
 use crate::sys;
 use std::mem::MaybeUninit;
 
@@ -80,15 +81,13 @@ impl ChannelLayout {
     /// A libavfilter-friendly description of this layout (e.g. `"stereo"`, `"5.1"`), for the
     /// `abuffer` source's `channel_layout` argument.
     pub(crate) fn describe(&self) -> String {
-        let mut buf = [0 as std::os::raw::c_char; 64];
-        // SAFETY: inner is a valid layout; buf is a writable 64-byte scratch buffer.
-        let n = unsafe { sys::av_channel_layout_describe(&self.inner, buf.as_mut_ptr(), buf.len()) };
-        if n <= 0 {
+        // An unbounded AVBPrint, so a long custom/ambisonic description is never truncated.
+        // SAFETY: inner is a valid layout and bp is the live AVBPrint bprint_to_string hands over.
+        bprint_to_string(|bp| unsafe { sys::av_channel_layout_describe_bprint(&self.inner, bp) })
+            .ok()
+            .filter(|s| !s.is_empty())
             // Fall back to a bare channel count, which abuffer also accepts.
-            return format!("{}c", self.inner.nb_channels.max(1));
-        }
-        // SAFETY: describe wrote a NUL-terminated string of `n-1` chars into buf.
-        unsafe { std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned() }
+            .unwrap_or_else(|| format!("{}c", self.inner.nb_channels.max(1)))
     }
 
     /// Deep-copy this layout into `dst` (which must be uninitialised/zeroed). The copy can only

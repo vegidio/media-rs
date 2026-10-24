@@ -5,10 +5,11 @@ use crate::error::{Error, Result};
 use crate::extract::Interval;
 use crate::extract::sampler::SampledFrames;
 use crate::packet::Packet;
-use crate::raw::format_context::InputFormatContext;
+use crate::raw::format_context::{InputFormatContext, path_str};
 use crate::raw::packet::RawPacket;
 use crate::types::rational::Rational;
 use crate::types::stream_kind::StreamKind;
+use std::path::Path;
 use std::time::Duration;
 
 /// Opens a media file and exposes its streams and packets.
@@ -33,9 +34,9 @@ pub struct MediaReader {
 
 impl MediaReader {
     /// Open `path` for reading and probe its stream layout.
-    pub fn open(path: impl AsRef<str>) -> Result<Self> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         crate::log::ensure_init();
-        Ok(Self { input: InputFormatContext::open(path.as_ref())? })
+        Ok(Self { input: InputFormatContext::open(path_str(path.as_ref())?)? })
     }
 
     /// The number of streams in the file.
@@ -168,14 +169,6 @@ impl Iterator for Packets<'_> {
     type Item = Result<Packet>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut raw = match RawPacket::alloc() {
-            Ok(r) => r,
-            Err(e) => return Some(Err(e)),
-        };
-        match self.reader.input.read_packet(&mut raw) {
-            Ok(true) => Some(Ok(Packet::from_raw(raw))),
-            Ok(false) => None,
-            Err(e) => Some(Err(e)),
-        }
+        self.reader.next_packet().transpose()
     }
 }

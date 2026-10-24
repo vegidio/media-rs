@@ -5,6 +5,7 @@ mod common;
 
 use media::prelude::*;
 use media::types::StreamKind;
+use std::time::Duration;
 
 #[test]
 fn open_missing_input_errors() {
@@ -48,7 +49,7 @@ fn best_stream_for_absent_audio_errors() {
     if !video_only.exists() {
         return;
     }
-    let reader = MediaReader::open(video_only.to_str().unwrap()).unwrap();
+    let reader = MediaReader::open(&video_only).unwrap();
     let err = reader.best_stream(StreamKind::Audio).unwrap_err();
     assert!(matches!(err, Error::NoAudioStream), "expected NoAudioStream, got {err:?}");
 }
@@ -64,7 +65,37 @@ fn dropping_every_stream_errors() {
     let out = common::temp("media_rs_empty.mp4");
     let _ = std::fs::remove_file(&out);
 
-    let err = transcode(video_only.to_str().unwrap()).to(&out).drop_video().run().unwrap_err();
+    let err = transcode(&video_only).to(&out).drop_video().run().unwrap_err();
     assert!(matches!(err, Error::InvalidConfig(_)), "expected InvalidConfig, got {err:?}");
     let _ = std::fs::remove_file(&out);
+}
+
+#[test]
+fn reversed_trim_range_is_rejected() {
+    let result = Transcoder::builder()
+        .input("in.mp4")
+        .output("out.mp4")
+        .trim(Duration::from_secs(10)..=Duration::from_secs(5))
+        .build();
+    assert!(matches!(result, Err(Error::InvalidConfig(_))), "expected InvalidConfig, got {:?}", result.err());
+}
+
+#[test]
+fn reversed_extract_range_is_rejected() {
+    let result = FrameExtractor::builder()
+        .input("in.mp4")
+        .interval(Interval::EverySeconds(1.0))
+        .range(Duration::from_secs(10)..=Duration::from_secs(5))
+        .to_memory()
+        .build();
+    assert!(matches!(result, Err(Error::InvalidConfig(_))), "expected InvalidConfig, got {:?}", result.err());
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_path_is_an_invalid_path() {
+    use std::os::unix::ffi::OsStrExt;
+    let path = std::path::Path::new(std::ffi::OsStr::from_bytes(b"/tmp/media_rs_\xff.mp4"));
+    assert!(matches!(MediaReader::open(path), Err(Error::InvalidPath)));
+    assert!(matches!(MediaWriter::create(path), Err(Error::InvalidPath)));
 }

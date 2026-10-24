@@ -17,7 +17,14 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::os::raw::{c_int, c_void};
 use std::panic::{self, AssertUnwindSafe};
+use std::path::Path;
 use std::ptr::{self, NonNull};
+
+/// A path as the UTF-8 string FFmpeg's open/create calls take (a URL such as `rtsp://…` is a path
+/// too). Fails with [`Error::InvalidPath`] when the path isn't valid UTF-8.
+pub(crate) fn path_str(path: &Path) -> Result<&str> {
+    path.to_str().ok_or(Error::InvalidPath)
+}
 
 fn cstring(path: &str) -> Result<CString> {
     CString::new(path).map_err(|_| Error::InvalidPath)

@@ -49,8 +49,6 @@ fn link_and_config(
     sink: *mut sys::AVFilterContext,
     filters: &str,
 ) -> Result<()> {
-    let in_name = CString::new("in").unwrap();
-    let out_name = CString::new("out").unwrap();
     let cfilters = CString::new(filters).map_err(|_| Error::InvalidConfig("filter description has NUL"))?;
     // SAFETY: inout_alloc returns a node or null; names are av_strdup'd so inout_free can
     // release them.
@@ -67,12 +65,12 @@ fn link_and_config(
             }
         };
 
-        (*outputs.as_ptr()).name = sys::av_strdup(in_name.as_ptr());
+        (*outputs.as_ptr()).name = sys::av_strdup(c"in".as_ptr());
         (*outputs.as_ptr()).filter_ctx = src;
         (*outputs.as_ptr()).pad_idx = 0;
         (*outputs.as_ptr()).next = ptr::null_mut();
 
-        (*inputs.as_ptr()).name = sys::av_strdup(out_name.as_ptr());
+        (*inputs.as_ptr()).name = sys::av_strdup(c"out".as_ptr());
         (*inputs.as_ptr()).filter_ctx = sink;
         (*inputs.as_ptr()).pad_idx = 0;
         (*inputs.as_ptr()).next = ptr::null_mut();
@@ -104,8 +102,6 @@ fn create_endpoints_and_link(
 ) -> Result<(*mut sys::AVFilterContext, *mut sys::AVFilterContext)> {
     let src_f = get_filter(src_filter)?;
     let sink_f = get_filter(sink_filter)?;
-    let in_name = CString::new("in").unwrap();
-    let out_name = CString::new("out").unwrap();
     let cargs = CString::new(args).map_err(|_| Error::InvalidConfig("filter args has NUL"))?;
 
     let mut src: *mut sys::AVFilterContext = ptr::null_mut();
@@ -116,7 +112,7 @@ fn create_endpoints_and_link(
         check(sys::avfilter_graph_create_filter(
             &mut src,
             src_f,
-            in_name.as_ptr(),
+            c"in".as_ptr(),
             cargs.as_ptr(),
             ptr::null_mut(),
             graph,
@@ -124,7 +120,7 @@ fn create_endpoints_and_link(
         check(sys::avfilter_graph_create_filter(
             &mut sink,
             sink_f,
-            out_name.as_ptr(),
+            c"out".as_ptr(),
             ptr::null(),
             ptr::null_mut(),
             graph,
@@ -142,7 +138,7 @@ impl VideoFilterGraph {
         let graph_ptr = unsafe { sys::avfilter_graph_alloc() };
         let graph = non_null(graph_ptr, "AVFilterGraph")?;
 
-        let sar = if input.sample_aspect_ratio.num == 0 { Rational::new(1, 1) } else { input.sample_aspect_ratio };
+        let sar = if input.sample_aspect_ratio.num == 0 { Rational::ONE } else { input.sample_aspect_ratio };
         let args = format!(
             "video_size={}x{}:pix_fmt={}:time_base={}/{}:pixel_aspect={}/{}",
             input.width,

@@ -4,10 +4,11 @@ use crate::codec::encoder::Encoder;
 use crate::error::{Error, Result};
 use crate::packet::Packet;
 use crate::raw::dictionary::{set_option, to_c_options};
-use crate::raw::format_context::{OutputFormatContext, OutputTarget};
+use crate::raw::format_context::{OutputFormatContext, OutputTarget, path_str};
 use crate::types::rational::Rational;
 use std::ffi::CString;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 /// The `movflags` [`MediaWriterBuilder::fragmented_mp4`] sets: cut a fragment at each keyframe, write an empty
 /// `moov` up front, make sample offsets relative to each `moof`, which is what Media Source Extensions want, and
@@ -43,7 +44,7 @@ pub struct MediaWriter {
 impl MediaWriter {
     /// Create `path`, inferring the container format from its extension. The same as
     /// `MediaWriter::builder().path(path).build()`.
-    pub fn create(path: impl AsRef<str>) -> Result<Self> {
+    pub fn create(path: impl AsRef<Path>) -> Result<Self> {
         Self::builder().path(path).build()
     }
 
@@ -141,7 +142,12 @@ impl MediaWriter {
     }
 
     /// Finalise and close the file.
+    ///
+    /// Valid only after [`write_header`](Self::write_header).
     pub fn write_trailer(&mut self) -> Result<()> {
+        if !self.header_written {
+            return Err(Error::InvalidConfig("write_header must be called before write_trailer"));
+        }
         self.output.write_trailer()
     }
 }
@@ -152,7 +158,7 @@ impl MediaWriter {
 /// container from, so it also needs [`format`](Self::format) (or [`fragmented_mp4`](Self::fragmented_mp4)).
 #[derive(Default)]
 pub struct MediaWriterBuilder {
-    path: Option<String>,
+    path: Option<PathBuf>,
     writer: Option<Box<dyn Write + Send>>,
     format: Option<String>,
     options: Vec<(String, String)>,
@@ -162,7 +168,7 @@ pub struct MediaWriterBuilder {
 
 impl MediaWriterBuilder {
     /// Write to the file at `path`. The container comes from its extension unless [`format`](Self::format) names one.
-    pub fn path(mut self, path: impl AsRef<str>) -> Self {
+    pub fn path(mut self, path: impl AsRef<Path>) -> Self {
         self.path = Some(path.as_ref().to_owned());
         self
     }
@@ -211,7 +217,7 @@ impl MediaWriterBuilder {
             self = self.option("movflags", flags);
         }
         let target = match (self.path, self.writer) {
-            (Some(path), None) => OutputTarget::Path(path),
+            (Some(path), None) => OutputTarget::Path(path_str(&path)?.to_owned()),
             (None, Some(writer)) => {
                 if self.format.is_none() {
                     return Err(Error::InvalidConfig("a media writer writing to a writer requires a format"));

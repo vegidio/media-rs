@@ -5,7 +5,7 @@ use super::report::ExtractReport;
 use super::types::Interval;
 use crate::error::Result;
 use crate::transcode::Progress;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Begin a one-liner extraction from `input`. Chain an interval ([`every`](ExtractJob::every)
@@ -21,7 +21,7 @@ use std::time::Duration;
 ///     .run()?;
 /// # Ok::<(), media::Error>(())
 /// ```
-pub fn extract_frames(input: impl Into<String>) -> ExtractJob {
+pub fn extract_frames(input: impl AsRef<Path>) -> ExtractJob {
     ExtractJob { builder: FrameExtractorBuilder::default().input(input) }
 }
 

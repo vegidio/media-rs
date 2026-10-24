@@ -1,7 +1,7 @@
 //! RAII wrapper for `AVPacket`.
 
 use super::util::{impl_ffi_drop, non_null};
-use crate::error::{Error, Result, check};
+use crate::error::{AV_NOPTS_VALUE, Error, Result, check};
 use crate::sys;
 use crate::types::rational::Rational;
 use std::ptr::{self, NonNull};
@@ -100,10 +100,10 @@ impl RawPacket {
     pub(crate) fn shift_timestamps(&mut self, delta: i64) {
         let p = self.ptr.as_ptr();
         unsafe {
-            if (*p).pts != i64::MIN {
+            if (*p).pts != AV_NOPTS_VALUE {
                 (*p).pts -= delta;
             }
-            if (*p).dts != i64::MIN {
+            if (*p).dts != AV_NOPTS_VALUE {
                 (*p).dts -= delta;
             }
         }

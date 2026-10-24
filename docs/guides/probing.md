@@ -34,7 +34,7 @@ if let Some(video) = info.video() { // (5)!
 # Ok::<(), media::Error>(())
 ```
 
-1. `probe` takes anything `AsRef<str>` (a path) and returns a
+1. `probe` takes anything `AsRef<Path>` (a `&str`, `String`, `Path` or `PathBuf`) and returns a
    [`MediaInfo`](../reference/probe.md). It opens the file just long enough to read the
    container header — **no frames are decoded**.
 2. `duration()` is a `std::time::Duration`; `as_secs_f64()` gives seconds as a float. It is

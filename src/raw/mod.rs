@@ -13,4 +13,4 @@ pub(crate) mod format_context;
 pub(crate) mod frame;
 pub(crate) mod packet;
 pub(crate) mod resampler;
-mod util;
+pub(crate) mod util;

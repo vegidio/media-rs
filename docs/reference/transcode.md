@@ -6,7 +6,7 @@ walkthroughs.
 ## `transcode`
 
 ```rust
-pub fn transcode(input: impl Into<String>) -> TranscodeJob
+pub fn transcode(input: impl AsRef<Path>) -> TranscodeJob
 ```
 
 Tier-1 entry point. Begins a one-liner transcode from `input`. To transcode audio only, drop
@@ -18,7 +18,7 @@ A fluent facade over [`TranscoderBuilder`](#transcoder). Chain modifiers, then `
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `to` | `to(output: impl Into<String>) -> Self` | Output file (required); container inferred from the extension. |
+| `to` | `to(output: impl AsRef<Path>) -> Self` | Output file (required); container inferred from the extension. |
 | `video` | `video(config: VideoConfig) -> Self` | Override video encoding settings. |
 | `video_filter` | `video_filter(filter: VideoFilterChain) -> Self` | Apply a [filter chain](filter.md). |
 | `audio` | `audio(config: AudioConfig) -> Self` | Override audio encoding with a full [`AudioConfig`](audio.md#audioconfig). |
@@ -46,15 +46,15 @@ pub fn run_with_progress(&self, on_progress: impl FnMut(Progress)) -> Result<Tra
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `input` | `input(path: impl Into<String>) -> Self` | Input file (**required**). |
-| `output` | `output(path: impl Into<String>) -> Self` | Output file (**required**). |
+| `input` | `input(path: impl AsRef<Path>) -> Self` | Input file (**required**). |
+| `output` | `output(path: impl AsRef<Path>) -> Self` | Output file (**required**). |
 | `video` | `video(config: VideoConfig) -> Self` | Video encoding config. Omit to inherit the input's geometry with H.264. |
 | `audio` | `audio(config: AudioConfig) -> Self` | Audio encoding config. Omit to stream-copy the input audio. |
 | `video_filter` | `video_filter(filter: VideoFilterChain) -> Self` | Filter chain. |
 | `audio_filter` | `audio_filter(filter: AudioFilterChain) -> Self` | Audio filter chain (forces re-encode). |
 | `drop_video` | `drop_video() -> Self` | Drop video. |
 | `drop_audio` | `drop_audio() -> Self` | Drop audio. |
-| `trim` | `trim(range: RangeInclusive<Duration>) -> Self` | Keep only this range, re-based to start at zero. |
+| `trim` | `trim(range: RangeInclusive<Duration>) -> Self` | Keep only this range, re-based to start at zero. A start after the end fails `build()` with `InvalidConfig`. |
 | `build` | `build(self) -> Result<Transcoder>` | Validate; missing input/output → [`Error::InvalidConfig`](errors.md). |
 
 ## `VideoConfig`

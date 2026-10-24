@@ -67,7 +67,14 @@ pub fn locate_binaries(version: &str) -> PathBuf {
     let url = format!("https://github.com/vegidio/binaries-ffmpeg/releases/download/{version}/{archive}");
     eprintln!("xtask: downloading {url}");
     let bytes = download(&url);
-    extract_zip(&bytes, &cache_dir);
+    // Extract beside the cache and rename it into place, so an interrupted extraction can never leave a half-filled
+    // cache that the check above would later mistake for a complete one.
+    let partial = cache_root.join(format!("binaries-ffmpeg-{version}.partial"));
+    let _ = fs::remove_dir_all(&partial);
+    extract_zip(&bytes, &partial);
+    let _ = fs::remove_dir_all(&cache_dir);
+    fs::rename(&partial, &cache_dir)
+        .unwrap_or_else(|e| panic!("xtask: cannot move {} into place: {e}", partial.display()));
     cache_dir
 }
 

@@ -5,10 +5,11 @@ use crate::format::reader::MediaReader;
 use crate::types::codec::{AudioCodec, VideoCodec};
 use crate::types::rational::Framerate;
 use crate::types::stream_kind::StreamKind;
+use std::path::Path;
 use std::time::Duration;
 
 /// Inspect `path` and return its container/stream metadata. Does not decode any frames.
-pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo> {
+pub fn probe(path: impl AsRef<Path>) -> Result<MediaInfo> {
     let reader = MediaReader::open(path.as_ref())?;
     let count = reader.stream_count();
     let mut streams = Vec::with_capacity(count);

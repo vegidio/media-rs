@@ -45,7 +45,7 @@ impl AudioFifo {
         let written = unsafe { sys::av_audio_fifo_write(self.as_ptr(), frame.sample_planes_ptr(), nb) };
         check(written)?;
         if written != nb {
-            return Err(Error::Internal { code: 0, message: "audio FIFO short write".to_owned() });
+            return Err(Error::Bug("audio FIFO short write"));
         }
         Ok(())
     }

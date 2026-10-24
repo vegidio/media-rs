@@ -15,6 +15,7 @@ use crate::filter::{AudioFilterChain, VideoFilterChain};
 use config::{AudioConfig as AConfig, VideoConfig as VConfig};
 use pipeline::TranscodeOptions;
 use std::ops::RangeInclusive;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// A configured transcode job. Cheap to hold and re-runnable.
@@ -54,8 +55,8 @@ impl Transcoder {
 /// Builder for a [`Transcoder`].
 #[derive(Default)]
 pub struct TranscoderBuilder {
-    input: Option<String>,
-    output: Option<String>,
+    input: Option<PathBuf>,
+    output: Option<PathBuf>,
     video: Option<VConfig>,
     audio: Option<AConfig>,
     drop_video: bool,
@@ -67,14 +68,14 @@ pub struct TranscoderBuilder {
 
 impl TranscoderBuilder {
     /// The input file (required).
-    pub fn input(mut self, path: impl Into<String>) -> Self {
-        self.input = Some(path.into());
+    pub fn input(mut self, path: impl AsRef<Path>) -> Self {
+        self.input = Some(path.as_ref().to_owned());
         self
     }
 
     /// The output file (required). The container is inferred from the extension.
-    pub fn output(mut self, path: impl Into<String>) -> Self {
-        self.output = Some(path.into());
+    pub fn output(mut self, path: impl AsRef<Path>) -> Self {
+        self.output = Some(path.as_ref().to_owned());
         self
     }
 
@@ -123,6 +124,11 @@ impl TranscoderBuilder {
 
     /// Validate and produce the [`Transcoder`].
     pub fn build(self) -> Result<Transcoder> {
+        if let Some((start, end)) = self.trim
+            && start > end
+        {
+            return Err(Error::InvalidConfig("trim range start must not be after its end"));
+        }
         Ok(Transcoder {
             opts: TranscodeOptions {
                 input: self.input.ok_or(Error::InvalidConfig("transcoder requires an input"))?,

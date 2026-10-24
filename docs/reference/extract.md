@@ -6,7 +6,7 @@ walkthroughs.
 ## `extract_frames`
 
 ```rust
-pub fn extract_frames(input: impl Into<String>) -> ExtractJob
+pub fn extract_frames(input: impl AsRef<Path>) -> ExtractJob
 ```
 
 Tier-1 entry point.
@@ -15,13 +15,13 @@ Tier-1 entry point.
 
 A fluent facade over [`FrameExtractorBuilder`](#frameextractor).
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `every` | `every(interval: Duration) -> Self` | Sample one frame every _N_ (sugar for `Interval::EverySeconds`). |
-| `interval` | `interval(interval: Interval) -> Self` | Any [`Interval`](#interval) sampling strategy. |
-| `to_dir` | `to_dir(dir: impl Into<PathBuf>) -> Self` | Write image files into `dir`. |
-| `run` | `run(self) -> Result<ExtractReport>` | Run to completion. |
-| `run_with_progress` | `run_with_progress(self, on_progress: impl FnMut(Progress)) -> Result<ExtractReport>` | Run, reporting [progress](transcode.md#progress). |
+| Method              | Signature                                                                             | Description                                                      |
+|---------------------|---------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| `every`             | `every(interval: Duration) -> Self`                                                   | Sample one frame every _N_ (sugar for `Interval::EverySeconds`). |
+| `interval`          | `interval(interval: Interval) -> Self`                                                | Any [`Interval`](#interval) sampling strategy.                   |
+| `to_dir`            | `to_dir(dir: impl Into<PathBuf>) -> Self`                                             | Write image files into `dir`.                                    |
+| `run`               | `run(self) -> Result<ExtractReport>`                                                  | Run to completion.                                               |
+| `run_with_progress` | `run_with_progress(self, on_progress: impl FnMut(Progress)) -> Result<ExtractReport>` | Run, reporting [progress](transcode.md#progress).                |
 
 ## `FrameExtractor`
 
@@ -37,12 +37,12 @@ pub fn run_with_progress(self, on_progress: impl FnMut(Progress)) -> Result<Extr
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `input` | `input(path: impl Into<String>) -> Self` | Input file (**required**). |
+| `input` | `input(path: impl AsRef<Path>) -> Self` | Input file (**required**). |
 | `interval` | `interval(interval: Interval) -> Self` | Sampling strategy (**required**). |
 | `format` | `format(format: ImageFormat) -> Self` | Output image format (default JPEG q90). |
 | `resolution` | `resolution(resolution: Resolution) -> Self` | Output resolution (default `Original`). |
 | `naming` | `naming(naming: NamingScheme) -> Self` | File naming (directory output only). |
-| `range` | `range(range: RangeInclusive<Duration>) -> Self` | Restrict to a time span. |
+| `range` | `range(range: RangeInclusive<Duration>) -> Self` | Restrict to a time span. A start after the end fails `build()` with `InvalidConfig`. |
 | `output` | `output(output: Output) -> Self` | Set the output target explicitly. |
 | `output_dir` | `output_dir(dir: impl Into<PathBuf>) -> Self` | Shortcut for `Output::Directory`. |
 | `to_memory` | `to_memory() -> Self` | Shortcut for `Output::InMemory`. |
@@ -129,7 +129,7 @@ One extracted frame, carrying packed RGB pixels, its run index, and its source t
 | `dimensions` | `(u32, u32)` | `(width, height)` in pixels. |
 | `to_rgb_bytes` | `&[u8]` | Tightly-packed RGB (8:8:8), `width * height * 3` bytes. |
 | `encode` | `encode(&self, format: ImageFormat) -> Result<Vec<u8>>` | Encode to image bytes in memory. |
-| `save` | `save(&self, path: impl AsRef<Path>) -> Result<()>` | Write to a file; format from the extension. |
+| `save` | `save(&self, path: impl AsRef<Path>) -> Result<()>` | Write to a file; format from the extension (`.jpg`/`.jpeg` at quality 90, or `.png`; anything else is `ImageEncode`). |
 
 ## `ExtractReport`
 

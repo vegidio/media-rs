@@ -6,7 +6,7 @@ Module `media::probe`. Quick inspection of a media file without decoding. See th
 ## `probe`
 
 ```rust
-pub fn probe(path: impl AsRef<str>) -> Result<MediaInfo>
+pub fn probe(path: impl AsRef<Path>) -> Result<MediaInfo>
 ```
 
 Open `path` and return its container/stream metadata. Does not decode any frames.

@@ -153,8 +153,10 @@ let summary = transcode("input.mp4")
 ```
 
 1. Keeps seconds 1–3 (inclusive). Under the hood the pipeline **seeks** to the keyframe at or
-   before the start rather than decoding and discarding the prefix, so trimming deep into a
-   long file is fast.
+   before the start rather than decoding and discarding the prefix, and it stops reading as
+   soon as every stream is past the end, so trimming a short clip out of a long file is fast
+   at both ends. A range whose start is after its end fails `build()`/`run()` with
+   `Error::InvalidConfig`.
 
 ## Reporting progress
 

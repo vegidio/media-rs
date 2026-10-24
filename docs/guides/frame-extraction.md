@@ -114,7 +114,8 @@ frames go.
     ```
 
     1. `EverySeconds(0.5)` samples twice per second (a rate, so it's an `f64`).
-    2. `.range(start..=end)` restricts extraction to a span of the source.
+    2. `.range(start..=end)` restricts extraction to a span of the source. A start after the end
+       fails `build()` with `Error::InvalidConfig`.
     3. `run_with_progress` reuses the same [`Progress`](../reference/transcode.md#progress)
        type as the transcoder.
 
@@ -186,8 +187,9 @@ for frame in report.into_frames() {         // (1)!
 1. `into_frames()` takes ownership of the buffered frames (vs `frames()` which borrows).
 2. `to_rgb_bytes()` borrows the raw, tightly-packed RGB (8:8:8) buffer — `width * height * 3`
    bytes.
-3. `save(path)` writes the frame, choosing the encoder from the file extension. There's also
-   `encode(format)` if you want the bytes in memory.
+3. `save(path)` writes the frame, choosing the encoder from the file extension: `.jpg`/`.jpeg`
+   (quality 90) or `.png`; any other extension is an `Error::ImageEncode`. There's also
+   `encode(format)` if you want the bytes in memory, or a specific JPEG quality.
 
 ## Tier 3 — iterate frames yourself
 

@@ -52,7 +52,7 @@ use crate::format::MediaReader;
 use crate::transcode::Progress;
 use crate::types::stream_kind::StreamKind;
 use std::ops::RangeInclusive;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 /// A configured frame-extraction job.
@@ -76,7 +76,7 @@ pub struct FrameExtractor {
 
 /// The resolved set of options an extraction runs with.
 struct ExtractOptions {
-    input: String,
+    input: PathBuf,
     interval: Interval,
     format: ImageFormat,
     resolution: Resolution,
@@ -106,7 +106,7 @@ impl FrameExtractor {
 /// Builder for a [`FrameExtractor`].
 #[derive(Default)]
 pub struct FrameExtractorBuilder {
-    input: Option<String>,
+    input: Option<PathBuf>,
     interval: Option<Interval>,
     format: Option<ImageFormat>,
     resolution: Option<Resolution>,
@@ -117,8 +117,8 @@ pub struct FrameExtractorBuilder {
 
 impl FrameExtractorBuilder {
     /// The input file (required).
-    pub fn input(mut self, path: impl Into<String>) -> Self {
-        self.input = Some(path.into());
+    pub fn input(mut self, path: impl AsRef<Path>) -> Self {
+        self.input = Some(path.as_ref().to_owned());
         self
     }
 
@@ -183,6 +183,11 @@ impl FrameExtractorBuilder {
         if self.resolution == Some(Resolution::Fit(0)) {
             return Err(Error::InvalidConfig("Resolution::Fit bound must be at least 1"));
         }
+        if let Some((start, end)) = self.range
+            && start > end
+        {
+            return Err(Error::InvalidConfig("range start must not be after its end"));
+        }
         Ok(FrameExtractor {
             opts: ExtractOptions {
                 input: self.input.ok_or(Error::InvalidConfig("frame extractor requires an input"))?,
@@ -205,8 +210,12 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
 
     // Bounds for the progress percentage.
     let duration_secs = reader.duration_secs();
+    // Clamped to the file like the transcode's trim span, so a range end past the end still reaches 100%.
     let (start_secs, span_secs) = match opts.range {
-        Some((s, e)) => (s.as_secs_f64(), (e.as_secs_f64() - s.as_secs_f64()).max(0.0)),
+        Some((s, e)) => {
+            let end = if duration_secs > 0.0 { e.as_secs_f64().min(duration_secs) } else { e.as_secs_f64() };
+            (s.as_secs_f64(), (end - s.as_secs_f64()).max(0.0))
+        }
         None => (0.0, duration_secs),
     };
 
@@ -238,7 +247,7 @@ fn run_extraction(opts: ExtractOptions, mut on_progress: impl FnMut(Progress)) -
             Output::Directory(dir) => {
                 let name = opts.naming.file_name(frame.index(), opts.format.extension());
                 let path = dir.join(name);
-                pool.as_ref().expect("directory output has a pool").submit(frame, path)?;
+                pool.as_ref().ok_or(Error::Bug("directory output has no encode pool"))?.submit(frame, path)?;
             }
             Output::InMemory => collected.push(frame),
             Output::Callback(cb) => cb(frame)?,

@@ -27,10 +27,10 @@ can give you something more actionable than a numeric code.
 | `OpenInput(String)` | The input couldn't be opened (missing file, unknown format, permissions). Carries FFmpeg's decoded reason. |
 | `CreateOutput(String)` | The output couldn't be created. |
 | `AllocFailed(&'static str)` | An allocation inside FFmpeg returned null. |
-| `InvalidConfig(&'static str)` | A builder/config was used incorrectly (missing required field, wrong call order). |
+| `InvalidConfig(&'static str)` | A builder/config was used incorrectly (missing required field, a time range whose start is after its end, wrong call order). |
 | `Bug(&'static str)` | An internal invariant was violated — a bug in this crate, not caller error. Please report it. |
-| `ThreadPanicked` | A worker thread panicked during processing (e.g. the transcode demux/decode thread). |
-| `InvalidPath` | A path contained an interior NUL byte. |
+| `ThreadPanicked` | A worker thread panicked during processing (e.g. the transcode demux/decode thread, or a frame-extraction image writer). |
+| `InvalidPath` | A path wasn't valid UTF-8 or contained an interior NUL byte, so it couldn't be passed to FFmpeg. |
 | `ImageEncode(String)` | Encoding a frame to an image, or writing it out, failed. |
 | `UnknownOption(String)` | The muxer or the encoder didn't recognise one or more options, from [`MediaWriterBuilder::option`](format.md#mediawriterbuilder) or [`VideoEncoderBuilder::option`](codec.md#videoencoderbuilder). The string names them, comma-separated. Raised by `write_header`, before anything is written, or by the encoder's `build`. |
 | `Write(std::io::Error)` | The writer given to [`MediaWriterBuilder::writer`](format.md#mediawriterbuilder) failed or panicked. Carries the writer's own error (a panic becomes an `io::Error` with its message); it is also the `source()`. |

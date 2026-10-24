@@ -29,9 +29,6 @@ pub enum SampleFormat {
 }
 
 impl SampleFormat {
-    // Used by the upcoming audio re-encode path; `from_av` is already in use for decoded
-    // audio frames.
-    #[allow(dead_code)]
     pub(crate) fn to_av(self) -> sys::AVSampleFormat {
         match self {
             SampleFormat::U8 => sys::AVSampleFormat_AV_SAMPLE_FMT_U8,

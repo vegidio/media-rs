@@ -3,10 +3,12 @@
 //! Shows: selecting `VideoCodec::H265`, `Vp9` and `Av1` via `VideoConfig::builder()`; the
 //! output container is inferred from the file extension (`.mp4`, `.webm`, `.mkv`). Unlike
 //! the H.264 builder example, `preset`/`profile` are omitted here — those are H.264-specific.
+//! Paths can be `&str`, `String`, `Path` or `PathBuf`: the output here is built with `Path::join`.
 //!
 //! Run with: `cargo run --example transcode_codecs`
 
 use media::prelude::*;
+use std::path::Path;
 
 const INPUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/video1.mp4");
 const DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/");
@@ -20,7 +22,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (codec, name) in targets {
-        let output = format!("{DIR}{name}");
+        let output = Path::new(DIR).join(name);
 
         let video = VideoConfig::builder().codec(codec).bitrate(Bitrate::mbps(1)).build()?;
 

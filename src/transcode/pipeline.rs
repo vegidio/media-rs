@@ -14,6 +14,7 @@ use crate::packet::Packet;
 use crate::types::codec::{AudioCodec, VideoCodec};
 use crate::types::rational::{Framerate, Rational};
 use crate::types::stream_kind::StreamKind;
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -27,8 +28,8 @@ const DEFAULT_FRAMERATE_FPS: u32 = 25;
 
 /// The resolved set of options a transcode runs with.
 pub(crate) struct TranscodeOptions {
-    pub input: String,
-    pub output: String,
+    pub input: PathBuf,
+    pub output: PathBuf,
     pub video: Option<VideoConfig>,
     pub audio: Option<AudioConfig>,
     pub drop_video: bool,
@@ -425,7 +426,7 @@ fn producer(ctx: ProducerCtx, tx: SyncSender<Work>) -> Result<()> {
     // the emitted frames are unchanged — we just skip decoding the prefix. Seek failure (e.g. a
     // non-seekable input) is non-fatal: we fall back to the linear scan, exactly the previous behaviour.
     if trim_start > 0.0 {
-        let seek_idx = video_idx.or(audio_idx).unwrap();
+        let seek_idx = video_idx.or(audio_idx).ok_or(Error::Bug("transcode producer has no stream to read"))?;
         if reader.seek(seek_idx, Duration::from_secs_f64(trim_start)).is_ok() {
             if let Some(dec) = video_decoder.as_mut() {
                 dec.reset();
@@ -436,18 +437,32 @@ fn producer(ctx: ProducerCtx, tx: SyncSender<Work>) -> Result<()> {
         }
     }
 
+    // Once every stream being transcoded is past `trim_end`, the rest of the file would only be dropped, so stop
+    // demuxing there instead of decoding to EOF. Decoders emit frames in presentation order, so after one frame is
+    // past the end, every later one is too. A stream that isn't transcoded counts as done from the start.
+    let mut video_done = video_idx.is_none();
+    let mut audio_done = audio_idx.is_none();
+
     for packet in reader.packets() {
+        if video_done && audio_done {
+            break;
+        }
         let packet = packet?;
         let sidx = packet.stream_index();
 
         if Some(sidx) == video_idx {
-            let dec = video_decoder.as_mut().unwrap();
+            if video_done {
+                continue;
+            }
+            let dec = video_decoder.as_mut().ok_or(Error::Bug("video packet with no decoder configured"))?;
 
             for frame in dec.decode(&packet)? {
                 let frame = frame?;
                 let secs = frame_secs(&frame, v_tb);
 
-                if !in_trim(secs) {
+                // Keep draining the iterator (the decoder's contract) even once past the end.
+                video_done |= secs > trim_end;
+                if video_done || !in_trim(secs) {
                     continue;
                 }
 
@@ -457,12 +472,16 @@ fn producer(ctx: ProducerCtx, tx: SyncSender<Work>) -> Result<()> {
                 }
             }
         } else if Some(sidx) == audio_idx {
+            if audio_done {
+                continue;
+            }
             if let Some(dec) = audio_decoder.as_mut() {
                 // Re-encode: decode, gate on trim, hand decoded frames to the consumer.
                 for frame in dec.decode(&packet)? {
                     let frame = frame?;
                     let secs = frame_secs(&frame, a_tb);
-                    if !in_trim(secs) {
+                    audio_done |= secs > trim_end;
+                    if audio_done || !in_trim(secs) {
                         continue;
                     }
                     if tx.send(Work::AudioFrame { frame, secs }).is_err() {
@@ -474,12 +493,13 @@ fn producer(ctx: ProducerCtx, tx: SyncSender<Work>) -> Result<()> {
                 let mut packet = packet;
                 let secs = packet.pts() as f64 * a_tb_f64;
 
+                audio_done |= secs > trim_end;
                 if !in_trim(secs) {
                     continue;
                 }
 
                 packet.offset_timestamps(a_start_ts);
-                packet.set_stream_index(out_aidx.unwrap());
+                packet.set_stream_index(out_aidx.ok_or(Error::Bug("copied audio with no output stream"))?);
 
                 if tx.send(Work::Audio(packet)).is_err() {
                     return Ok(());
