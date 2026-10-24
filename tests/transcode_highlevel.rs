@@ -7,34 +7,6 @@ use media::types::StreamKind;
 use std::cell::RefCell;
 use std::time::Duration;
 
-/// Decode `path`'s best video stream end-to-end and count the frames, mirroring the read-path
-/// pattern in `tests/probe_decode.rs`. Used to compare source vs. transcoded frame counts.
-fn decoded_video_frames(path: &str) -> u64 {
-    let mut reader = MediaReader::open(path).unwrap();
-    let vidx = reader.best_stream(StreamKind::Video).unwrap();
-    let mut decoder = reader.stream(vidx).decoder().unwrap();
-    let mut count = 0u64;
-
-    for packet in reader.packets() {
-        let packet = packet.unwrap();
-        if packet.stream_index() != vidx {
-            continue;
-        }
-
-        for frame in decoder.decode(&packet).unwrap() {
-            frame.unwrap();
-            count += 1;
-        }
-    }
-
-    for frame in decoder.flush().unwrap() {
-        frame.unwrap();
-        count += 1;
-    }
-
-    count
-}
-
 /// Count decoded video frames whose best-effort timestamp falls within `[start, end]` seconds —
 /// the exact gate (`best_effort` → `pts` → 0, inclusive) the transcoder applies for `trim`. Lets
 /// a trim test assert the output holds precisely the source frames in the window, independent of
@@ -282,7 +254,7 @@ fn full_transcode_preserves_frame_count_and_duration() {
         return;
     };
     let input = input.to_str().unwrap().to_owned();
-    let in_count = decoded_video_frames(&input);
+    let in_count = common::decoded_video_frames(&input);
     let in_dur = probe(&input).unwrap().duration().as_secs_f64();
 
     let out = common::temp("media_rs_preserve.mp4");
@@ -299,7 +271,7 @@ fn full_transcode_preserves_frame_count_and_duration() {
     );
 
     // The muxed output, re-decoded, matches what the encoder reported.
-    let out_count = decoded_video_frames(&out);
+    let out_count = common::decoded_video_frames(&out);
     assert!(
         (out_count as i64 - summary.frames as i64).abs() <= 1,
         "output frames {out_count} != summary frames {}",
@@ -404,7 +376,7 @@ fn trim_frame_count_matches_source_window() {
     // seek must preserve.
     assert_eq!(summary.frames, expected, "trimmed frame count drifted from the source window");
 
-    let out_count = decoded_video_frames(&out);
+    let out_count = common::decoded_video_frames(&out);
     assert!(
         (out_count as i64 - expected as i64).abs() <= 1,
         "output frames {out_count} not within 1 of expected {expected}"
@@ -445,7 +417,7 @@ fn trim_midfile_window_frame_count_matches_source() {
 
     assert_eq!(summary.frames, expected, "mid-file trimmed frame count drifted from the source window");
 
-    let out_count = decoded_video_frames(&out);
+    let out_count = common::decoded_video_frames(&out);
     assert!(
         (out_count as i64 - expected as i64).abs() <= 1,
         "output frames {out_count} not within 1 of expected {expected}"

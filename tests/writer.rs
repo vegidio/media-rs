@@ -4,68 +4,6 @@ mod common;
 
 use media::prelude::*;
 use std::io::{self, Write};
-use std::sync::{Arc, Mutex};
-
-/// A writer whose bytes the test can read back while the `MediaWriter` owns a clone of it.
-#[derive(Clone, Default)]
-struct SharedBuf(Arc<Mutex<Vec<u8>>>);
-
-impl SharedBuf {
-    fn bytes(&self) -> Vec<u8> {
-        self.0.lock().unwrap().clone()
-    }
-}
-
-impl Write for SharedBuf {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-/// Copy every stream of `input` into `writer`, calling `before` ahead of each packet.
-fn remux_with(
-    input: &str,
-    mut writer: MediaWriter,
-    mut before: impl FnMut(&mut MediaWriter, &Packet) -> Result<()>,
-) -> Result<()> {
-    let mut reader = MediaReader::open(input)?;
-    let mut out_index = Vec::new();
-    for i in 0..reader.stream_count() {
-        out_index.push(writer.add_stream_copy(&reader, i)?);
-    }
-    writer.write_header()?;
-    for packet in reader.packets() {
-        let mut packet = packet?;
-        before(&mut writer, &packet)?;
-        packet.set_stream_index(out_index[packet.stream_index()]);
-        writer.write_packet(&mut packet)?;
-    }
-    writer.write_trailer()
-}
-
-fn remux(input: &str, writer: MediaWriter) -> Result<()> {
-    remux_with(input, writer, |_, _| Ok(()))
-}
-
-/// The number of video frames `path` decodes to.
-fn count_video_frames(path: &str) -> u64 {
-    let mut reader = MediaReader::open(path).unwrap();
-    let video = reader.best_stream(StreamKind::Video).unwrap();
-    let mut decoder = reader.stream(video).decoder().unwrap();
-    let mut count = 0;
-    for packet in reader.packets() {
-        let packet = packet.unwrap();
-        if packet.stream_index() == video {
-            count += decoder.decode(&packet).unwrap().collect::<Result<Vec<_>>>().unwrap().len() as u64;
-        }
-    }
-    count + decoder.flush().unwrap().collect::<Result<Vec<_>>>().unwrap().len() as u64
-}
 
 // --- ISO BMFF -------------------------------------------------------------------------------------------------------
 
@@ -178,7 +116,7 @@ fn an_unknown_option_fails_write_header_naming_it() {
     let out = common::temp("media_rs_writer_unknown.mp4");
     let writer = MediaWriter::builder().path(&out).option("no_such_option", "1").build().unwrap();
 
-    let err = remux(input.to_str().unwrap(), writer).unwrap_err();
+    let err = common::remux(input.to_str().unwrap(), writer).unwrap_err();
 
     assert!(matches!(&err, Error::UnknownOption(keys) if keys == "no_such_option"), "{err:?}");
     std::fs::remove_file(&out).ok();
@@ -189,7 +127,7 @@ fn fragmented_mp4_keeps_other_options() {
     let Some(input) = common::audio_sample() else { return };
     let input = input.to_str().unwrap();
     let fragments = |out: &str, builder: media::format::MediaWriterBuilder| {
-        remux(input, builder.path(out).build().unwrap()).unwrap();
+        common::remux(input, builder.path(out).build().unwrap()).unwrap();
         let count = assert_fragmented(&top_level_types(&std::fs::read(out).unwrap()));
         std::fs::remove_file(out).ok();
         count
@@ -212,8 +150,8 @@ fn fragmented_mp4_keeps_its_flags_whatever_the_movflags_order() {
     let input = input.to_str().unwrap();
     // A writer is never seeked, so without the fragmenting flags the mp4 muxer would refuse it at `write_header`.
     let fragments = |builder: media::format::MediaWriterBuilder| {
-        let buf = SharedBuf::default();
-        remux(input, builder.writer(buf.clone()).build().unwrap()).unwrap();
+        let buf = common::SharedBuf::default();
+        common::remux(input, builder.writer(buf.clone()).build().unwrap()).unwrap();
         assert_fragmented(&top_level_types(&buf.bytes()))
     };
 
@@ -239,9 +177,9 @@ fn a_builder_needs_exactly_one_of_path_or_writer() {
 fn fragmented_mp4_streams_into_a_writer() {
     let Some(input) = common::audio_sample() else { return };
     let input = input.to_str().unwrap();
-    let buf = SharedBuf::default();
+    let buf = common::SharedBuf::default();
 
-    remux(input, MediaWriter::builder().writer(buf.clone()).fragmented_mp4().build().unwrap()).unwrap();
+    common::remux(input, MediaWriter::builder().writer(buf.clone()).fragmented_mp4().build().unwrap()).unwrap();
 
     let bytes = buf.bytes();
     assert!(assert_fragmented(&top_level_types(&bytes)) > 0);
@@ -249,7 +187,7 @@ fn fragmented_mp4_streams_into_a_writer() {
 
     let out = common::temp("media_rs_writer_stream.mp4");
     std::fs::write(&out, &bytes).unwrap();
-    assert_eq!(count_video_frames(&out), count_video_frames(input));
+    assert_eq!(common::decoded_video_frames(&out), common::decoded_video_frames(input));
     std::fs::remove_file(&out).ok();
 }
 
@@ -270,7 +208,7 @@ fn a_failing_writer_surfaces_its_error() {
     let Some(input) = common::audio_sample() else { return };
     let writer = MediaWriter::builder().writer(FailThird(0)).fragmented_mp4().build().unwrap();
 
-    let err = remux(input.to_str().unwrap(), writer).unwrap_err();
+    let err = common::remux(input.to_str().unwrap(), writer).unwrap_err();
 
     assert!(matches!(&err, Error::Write(e) if e.to_string() == "third write refused"), "{err:?}");
 }
@@ -290,7 +228,7 @@ fn a_panicking_writer_surfaces_as_a_write_error() {
     let Some(input) = common::audio_sample() else { return };
     let writer = MediaWriter::builder().writer(Panics).fragmented_mp4().build().unwrap();
 
-    let err = remux(input.to_str().unwrap(), writer).unwrap_err();
+    let err = common::remux(input.to_str().unwrap(), writer).unwrap_err();
 
     assert!(matches!(&err, Error::Write(e) if e.to_string().contains("writer exploded")), "{err:?}");
 }
@@ -306,10 +244,10 @@ fn plain_mp4_refuses_a_writer() {
     // The mp4 muxer seeks back to write `moov` unless it fragments, so it rejects non-seekable output when it
     // initialises, before writing anything.
     let Some(input) = common::audio_sample() else { return };
-    let buf = SharedBuf::default();
+    let buf = common::SharedBuf::default();
     let writer = MediaWriter::builder().writer(buf.clone()).format("mp4").build().unwrap();
 
-    let err = remux(input.to_str().unwrap(), writer).unwrap_err();
+    let err = common::remux(input.to_str().unwrap(), writer).unwrap_err();
 
     assert!(matches!(err, Error::Internal { .. }), "{err:?}");
     assert!(buf.bytes().is_empty());
@@ -322,12 +260,12 @@ fn flushing_before_each_keyframe_hands_over_whole_fragments() {
     let Some(input) = common::audio_sample() else { return };
     let input = input.to_str().unwrap();
     let video = probe(input).unwrap().video().unwrap().index;
-    let buf = SharedBuf::default();
+    let buf = common::SharedBuf::default();
     let writer = MediaWriter::builder().writer(buf.clone()).fragmented_mp4().build().unwrap();
 
     // Packets written so far, and how many of them were written before the last flush.
     let (mut flushes, mut fragments, mut written, mut flushed) = (0, 0, 0, 0);
-    remux_with(input, writer, |writer, packet| {
+    common::remux_with(input, writer, |writer, packet| {
         if packet.stream_index() == video && packet.is_keyframe() {
             writer.flush()?;
             flushes += 1;
@@ -337,7 +275,7 @@ fn flushing_before_each_keyframe_hands_over_whole_fragments() {
             flushed = written;
         }
         written += 1;
-        Ok(())
+        Ok(packet)
     })
     .unwrap();
 

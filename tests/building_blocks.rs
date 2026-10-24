@@ -5,31 +5,9 @@ mod common;
 
 use media::codec::VideoEncoder;
 use media::prelude::*;
-use std::io::{self, Write};
-use std::sync::{Arc, Mutex};
 
-/// A writer whose bytes the test can read back while the `MediaWriter` owns a clone of it.
-#[derive(Clone, Default)]
-struct SharedBuf(Arc<Mutex<Vec<u8>>>);
-
-impl SharedBuf {
-    fn bytes(&self) -> Vec<u8> {
-        self.0.lock().unwrap().clone()
-    }
-}
-
-impl Write for SharedBuf {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-/// The first `count` decoded frames of `path`'s video stream, with the decoder and the stream's time base.
+/// The first `count` decoded frames of `path`'s video stream, each timed by its best-effort timestamp, with the
+/// decoder and the stream's time base.
 fn first_frames(path: &str, count: usize) -> (Decoder, Rational, Vec<Frame>) {
     let mut reader = MediaReader::open(path).unwrap();
     let video = reader.best_stream(StreamKind::Video).unwrap();
@@ -41,7 +19,11 @@ fn first_frames(path: &str, count: usize) -> (Decoder, Rational, Vec<Frame>) {
         if packet.stream_index() != video {
             continue;
         }
-        frames.extend(decoder.decode(&packet).unwrap().map(Result::unwrap));
+        for frame in decoder.decode(&packet).unwrap() {
+            let mut frame = frame.unwrap();
+            frame.set_pts(frame.best_effort_timestamp().unwrap());
+            frames.push(frame);
+        }
         if frames.len() >= count {
             break;
         }
@@ -97,16 +79,7 @@ fn a_square_pixel_source_reports_one_to_one() {
 
 /// Copies `input`'s streams into a plain MP4 at `output`.
 fn copy_to_mp4(input: &str, output: &str) {
-    let mut reader = MediaReader::open(input).unwrap();
-    let mut writer = MediaWriter::create(output).unwrap();
-    let outputs: Vec<_> = (0..reader.stream_count()).map(|i| writer.add_stream_copy(&reader, i).unwrap()).collect();
-    writer.write_header().unwrap();
-    for packet in reader.packets() {
-        let mut packet = packet.unwrap();
-        packet.set_stream_index(outputs[packet.stream_index()]);
-        writer.write_packet(&mut packet).unwrap();
-    }
-    writer.write_trailer().unwrap();
+    common::remux(input, MediaWriter::create(output).unwrap()).unwrap();
 }
 
 /// Writes the display matrix for a turn of `clockwise` degrees into every `tkhd` box of the MP4 at `path`, the way a
@@ -165,20 +138,9 @@ fn an_unrotated_stream_reports_none() {
 
 /// `input` remuxed into fragmented MP4 in memory, each packet passed through `rebuild` first.
 fn remux_fmp4(input: &str, rebuild: impl Fn(Packet) -> Packet) -> Vec<u8> {
-    let sink = SharedBuf::default();
-    let mut reader = MediaReader::open(input).unwrap();
-    let mut writer = MediaWriter::builder().writer(sink.clone()).fragmented_mp4().build().unwrap();
-    let outputs: Vec<_> = (0..reader.stream_count()).map(|i| writer.add_stream_copy(&reader, i).unwrap()).collect();
-    writer.write_header().unwrap();
-    for packet in reader.packets() {
-        let packet = packet.unwrap();
-        let index = packet.stream_index();
-        let mut packet = rebuild(packet);
-        packet.set_stream_index(outputs[index]);
-        writer.write_packet(&mut packet).unwrap();
-    }
-    writer.write_trailer().unwrap();
-    drop(writer);
+    let sink = common::SharedBuf::default();
+    let writer = MediaWriter::builder().writer(sink.clone()).fragmented_mp4().build().unwrap();
+    common::remux_with(input, writer, |_, packet| Ok(rebuild(packet))).unwrap();
     sink.bytes()
 }
 
@@ -232,11 +194,7 @@ fn encode(decoder: &Decoder, time_base: Rational, frames: &[Frame], options: &[(
 #[test]
 fn the_bf_option_turns_b_frames_off() {
     let Some(input) = common::audio_sample() else { return };
-    let (decoder, time_base, mut frames) = first_frames(input.to_str().unwrap(), 48);
-    for frame in &mut frames {
-        let pts = frame.best_effort_timestamp().unwrap();
-        frame.set_pts(pts);
-    }
+    let (decoder, time_base, frames) = first_frames(input.to_str().unwrap(), 48);
     let reordered = |packets: &[Packet]| packets.iter().any(|packet| packet.pts() != packet.dts());
 
     // Ultrafast has no B-frames of its own, so the default is set back to x264's usual 3 to show the option at work.
@@ -277,11 +235,7 @@ fn generic_and_private_options_are_both_accepted() {
 fn a_decoded_keyframe_does_not_force_one_on_the_encoder() {
     // `video2.mp4` has a keyframe at 10.4 s, frame 250.
     let Some(input) = common::audio_sample() else { return };
-    let (decoder, time_base, mut frames) = first_frames(input.to_str().unwrap(), 300);
-    for frame in &mut frames {
-        let pts = frame.best_effort_timestamp().unwrap();
-        frame.set_pts(pts);
-    }
+    let (decoder, time_base, frames) = first_frames(input.to_str().unwrap(), 300);
 
     let packets = encode(&decoder, time_base, &frames, &[("g", "1000"), ("sc_threshold", "0")]);
 

@@ -369,7 +369,7 @@ impl VideoEncoderBuilder {
 
         let options = to_c_options(self.options, "an encoder option contains a NUL byte")?;
         ctx.open_with(&options)?;
-        let frame_duration = if framerate.0.is_positive() && time_base.num > 0 {
+        let frame_duration = if framerate.0.is_positive() && time_base.is_positive() {
             // SAFETY: av_rescale_q is pure arithmetic, and neither rational has a zero denominator here.
             unsafe { sys::av_rescale_q(1, framerate.time_base().to_av(), time_base.to_av()) }
         } else {
@@ -398,8 +398,8 @@ impl VideoEncoderBuilder {
     /// Fails as [`build`](Self::build) and [`VideoEncoder::encode`] would: an encoder missing from the build, a
     /// driver that isn't installed, a device that is busy, or an option the encoder doesn't take.
     pub fn probe(self, frames: u32) -> Result<Vec<Packet>> {
-        let pix_fmt = self.pix_fmt.unwrap_or(PixelFormat::Yuv420p);
         let mut encoder = self.build()?;
+        let pix_fmt = PixelFormat::from_av(encoder.ctx.pix_fmt());
         let (width, height) = (encoder.ctx.width(), encoder.ctx.height());
         let step = encoder.frame_duration.max(1);
 
@@ -421,22 +421,26 @@ impl VideoEncoderBuilder {
             [224, shade(x, width), shade(y, height)]
         })?;
 
-        let encode_all = |encoder: &mut VideoEncoder, shaped: Vec<Frame>, packets: &mut Vec<Packet>| -> Result<()> {
-            for frame in shaped {
-                packets.extend(encoder.encode(&frame)?.collect::<Result<Vec<_>>>()?);
-            }
-            Ok(())
-        };
         let cut = frames / 2;
         let mut packets = Vec::new();
         for n in 0..frames {
             let image = if n < cut { &flat } else { &gradient };
             let mut frame = Frame::from_raw(image.try_clone()?);
             frame.set_pts(i64::from(n) * step);
-            encode_all(&mut encoder, convert.filter(frame)?, &mut packets)?;
+            for shaped in convert.filter(frame)? {
+                for packet in encoder.encode(&shaped)? {
+                    packets.push(packet?);
+                }
+            }
         }
-        encode_all(&mut encoder, convert.flush()?, &mut packets)?;
-        packets.extend(encoder.flush()?.collect::<Result<Vec<_>>>()?);
+        for shaped in convert.flush()? {
+            for packet in encoder.encode(&shaped)? {
+                packets.push(packet?);
+            }
+        }
+        for packet in encoder.flush()? {
+            packets.push(packet?);
+        }
         Ok(packets)
     }
 }

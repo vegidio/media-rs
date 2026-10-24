@@ -13,7 +13,6 @@ use crate::sys;
 use crate::types::rational::{Framerate, Rational};
 use crate::types::stream_kind::StreamKind;
 use std::any::Any;
-use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::os::raw::{c_int, c_void};
@@ -276,12 +275,14 @@ impl OutputFormatContext {
     /// Allocate an output context writing to `target`, in the container `format` names, or, for a path, the one its
     /// extension implies.
     pub(crate) fn create(target: OutputTarget, format: Option<&str>) -> Result<Self> {
-        let cformat = format.map(|f| CString::new(f).map_err(|_| Error::InvalidConfig("format contains a NUL byte")));
-        let cformat = cformat.transpose()?;
+        let cformat = format
+            .map(CString::new)
+            .transpose()
+            .map_err(|_| Error::InvalidConfig("format contains a NUL byte"))?;
         let format_ptr = cformat.as_ref().map_or(ptr::null(), |f| f.as_ptr());
-        let (label, curl) = match &target {
-            OutputTarget::Path(url) => (Cow::Borrowed(url.as_str()), Some(cstring(url)?)),
-            OutputTarget::Writer(_) => (Cow::Owned(format!("writer ({})", format.unwrap_or("no format"))), None),
+        let curl = match &target {
+            OutputTarget::Path(url) => Some(cstring(url)?),
+            OutputTarget::Writer(_) => None,
         };
         let url_ptr = curl.as_ref().map_or(ptr::null(), |u| u.as_ptr());
 
@@ -289,6 +290,10 @@ impl OutputFormatContext {
         // SAFETY: raw is a valid out-param; the format name and filename are valid C strings or null.
         let ret = unsafe { sys::avformat_alloc_output_context2(&mut raw, ptr::null(), format_ptr, url_ptr) };
         if ret < 0 || raw.is_null() {
+            let label = match &target {
+                OutputTarget::Path(url) => url.clone(),
+                OutputTarget::Writer(_) => format!("writer ({})", format.unwrap_or("no format")),
+            };
             return Err(Error::CreateOutput(with_reason(&label, ret)));
         }
         let mut ctx = Self { ptr: non_null(raw, "AVFormatContext")?, io: OutputIo::None };
@@ -298,8 +303,9 @@ impl OutputFormatContext {
             let oformat = (*ctx.ctx()).oformat;
             (*oformat).flags & sys::AVFMT_NOFILE as i32 == 0
         };
-        match (target, curl) {
-            (OutputTarget::Path(url), Some(curl)) if needs_file => {
+        match target {
+            OutputTarget::Path(url) if needs_file => {
+                let curl = curl.ok_or(Error::Bug("a path target has no C path"))?;
                 // SAFETY: pb is a valid out-param slot; curl valid for the call.
                 let r = unsafe { sys::avio_open(&mut (*ctx.ctx()).pb, curl.as_ptr(), sys::AVIO_FLAG_WRITE as i32) };
                 if r < 0 {
@@ -307,11 +313,11 @@ impl OutputFormatContext {
                 }
                 ctx.io = OutputIo::File;
             }
-            (OutputTarget::Path(_), _) => {}
-            (OutputTarget::Writer(_), _) if !needs_file => {
+            OutputTarget::Path(_) => {}
+            OutputTarget::Writer(_) if !needs_file => {
                 return Err(Error::InvalidConfig("this format writes no bytes, so it can't write to a writer"));
             }
-            (OutputTarget::Writer(writer), _) => ctx.attach_sink(writer)?,
+            OutputTarget::Writer(writer) => ctx.attach_sink(writer)?,
         }
         Ok(ctx)
     }

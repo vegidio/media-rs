@@ -106,14 +106,14 @@ impl Resolution {
     /// The filter chain that converts a decoded `width`×`height` frame to packed RGB24 at this
     /// resolution.
     pub(crate) fn filter_description(self, width: u32, height: u32) -> String {
-        match self {
-            Resolution::Original => "format=rgb24".to_owned(),
-            Resolution::Fixed(w, h) => format!("scale={w}:{h},format=rgb24"),
-            Resolution::Fit(bound) => match fit_dimensions(width, height, bound) {
-                Some((w, h)) => format!("scale={w}:{h}:flags=lanczos,format=rgb24"),
-                None => "format=rgb24".to_owned(),
-            },
-        }
+        let scale = match self {
+            Resolution::Original => None,
+            Resolution::Fixed(w, h) => Some(format!("scale={w}:{h}")),
+            Resolution::Fit(bound) => {
+                fit_dimensions(width, height, bound).map(|(w, h)| format!("scale={w}:{h}:flags=lanczos"))
+            }
+        };
+        scale.map_or_else(|| "format=rgb24".to_owned(), |s| format!("{s},format=rgb24"))
     }
 }
 

@@ -137,6 +137,12 @@ impl VideoFilterChain {
     pub fn description(&self) -> String {
         self.stages.join(",")
     }
+
+    /// The description to build a graph from: an empty one isn't a valid graph, so it becomes `null`, the
+    /// pass-through filter.
+    pub(crate) fn graph_description(&self) -> String {
+        if self.is_empty() { "null".to_owned() } else { self.description() }
+    }
 }
 
 /// The push/pull surface shared by the video and audio filter graphs, so the run loop
@@ -244,8 +250,7 @@ impl VideoFilter {
         sample_aspect_ratio: Rational,
         chain: &VideoFilterChain,
     ) -> Result<Self> {
-        // An empty description isn't a valid graph; `null` is the pass-through filter.
-        let description = if chain.is_empty() { "null".to_owned() } else { chain.description() };
+        let description = chain.graph_description();
         let (width, height) = (width as i32, height as i32);
         let input = VideoInput { width, height, pix_fmt: pix_fmt.to_av(), time_base, sample_aspect_ratio };
         Ok(Self { runner: FilterRunner::new(VideoFilterGraph::new(&input, &description)?)? })
@@ -363,6 +368,12 @@ impl AudioFilterChain {
     pub fn description(&self) -> String {
         self.stages.join(",")
     }
+
+    /// The description to build a graph from: an empty one isn't a valid graph, so it becomes `anull`, the
+    /// pass-through filter.
+    pub(crate) fn graph_description(&self) -> String {
+        if self.is_empty() { "anull".to_owned() } else { self.description() }
+    }
 }
 
 /// An [`AudioFilterChain`], built and ready to run on the frames of one decoder: the audio counterpart to
@@ -398,8 +409,7 @@ impl AudioFilter {
     /// Errors when the chain doesn't parse, names a filter this FFmpeg build lacks, or can't take frames of the
     /// decoder's format.
     pub fn new(decoder: &Decoder, time_base: Rational, chain: &AudioFilterChain) -> Result<Self> {
-        // An empty description isn't a valid graph; `anull` is the pass-through filter.
-        let description = if chain.is_empty() { "anull".to_owned() } else { chain.description() };
+        let description = chain.graph_description();
         let input = AudioInput {
             sample_rate: decoder.sample_rate() as i32,
             sample_fmt: decoder.sample_format().to_av(),

@@ -97,9 +97,6 @@ struct VideoStage {
     vfilter: Option<VideoFilter>,
     out_vidx: usize,
     v_tb: Rational,
-    /// The time base of the frames the encoder receives: the filter's output time base when filtering, which a filter
-    /// such as `fps` changes, else the source's.
-    enc_tb: Rational,
 }
 
 /// The video codec the transcode will actually encode with: the user's explicit choice, else
@@ -124,13 +121,9 @@ fn setup_video(
 
     let cfg = opts.video.clone();
     let codec = effective_video_codec(opts);
-    let (in_w, in_h) = (dec.width() as i32, dec.height() as i32);
+    let (in_w, in_h) = (dec.width(), dec.height());
     let in_pix = dec.pixel_format();
-    let (tw, th) = cfg
-        .as_ref()
-        .and_then(|c| c.resolution)
-        .map(|(w, h)| (w as i32, h as i32))
-        .unwrap_or((in_w, in_h));
+    let (tw, th) = cfg.as_ref().and_then(|c| c.resolution).unwrap_or((in_w, in_h));
 
     // Compose the effective filter chain: user filters, plus an auto-scale when the
     // requested resolution differs from the input.
@@ -151,8 +144,8 @@ fn setup_video(
     let (enc_w, enc_h, enc_pix) = if chain.is_empty() {
         (in_w, in_h, in_pix)
     } else {
-        let f = VideoFilter::from_shape(in_w as u32, in_h as u32, in_pix, in_tb, Rational::ONE, &chain)?;
-        let dims = (f.output_width() as i32, f.output_height() as i32, f.output_pixel_format());
+        let f = VideoFilter::from_shape(in_w, in_h, in_pix, in_tb, Rational::ONE, &chain)?;
+        let dims = (f.output_width(), f.output_height(), f.output_pixel_format());
         vfilter = Some(f);
         dims
     };
@@ -168,7 +161,7 @@ fn setup_video(
 
     let mut eb = VideoEncoder::builder()
         .codec(codec)
-        .resolution(enc_w as u32, enc_h as u32)
+        .resolution(enc_w, enc_h)
         .pixel_format(enc_pix)
         .framerate(fr)
         .time_base(enc_tb)
@@ -181,7 +174,7 @@ fn setup_video(
     let encoder = eb.build()?;
     let out_vidx = writer.add_stream_from_encoder(&encoder)?;
 
-    Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb, enc_tb })
+    Ok(VideoStage { decoder: dec, encoder, vfilter, out_vidx, v_tb: in_tb })
 }
 
 /// The configured audio half of a re-encoding transcode: decoder (producer side) + encoder and
@@ -592,7 +585,7 @@ pub(crate) fn run(opts: &TranscodeOptions, on_progress: impl FnMut(Progress)) ->
 
     // --- trim bounds -------------------------------------------------------------------
     let v_tb = video.as_ref().map(|s| s.v_tb).unwrap_or(Rational::ONE);
-    let enc_tb = video.as_ref().map(|s| s.enc_tb).unwrap_or(Rational::ONE);
+    let enc_tb = video.as_ref().map_or(Rational::ONE, |s| s.encoder.time_base());
     let (trim_start, trim_end) = opts.trim.unwrap_or((0.0, f64::INFINITY));
     let v_start_ts = enc_tb.ts_from_secs(trim_start);
     let a_start_ts = a_tb.ts_from_secs(trim_start);

@@ -106,20 +106,7 @@ fn probe_reports_matroska_for_a_remux_to_mkv() {
     let Some(path) = common::sample_videos().into_iter().next() else { return };
     let out = common::temp("media_rs_probe_names.mkv");
 
-    let mut reader = MediaReader::open(path.to_str().unwrap()).unwrap();
-    let mut writer = MediaWriter::create(&out).unwrap();
-    let mut out_index = Vec::new();
-    for i in 0..reader.stream_count() {
-        out_index.push(writer.add_stream_copy(&reader, i).unwrap());
-    }
-    writer.write_header().unwrap();
-    for packet in reader.packets() {
-        let mut packet = packet.unwrap();
-        packet.set_stream_index(out_index[packet.stream_index()]);
-        writer.write_packet(&mut packet).unwrap();
-    }
-    writer.write_trailer().unwrap();
-    drop(writer);
+    common::remux(path.to_str().unwrap(), MediaWriter::create(&out).unwrap()).unwrap();
 
     let info = probe(&out).unwrap();
     assert_eq!(info.format_name(), "matroska,webm");
