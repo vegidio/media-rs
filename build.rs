@@ -21,10 +21,12 @@
 //! `lib<name>.a`, while the Windows builds are now **MSVC** and ship `<name>.lib` (the core libs without a `lib`
 //! prefix, e.g. `avcodec.lib`).
 //!
-//! Every directive is a `cargo:rustc-link-lib`, never a `cargo:rustc-link-arg`: Cargo applies link args only to this
-//! package's own binaries, tests and examples, so a crate that depends on `media-rs` would link without FFmpeg. The
-//! static libraries are bundled into this crate's rlib, a single archive, so even the single-pass GNU `bfd` linker
-//! resolves the circular references between FFmpeg and its dependencies without a `--start-group`.
+//! The libraries are emitted as `cargo:rustc-link-lib`, not `cargo:rustc-link-arg`: Cargo applies link args only to
+//! this package's own binaries, tests and examples, so a crate that depends on `media-rs` would link without FFmpeg.
+//! The static libraries are bundled into this crate's rlib, a single archive, so even the single-pass GNU `bfd` linker
+//! resolves the circular references between FFmpeg and its dependencies without a `--start-group`. The one exception
+//! is this crate's own unit-test binary, which links the archives directly; on Linux they are additionally re-listed
+//! in a `--start-group` link arg for it (see `emit_link_directives`).
 
 use std::env;
 use std::fs;
@@ -176,7 +178,19 @@ fn emit_link_directives(lib_dir: &Path) {
         println!("cargo:rustc-link-lib=static={lib}");
     }
 
+    // This package's own unit-test binary links the archives above directly (not via the bundled rlib), in sorted
+    // order. The single-pass GNU `bfd` linker (the default on aarch64 Linux) then misses back-references such as
+    // `libvorbis` -> `libogg` or `libssl` -> `libcrypto`. Re-listing the set in a link group (appended after the
+    // `-l` flags) resolves them. Link args only apply to this package's targets; dependents use the rlib.
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if target_os == "linux" {
+        println!("cargo:rustc-link-arg=-Wl,--start-group");
+        for lib in &libs {
+            println!("cargo:rustc-link-arg=-l{lib}");
+        }
+        println!("cargo:rustc-link-arg=-Wl,--end-group");
+    }
+
     emit_system_libs(&target_os);
 }
 
